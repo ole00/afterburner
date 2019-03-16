@@ -1,5 +1,6 @@
 # afterburner
 GAL chip programmer for Arduino
+![Board image](https://github.com/ole00/afterburner/raw/master/img/afterburner_small.jpg "afterburner")
 
 This is a GAL IC programmer software that allows to program GAL IC chips
 from various manfucaturers. It is based on work of several other people:
