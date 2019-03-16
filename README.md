@@ -178,11 +178,12 @@ Troubleshooting:
 
   * X marks the spot - here make the vertical cut. Do not cut the pins
   itself! Just cut the trace between the pins, which is only barely visible
-  without magnification. 
-  ![See the MT3608 image in img directory for more details.] (https://github.com/ole00/afterburner/raw/master/img/mt3608_mod.jpg "EN pin mod")
+  without magnification.
   
-    
   * solder a thin keynar wire to pin 4 which is your ENable pin.
+  
+  ![See the MT3608 image in img directory for more details.](https://github.com/ole00/afterburner/raw/master/img/mt3608_mod.jpg "EN pin mod")
+    
 
   * Once that is done, toggling the EN pin will change the output voltage
   of the module between 5V (actually slightly less than that) and the
