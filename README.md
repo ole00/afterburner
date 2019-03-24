@@ -13,9 +13,9 @@ from various manfucaturers. It is based on work of several other people:
 
 who did the most of the hard work of deciphering and publishing the programming
 protocol of these chips. Their programs were Windows based and relied on
-presence of parallel port (LPT). Afterburner was written for Linux OS, and
-requires serial connection to Arduio UNO, which does the programming
-of the chip.
+presence of parallel port (LPT). Afterburner was written for Linux OS 
+(also works on Win32/64, Mac OSX64), and requires serial connection to
+Arduio UNO, which does the programming of the chip.
 
 Supported GAL chips:
 
@@ -198,6 +198,11 @@ Troubleshooting:
 - where to get the MT3608 module ?
 
   * usual places: ebay, aliexpress
+
+- how to run afterburner on Win32, Win64 or MacOSX ?
+  * the same way as on Linux: compile the source code
+  * OR use pre-compiled afterburner binaries located in 'releases' directory
+  * then run afterburner in terminal (use 'cmd' on WinXX) as described above
 
 - what are the .jed files and how to produce them
   
