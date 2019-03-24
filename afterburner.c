@@ -30,6 +30,9 @@ Requires:
 
 Changelog:
 * 2019.02.02 - initial version 0.1
+* 2019.03.24 - version 0.2
+             - added support for Win32 and Win64 builds
+             - fixed serial port setup for Mac OSX
 
 This is the PC part that communicates with Arduino UNO by serial line.
 To compile: gcc -g3 -O0 afterburner afterburner.c
@@ -40,14 +43,12 @@ To compile: gcc -g3 -O0 afterburner afterburner.c
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <ctype.h>
-#include <fcntl.h>
 #include <errno.h>
 
-#include <termios.h>
+#include "serial_port.h"
 
-#define VERSION "v.0.1"
-#define DEFAULT_DEVICE_NAME "/dev/ttyUSB0"
+#define VERSION "v.0.2"
+
 
 #define MAX_LINE 200
 
@@ -98,7 +99,7 @@ char verbose = 0;
 char* filename = 0;
 char* deviceName = 0;
 
-int serialF = -1;
+SerialDeviceHandle serialF = INVALID_HANDLE;
 Galtype gal;
 int security = 0;
 unsigned short checksum;
@@ -131,7 +132,7 @@ static void printHelp() {
     printf("  -v : verbose mode\n");
     printf("  -t <gal_type> : the GAL type. use GAL16V8 GAL20V8 GAL22V10 ATF16V8B ATF22V10B ATF22V10C\n");
     printf("  -f <file> : JEDEC fuse map file\n");
-    printf("  -d <serial_device> : name of the serial device. Default is: %s\n", DEFAULT_DEVICE_NAME);
+    printf("  -d <serial_device> : name of the serial device. Default is: %s\n", DEFAULT_SERIAL_DEVICE_NAME);
     printf("                       serial params are: 38400, 8N1\n");
     printf("examples:\n");
     printf("  afterburner i : reads and prints the device info\n");
@@ -462,48 +463,29 @@ static char readJedec(void) {
 
 static int openSerial(void) {
     char buf[512];
-    char devName[16];
+    char devName[256] = {0};
     int total;
     int labelPos;
 
 
     //open device name
-    snprintf(devName, 15, "%s", (deviceName == 0) ? DEFAULT_DEVICE_NAME : deviceName);
-    devName[15] = 0;
+    snprintf(devName, sizeof(devName), "%s", (deviceName == 0) ? DEFAULT_SERIAL_DEVICE_NAME : deviceName);
+    serialDeviceCheckName(devName, sizeof(devName));
 
     if (verbose) {
         printf("opening serial: %s\n", devName);
     }
 
-    serialF = open(devName, O_RDWR | O_NOCTTY  | O_NONBLOCK);
-    if (serialF < 1) {
+    serialF = serialDeviceOpen(devName);
+    if (serialF == INVALID_HANDLE) {
         printf("Error: failed to open serial device: %s\n", devName);
         return -2;
     }
 
-    //set the serial port parameters
-    {
-        struct termios serial;
-
-        memset(&serial, 0, sizeof(struct termios));
-        cfsetispeed(&serial, B38400);
-        cfsetospeed(&serial, B38400);
-
-        serial.c_cflag |= CS8; // no parity, 1 stop bit
-
-        if (0 != tcsetattr(serialF, TCSANOW, &serial)) {
-            printf("Error: failed to set serial parameters %i, %s\n", errno, strerror(errno));
-            return -3;
-        }
-    }
-
-    //ensure no leftover bytes exist on the serial line
-    tcdrain(serialF);
-    tcflush(serialF, TCIOFLUSH); //flush both queues
 
     // prod the programmer to output it's identification
     sprintf(buf, "*\r");
-    write(serialF, buf, 2);
+    serialDeviceWrite(serialF, buf, 2);
 
     //read programmer's message
     total = waitForSerialPrompt(buf, 512, 3000);
@@ -519,17 +501,17 @@ static int openSerial(void) {
     if (verbose) {
         printf("Output from programmer not recognised: %s\n", buf);
     }
-    close(serialF);
-    serialF = 0;
+    serialDeviceClose(serialF);
+    serialF = INVALID_HANDLE;
     return -4;
 }
 
 static void closeSerial(void) {
-    if (0 == serialF) {
+    if (INVALID_HANDLE == serialF) {
         return;
     }
-    close(serialF);
-    serialF = 0;
+    serialDeviceClose(serialF);
+    serialF = INVALID_HANDLE;
 }
 
 
@@ -583,7 +565,7 @@ static int waitForSerialPrompt(char* buf, int bufSize, int maxDelay) {
     memset(buf, 0, bufSize);
 
     while (maxDelay > 0) {
-        readSize = read(serialF, buf, bufSize);
+        readSize = serialDeviceRead(serialF, buf, bufSize);
         if (readSize > 0) {
             bufPos += readSize;
             if (checkPromptExists(bufStart, bufTotal) >= 0) {
@@ -606,7 +588,7 @@ static int sendLine(char* buf, int bufSize, int maxDelay) {
     int writeSize;
     char* obuf = buf;
 
-    if (serialF == 0) {
+    if (serialF == INVALID_HANDLE) {
         return -1;
     }
 
@@ -618,9 +600,9 @@ static int sendLine(char* buf, int bufSize, int maxDelay) {
     // write the query into the modem's file
     // file is opened non blocking so we have to ensure all contents is written
     while (total > 0) {
-        writeSize = write(serialF, buf, total);
+        writeSize = serialDeviceWrite(serialF, buf, total);
         if (writeSize < 0) {
-            printf("ERROR: written: %i", writeSize);
+            printf("ERROR: written: %i (%s)\n", writeSize, strerror(errno));
             return -4;
         }
         buf += writeSize;
