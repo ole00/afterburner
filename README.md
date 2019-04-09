@@ -50,7 +50,7 @@ Setup:
   
 * Check the chip identification by runnig the following command:
   <pre>
-  ./afterburner i
+  ./afterburner i -t [GAL_type]
   </pre>
 
   If you get some meaningfull GAL chip identification like:
@@ -114,6 +114,42 @@ How aferburner works:
   http://www.armory.com/%7Erstevew/Public/Pgmrs/GAL/_ClikMe1st.htm 
 
 
+PCB:
+---------------
+If you decide to use a PCB rather than making breadboard or protoboard
+build, then you have several options. 
+- Etch your own PCB. 
+  * The etching design is stored in 'pcb' directory, use
+  afterburner_etch_1200dpi_bot.png file to transfer the design to the
+  copper board.
+  * It's a single sided design, but you'll have to patch 3
+  traces. See the the silk screen image, 2 short patch wires are indicated
+  in the top left corner, the last one slightly longer is in located 
+  between hole C1+ and hole VIN+. Do not connect these 2 holes, just look
+  for the horizontal line indicated on the silkscreen. 
+  * Resistors are not through hole but smt 1206 package to reduce drilling.
+  * The copper is on the bottom side, to make it easy to solder the socket
+  and capacitors. However, that makes it a bit complicated to solder the Arduino
+  pins. What needs to be done is to push the pins from the top part of the board 
+  (side without copper)  so that the metal bits are flush with the plastic which keeps
+  the pins together (plastic on the top), then solder the pins on the bottom side. You
+  may then take off the plastic from the top side and slide it in from the bottom side.
+  
+- Order it online on jlcpcb.com, pcbway.com, allpcb.com etc. Use one of the zip archive
+  stored in the gerbers directory and upload it to the manufacturesr's site of your choice.
+  Use fab_1_1.zip for smaller PCB design that allows to program 16V8 devices only. 
+  Use fab_2_0.zip  for a bigger design that allows to program 16V8 and 22V10 devices.
+  The price difference should be minimal as both designs fit within 100x100 mm area.
+  
+  * Dimensions of the fab_1_1 board is 55x53 mm
+  * Dimensions of the fab_2_0 board is 57*72 mm
+  * 2 layer board
+  * PCB Thickness: 1.6, or 1.2
+  * Copper Weight: 1
+  * The rest of the options can stay default or choose whatever you fancy (colors, finish etc.)
+  
+  
+
 Troubleshooting:
 ----------------
 - it does not work!
@@ -136,6 +172,17 @@ Troubleshooting:
   * use an external power supply for your Arduino UNO, powering
   just via serial USB cable may not be sufficient for driving the GAL chip and the
   voltage up-converter
+
+- I've set the VPP voltage to 14 V, put the chip into the Ziff socket, turned on
+  the power switch then run Afterburner with the 'i' command. My Arduino made a tiny
+  short buzzing noise and then reset itself. What went wrong ?
+  
+  * most likely the VPP is set too high and the IC does not like that, it pulls the VPP
+   pin down several times causing the Arduino to reset on brown out. Solution: reduce the
+   VPP voltage by turning the pot clockwise on the MT3608 module.
+  
+  * this happens for example on ATF devices when VPP is set to 12V. ATF should use VPP
+    set to 10V when programmed by Afterburner.
 
 
 - afterburner reports it can not connect to /dev/ttyUSB0, permission denied
