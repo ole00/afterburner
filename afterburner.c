@@ -33,6 +33,10 @@ Changelog:
 * 2019.03.24 - version 0.2
              - added support for Win32 and Win64 builds
              - fixed serial port setup for Mac OSX
+* 2019.04.09 - version 0.3
+             - fixed error detection
+             - 'i' command now requires GAL type to be passed
+               on the command line
 
 This is the PC part that communicates with Arduino UNO by serial line.
 To compile: gcc -g3 -O0 afterburner afterburner.c
@@ -47,7 +51,7 @@ To compile: gcc -g3 -O0 afterburner afterburner.c
 
 #include "serial_port.h"
 
-#define VERSION "v.0.2"
+#define VERSION "v.0.3"
 
 
 #define MAX_LINE 200
@@ -105,6 +109,7 @@ int security = 0;
 unsigned short checksum;
 char galbuffer[GALBUFSIZE];
 char fusemap[MAXFUSES];
+char noGalCheck = 0;
 
 char opRead = 0;
 char opWrite = 0;
@@ -115,6 +120,7 @@ char opTestVPP = 0;
 
 
 static int waitForSerialPrompt(char* buf, int bufSize, int maxDelay);
+static char sendGenericCommand(const char* command, const char* errorText, int maxDelay, char printResult);
 
 
 static void printHelp() {
@@ -134,17 +140,18 @@ static void printHelp() {
     printf("  -f <file> : JEDEC fuse map file\n");
     printf("  -d <serial_device> : name of the serial device. Default is: %s\n", DEFAULT_SERIAL_DEVICE_NAME);
     printf("                       serial params are: 38400, 8N1\n");
+    printf("  -nc : do not check device GAL type before operation: force the GAL type set on command line\n");
     printf("examples:\n");
-    printf("  afterburner i : reads and prints the device info\n");
+    printf("  afterburner i -t ATF16V8B : reads and prints the device info\n");
     printf("  afterburner r -t ATF16V8B : reads the fuse map from the GAL chip and displays it\n");
     printf("  afterburner wv -f fuses.jed -t ATF16V8B : reads fuse map from file and writes it to \n");
     printf("              the GAL chip. Does the fuse map verification at the end.\n");
     printf("hints:\n");
     printf("  - use the 'i' command first to check and set the right programming voltage (VPP)\n");
-    printf("         of the chip. If the programing voltage is unknown use 12 V.\n");
-    printf("  - ensure programmer (Arduino) is powered by a dedicated power supply, not just by.\n");
-    printf("        the USB serial cable. Without proper power programming errors may occur.\n");
-
+    printf("         of the chip. If the programing voltage is unknown use 10V.\n");
+    printf("  - known VPP voltages as tested on Afterburner with Arduino UNO: \n");
+    printf("        Lattice GAL16V8D, GAL22V10D: 12V \n");
+    printf("        Atmel   ATF16V8D, ATF22V10C: 10V \n");
 }
 
 static char checkArgs(int argc, char** argv) {
@@ -167,6 +174,8 @@ static char checkArgs(int argc, char** argv) {
         } else if (strcmp("-d", param) == 0) {
             i++;
             deviceName = argv[i];
+        } else if (strcmp("-nc", param) == 0) {
+            noGalCheck = 1;
         } else if (param[0] != '-') {
             modes = param;
         }
@@ -210,7 +219,7 @@ static char checkArgs(int argc, char** argv) {
         printf("Error: missing JED filename\n");
         return -1;
     }
-    if (0 == type && (opWrite || opRead || opErase || opVerify))  {
+    if (0 == type && (opWrite || opRead || opErase || opVerify || opInfo))  {
         printf("Error: missing GAL type. Use -t <type> to specify.\n");
         return -1;
     } else if (0 != type) {
@@ -415,12 +424,7 @@ static int parseFuseMap(char *ptr) {
     if (lastfuse || pins) {
         int cs = checkSum(lastfuse);
         if (checksum && checksum != cs) {
-            /*
-            if (message("Checksum given %04X calculated %04X",NULL,MB_OKCANCEL,checksum,CheckSum(lastfuse)))
-            {
-                return checksumpos;
-            }
-            */
+            printf("Checksum does not match! given=0x%04X calculated=0x%04X last fuse=%i\n", checksum, cs, lastfuse);
         }
 
         for (type = 0, i = 1; i < sizeof(galinfo) / sizeof(galinfo[0]); i++) {
@@ -556,6 +560,22 @@ static char* stripPrompt(char* buf) {
     return buf;
 }
 
+//finds beginnig of the last line
+static char* findLastLine(char* buf) {
+    int i;
+    char* result = buf;
+
+    if (buf == 0) {
+        return 0;
+    }
+    for (i = 0; buf[i] != 0; i++) {
+        if (buf[i] == '\r' || buf[i] == '\n') {
+            result = buf + i + 1;
+        }      
+    }
+    return result;
+}
+
 static int waitForSerialPrompt(char* buf, int bufSize, int maxDelay) {
     char* bufStart = buf;
     int bufTotal = bufSize;
@@ -624,7 +644,7 @@ static char upload() {
     char fuseSet;
     char buf[MAX_LINE];
     char line[64];
-    unsigned short i, j, k, n;
+    unsigned int i, j, n;
 
     if (openSerial() != 0) {
         return -1;
@@ -641,21 +661,25 @@ static char upload() {
     //fuse map
     buf[0] = 0;
     fuseSet = 0;
-    for (i = k = 0; i < galinfo[gal].fuses;) {
+    for (i = 0; i < galinfo[gal].fuses;) {
         unsigned char f = 0;
         if (i % 32 == 0) {
             if (i != 0) {
                 strcat(buf, "\r");
                 //the buffer contains at least one fuse set to 1
                 if (fuseSet) {
+#ifdef DEBUG_UPLOAD
+                    printf("%s\n", buf);
+#endif
                     sendLine(buf, MAX_LINE, 100);
+                    buf[0] = 0;
                 }
                 fuseSet = 0;
             }
-            sprintf(buf, "#f %04i ", k);
+            sprintf(buf, "#f %04i ", i);
         }
-
-        for (j = 0; j < 8 && i < galinfo[gal].fuses; j++, k++, i++) {
+        f = 0;
+        for (j = 0; j < 8 && i < galinfo[gal].fuses; j++,i++) {
             if (fusemap[i]) {
                 f |= (1 << j);
                 fuseSet = 1;
@@ -664,11 +688,15 @@ static char upload() {
 
         sprintf(line, "%02X", f);
         strcat(buf, line);
+ 
     }
 
     // send last unfinished fuse line
-    if (k % 32) {
+    if (i % 32 && fuseSet) {
         strcat(buf, "\r");
+#ifdef DEBUG_UPLOAD
+        printf("%s\n", buf);
+#endif
         sendLine(buf, MAX_LINE, 100);
     }
 
@@ -680,10 +708,8 @@ static char upload() {
     sendLine(buf, MAX_LINE, 300);
 
     //end of upload
-    sprintf(buf, "#e\r");
-    sendLine(buf, MAX_LINE, 300);
+    return sendGenericCommand("#e\r", "Upload failed", 300, 0); 
 
-    return 0;
 }
 
 static char sendGenericCommand(const char* command, const char* errorText, int maxDelay, char printResult) {
@@ -699,7 +725,8 @@ static char sendGenericCommand(const char* command, const char* errorText, int m
         return -1;
     } else {
         char* response = stripPrompt(buf);
-        if (response[0] == 'E' && response[1] == 'R') {
+        char* lastLine = findLastLine(response);
+        if (lastLine == 0 || (lastLine[0] == 'E' && lastLine[1] == 'R')) {
             printf("%s\n", response);
             return -1;
         } else if (printResult) {
@@ -786,6 +813,33 @@ static char operationTestVpp(void) {
     return result;
 }
 
+static char operationSetGalCheck(void) {
+    int readSize;
+    char result;
+
+    if (openSerial() != 0) {
+        return -1;
+    }
+    result = sendGenericCommand(noGalCheck ? "F\r" : "f\r", "noGalCheck failed ?", 4000, 0);
+    closeSerial();
+    return result;    
+}
+
+static char operationSetGalType(Galtype type) {
+    char buf[MAX_LINE];
+    int readSize;
+    char result;
+
+    if (openSerial() != 0) {
+        return -1;
+    }
+    sprintf(buf, "g%i\r", (int)type); 
+    result = sendGenericCommand(buf, "setGalType failed ?", 4000, 0);
+    closeSerial();
+    return result;    
+}
+
+
 static char operationEraseGal(void) {
     char buf[MAX_LINE];
     int readSize;
@@ -864,7 +918,13 @@ int main(int argc, char** argv) {
         printf("Afterburner " VERSION " \n");
     }
 
-    if (opErase) {
+    result = operationSetGalCheck();
+
+    if (gal != UNKNOWN && 0 == result) {
+        result = operationSetGalType(gal);
+    }
+
+    if (opErase && 0 == result) {
         result = operationEraseGal();
     }
 

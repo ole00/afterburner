@@ -29,13 +29,17 @@
 
    Changelog:
    * 2019.02.02 - initial version 0.1
-
+   * 2019.04.09 - v. 0.3, 
+                - added set & check of gal type,
+                - fixed ATF22V10 and GAL22V10 CFG reading bug (porting bug)
 
                                                                        */
 
 
-#define VERSION "0.1"
+#define VERSION "0.3"
 
+//#define DEBUG_PES
+//#define DEBUG_VERIFY
 
 //ARDUINO UNO pin mapping
 //    GAL PIN NAME | ARDUINO UNO PIN NUMBER
@@ -73,7 +77,9 @@
 #define COMMAND_UTX '#'
 #define COMMAND_ECHO 'e'
 #define COMMAND_TEST_VOLTAGE 't'
-
+#define COMMAND_SET_GAL_TYPE 'g'
+#define COMMAND_ENABLE_CHECK_TYPE 'f'
+#define COMMAND_DISABLE_CHECK_TYPE 'F'
 
 #define READGAL 0
 #define VERIFYGAL 1
@@ -95,7 +101,7 @@
 #define NATIONAL 0x8F
 #define SGSTHOMSON 0x20
 #define ATMEL16 'V'
-#define ATMEL22 '3'
+#define ATMEL22 '1'
 
 typedef enum {
   UNKNOWN,
@@ -104,7 +110,8 @@ typedef enum {
   GAL22V10,
   ATF16V8B,
   ATF22V10B,
-  ATF22V10C
+  ATF22V10C,
+  LAST_GAL_TYPE //dummy
 } GALTYPE;
 
 
@@ -113,6 +120,9 @@ typedef enum {
 #define CFG_BASE_16 2048
 #define CFG_BASE_20 2560
 #define CFG_BASE_22 5808
+
+#define CFG_STROBE_ROW 0
+#define CFG_SET_ROW 1
 
 // common CFG fuse address map for cfg16V8 and cfg20V8
 // the only difference is the starting address: 2048 for cfg16V8 and 2560 for cfg20V8
@@ -175,20 +185,21 @@ static struct
     unsigned short cfgbase;         /* base address of the config bit numbers */
     const unsigned char *cfg;       /* pointer to config bit numbers      */
     unsigned char cfgbits;          /* number of config bits              */
+    unsigned char cfgmethod;        /* strobe or set row for reading config */
 }
 galinfo[]=
 {
 //                                      + fuses         + bits       +uesbytes   +pesrow          +cfgbase
 //                                      |     +pins     |  +uesrow   |  +eraserow|   +pesbytes    |        +cfg
-//   +-- type   + id0 + id1  +- name    |     |   +rows |  |   +uesfuse |   +eraseallrow +cfgrow  |        |       + cfgbits
-//   |          |     |      |          |     |   |     |  |   |     |  |   |    |   |   |        |        |       |
-    {UNKNOWN,   0x00, 0x00, "unknown",     0,  0,  0,   0,  0,    0, 0,  0,  0,  0,  8,  0,       0,        NULL,      0},
-    {GAL16V8,   0x00, 0x1A, "GAL16V8",  2194, 20, 32,  64, 32, 2056, 8, 63, 54, 58,  8, 60, CFG_BASE_16, cfgV8AB, sizeof(cfgV8AB)},
-    {GAL20V8,   0x20, 0x3A, "GAL20V8",  2706, 24, 40,  64, 40, 2568, 8, 63, 59, 58,  8, 60, CFG_BASE_20, cfgV8AB, sizeof(cfgV8AB)},
-    {GAL22V10,  0x48, 0x49, "GAL22V10", 5892, 24, 44, 132, 44, 5828, 8, 61, 60, 58, 10, 16, CFG_BASE_22, cfgV10,  sizeof(cfgV10)},
-    {ATF16V8B,  0x00, 0x00, "ATF16V8B", 2194, 20, 32,  64, 32, 2056, 8, 63, 54, 58,  8, 60, CFG_BASE_16, cfgV8AB, sizeof(cfgV8AB)},
-    {ATF22V10B, 0x00, 0x00, "ATF22V10B",5892, 24, 44, 132, 44, 5828, 8, 61, 60, 58, 10, 16, CFG_BASE_22, cfgV10,  sizeof(cfgV10)},
-    {ATF22V10C, 0x00, 0x00, "ATF22V10C",5892, 24, 44, 132, 44, 5828, 8, 61, 60, 58, 10, 16, CFG_BASE_22, cfgV10,  sizeof(cfgV10)},
+//   +-- type   + id0 + id1  +- name    |     |   +rows |  |   +uesfuse |   +eraseallrow +cfgrow  |        |       + cfgbits        +cfgmethod
+//   |          |     |      |          |     |   |     |  |   |     |  |   |    |   |   |        |        |       |                |
+    {UNKNOWN,   0x00, 0x00, "unknown",     0,  0,  0,   0,  0,    0, 0,  0,  0,  0,  8,  0,       0,        NULL,      0         , 0},
+    {GAL16V8,   0x00, 0x1A, "GAL16V8",  2194, 20, 32,  64, 32, 2056, 8, 63, 54, 58,  8, 60, CFG_BASE_16, cfgV8AB, sizeof(cfgV8AB), CFG_STROBE_ROW}, 
+    {GAL20V8,   0x20, 0x3A, "GAL20V8",  2706, 24, 40,  64, 40, 2568, 8, 63, 59, 58,  8, 60, CFG_BASE_20, cfgV8AB, sizeof(cfgV8AB), CFG_STROBE_ROW}, 
+    {GAL22V10,  0x48, 0x49, "GAL22V10", 5892, 24, 44, 132, 44, 5828, 8, 61, 60, 58, 10, 16, CFG_BASE_22, cfgV10,  sizeof(cfgV10) , CFG_SET_ROW   },
+    {ATF16V8B,  0x00, 0x00, "ATF16V8B", 2194, 20, 32,  64, 32, 2056, 8, 63, 54, 58,  8, 60, CFG_BASE_16, cfgV8AB, sizeof(cfgV8AB), CFG_STROBE_ROW},
+    {ATF22V10B, 0x00, 0x00, "ATF22V10B",5892, 24, 44, 132, 44, 5828, 8, 61, 60, 58, 10, 16, CFG_BASE_22, cfgV10,  sizeof(cfgV10) , CFG_SET_ROW   },
+    {ATF22V10C, 0x00, 0x00, "ATF22V10C",5892, 24, 44, 132, 44, 5828, 8, 61, 60, 58, 10, 16, CFG_BASE_22, cfgV10,  sizeof(cfgV10) , CFG_SET_ROW   },
 };
 
 // MAXFUSES calculated as the biggest required space to hold the fuse bitmap + UES bitmap + CFG bitmap
@@ -198,7 +209,7 @@ galinfo[]=
 
 
 GALTYPE gal; //the gal device index pointing to galinfo
-static short security = 0, erasetime = 0, progtime = 0, vpp = 0;
+static short security = 0, erasetime = 100, progtime = 100, vpp = 0;
 
 char echoEnabled;
 unsigned char pes[12];
@@ -208,13 +219,16 @@ short lineIndex;
 char endOfLine;
 char mapUploaded;
 char isUploading;
+char uploadError;
 unsigned char fusemap[MAXFUSES];
+char typeCheck; //check GAL type before starting an operation
 
 
 static void setFuseBit(unsigned short bitPos);
 static unsigned short checkSum(unsigned short n);
 static char checkGalTypeViaPes(void);
 static void turnOff(void);
+static void printFormatedNumberHex2(unsigned char num) ;
 
 // print some help on the serial console
 void printHelp(char full) {
@@ -244,6 +258,7 @@ void setup() {
   gal = ATF16V8B;
   echoEnabled = 0;
   mapUploaded = 0;
+  typeCheck = 1; //do type check
 
   // Serial output from the GAL chip, input for Arduino
   pinMode(PIN_SDOUT, INPUT);
@@ -313,7 +328,9 @@ char handleTerminalCommands() {
     } else if (lineIndex  > 2) {
       c = line[0];  
       if (!isUploading || c != '#') {
-        c = COMMAND_UNKNOWN;
+        if (c != COMMAND_SET_GAL_TYPE) {
+          c = COMMAND_UNKNOWN; 
+        }
       }
     }
     if (!isUploading) {
@@ -385,19 +402,24 @@ unsigned short parse4hex(char i) {
 void parseUploadLine() {
   switch (line[1]) {
     case 'e': {
-      Serial.println("upload finished");
+      if (uploadError) {
+        Serial.print(F("ER upload failed"));
+      } else {
+        Serial.print(F("OK upload finished"));
+      }
       isUploading = 0;
     } break;
 
     // gal type
     case 't': {
       short v = line[3] - '0';
-      if (v > 0 && v <= (short)ATF22V10C) {
+      if (v > 0 && v < LAST_GAL_TYPE) {
         gal = (GALTYPE) v;
         Serial.print(F("OK gal set: "));
         Serial.println((short) gal, DEC);
       } else {
         Serial.println(F("ER unknown gal index"));
+        uploadError = 1;
       }
     } break;
 
@@ -433,8 +455,9 @@ void parseUploadLine() {
       unsigned short val = parse4hex(3);
       unsigned short cs = checkSum(galinfo[gal].fuses);
       if (cs == val) {
-        Serial.println(F("OK"));
+        Serial.println(F("OK checksum matches"));
       } else {
+        uploadError = 1;
         Serial.print(F("ER checksum:"));
         Serial.print(cs, HEX);
         Serial.print(F(" expected:"));
@@ -442,7 +465,9 @@ void parseUploadLine() {
       }
     } break;
     
-    default: Serial.println(F("ER unknown upload cmd"));
+    default:
+      uploadError = 1;
+      Serial.println(F("ER unknown upload cmd"));
   }
 
   lineIndex = 0;
@@ -635,11 +660,17 @@ static void strobeRow(char row)
    }
 }
 
+
 // read PES: programmer electronic signature (ATF = text string, others = Vendor/Vpp/timing)
-void readPes() {
+static void readPes(void) {
   unsigned short bitmask;
   short byteIndex;
 
+#ifdef DEBUG_PES 
+  Serial.print(F("testing gal "));
+  Serial.print(gal, DEC);
+  Serial.println();
+#endif
   turnOn(READPES);
 
   strobeRow(galinfo[gal].pesrow);
@@ -657,8 +688,8 @@ void readPes() {
   }
 
   turnOff();
-
 }
+
 
 static unsigned char getDuration(unsigned char index) {
   switch (index) {
@@ -689,11 +720,6 @@ void parsePes(char type) {
   
   switch (type) {
     case ATF16V8B:
-        progtime = 10;
-        erasetime = 100;
-        vpp = 40;    /* 12.0V */
-    break;
-        
     case ATF22V10B:
     case ATF22V10C:
         progtime = 10;
@@ -756,6 +782,9 @@ void parsePes(char type) {
             }
         }
     }
+
+    //Afterburnes seems to work with programming voltages reduced by 2V
+    vpp -= 8; // -2V
 }
 
 
@@ -862,7 +891,12 @@ static void readGalFuseMap(const unsigned char* cfgArray, char useDelay, char do
   }
 
   // read CFG
-  strobeRow(galinfo[gal].cfgrow);
+  if (galinfo[gal].cfgmethod == CFG_STROBE_ROW) {
+    strobeRow(galinfo[gal].cfgrow);
+  } else {
+    setRow(galinfo[gal].cfgrow);
+    strobe(1);
+  }
   for(bit = 0; bit < galinfo[gal].cfgbits; bit++) {
     if (receiveBit()) {
       setFuseBit(cfgAddr + cfgArray[bit]);
@@ -889,6 +923,10 @@ static unsigned short verifyGalFuseMap(const unsigned char* cfgArray, char useDe
       mapBit = getFuseBit(addr);
       fuseBit = receiveBit();
       if (mapBit != fuseBit) {
+#ifdef DEBUG_VERIFY
+        Serial.print(F("f a="));
+        Serial.println((row * galinfo[gal].bits) + bit, DEC);
+#endif
         errors++;
       }
     }
@@ -908,6 +946,10 @@ static unsigned short verifyGalFuseMap(const unsigned char* cfgArray, char useDe
     mapBit = getFuseBit(addr);
     fuseBit = receiveBit();
     if (mapBit != fuseBit) {
+#ifdef DEBUG_VERIFY
+      Serial.print(F("U a="));
+      Serial.println(bit, DEC);
+#endif
       errors++;
     }
   }
@@ -916,11 +958,20 @@ static unsigned short verifyGalFuseMap(const unsigned char* cfgArray, char useDe
   }
 
   // read CFG
-  strobeRow(galinfo[gal].cfgrow);
+  if (galinfo[gal].cfgmethod == CFG_STROBE_ROW) {
+    strobeRow(galinfo[gal].cfgrow);
+  } else {
+    setRow(galinfo[gal].cfgrow);
+    strobe(1);
+  }
   for(bit = 0; bit < galinfo[gal].cfgbits; bit++) {
     mapBit = getFuseBit(cfgAddr + cfgArray[bit]); 
     fuseBit = receiveBit();
     if (mapBit != fuseBit) {
+#ifdef DEBUG_VERIFY
+      Serial.print(F("C a="));
+      Serial.println(bit, DEC);
+#endif
       errors++;
     }
   }
@@ -1016,7 +1067,7 @@ static void writeGalFuseMapV8(const unsigned char* cfgArray) {
   }
   strobe(progtime);
 
-  // write CFG
+  // write CFG (all ICs use setRow)
   setRow(galinfo[gal].cfgrow);
   for(rbit = 0; rbit < galinfo[gal].cfgbits; rbit++) {
     sendBit(getFuseBit(cfgAddr + cfgArray[rbit]));
@@ -1138,6 +1189,16 @@ static char checkGalTypeViaPes(void)
 {
     char type = UNKNOWN;
 
+#ifdef DEBUG_PES
+    char i;
+    Serial.println(F("PES raw bytes:"));
+    for (i = 0; i < 10; i++) {
+      printFormatedNumberHex2(pes[i]);
+      Serial.print(F(" "));
+    }
+    Serial.println();
+#endif
+
     if (pes[7] == 'F' && pes[6]== '2' && pes[5]== '2' && pes[4]== 'V' && pes[3]== '1' && pes[2]=='0') {
        if (pes[1] == 'B') {
            type = ATF22V10B;
@@ -1169,7 +1230,6 @@ static char testProperGAL(void)
     }
     else if (type != gal) {
       //PES indicates a different GAL type than selected. Change to detected GAL type?
-      // gal = type;
       goto error;
     }
 
@@ -1389,7 +1449,19 @@ static void testVoltage(int seconds) {
   setVPP(0);
 }
 
-// Arduino main loop - where the magic happens :-)
+
+// returns 1 if type check if OK, 0 if gal type does not match the type read from PES
+static char doTypeCheck(void) {
+  
+  if (0 == typeCheck) {
+    return 1; // no need to do type check
+  }
+  readPes();
+  parsePes(UNKNOWN);
+  return testProperGAL();
+}
+
+// Arduino main loop
 void loop() {
 
 
@@ -1418,9 +1490,9 @@ void loop() {
       // verify fuse-map bits and bits read from the GAL chip
       case COMMAND_VERIFY_FUSES: {
         if (mapUploaded) {
-          readPes();
-          parsePes(UNKNOWN);
-          readOrVerifyGal(1); //just verify, do not overwrite fusemap
+          if (doTypeCheck()) {
+            readOrVerifyGal(1); //just verify, do not overwrite fusemap
+          }
         } else {
           printNoFusesError();
         }
@@ -1434,6 +1506,7 @@ void loop() {
           fusemap[i] = 0;
         }
         isUploading = 1;
+        uploadError = 0;
       } break;
 
       // command of the upload protocol
@@ -1452,9 +1525,7 @@ void loop() {
 
       // read fuse-map from the GAL and print it in the JEDEC form
       case COMMAND_READ_FUSES : {
-        readPes();
-        parsePes(UNKNOWN);
-        if (testProperGAL()) {
+        if (doTypeCheck()) {
           readOrVerifyGal(0); //just read, no verification
           printJedec();
         }
@@ -1463,9 +1534,7 @@ void loop() {
       // write current fuse-map to the GAL chip
       case COMMAND_WRITE_FUSES : {
         if (mapUploaded) {
-          readPes();
-          parsePes(UNKNOWN);
-          if (testProperGAL()) {
+          if (doTypeCheck()) {
             writeGal();
             //TODO security
           }
@@ -1476,9 +1545,7 @@ void loop() {
 
       // erases the fuse-map on the GAL chip
       case COMMAND_ERASE_GAL: {
-        readPes();
-        parsePes(UNKNOWN);
-        if (testProperGAL()) {
+        if (doTypeCheck()) {
           eraseGAL();
         }
       } break;
@@ -1490,8 +1557,22 @@ void loop() {
 
       case COMMAND_TEST_VOLTAGE : {
         testVoltage(20);
-      }break;
-      
+      } break;
+
+      case COMMAND_SET_GAL_TYPE : {
+        char type = line[1] - '0';
+        if (type >= 1 && type < LAST_GAL_TYPE) {
+          gal = (GALTYPE) type;
+        } else {
+          Serial.println(F("ER Unknown gal type"));
+        }
+      } break;
+      case COMMAND_ENABLE_CHECK_TYPE: {
+        typeCheck = 1;
+      } break;
+      case COMMAND_DISABLE_CHECK_TYPE: {
+        typeCheck = 0;
+      } break;
       default: {
         if (command != COMMAND_NONE) {
           Serial.print(F("ER Unknown command: "));
