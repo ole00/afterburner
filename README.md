@@ -123,10 +123,9 @@ build, then you have several options.
   afterburner_etch_1200dpi_bot.png file to transfer the design to the
   copper board.
   * It's a single sided design, but you'll have to patch 3
-  traces. See the the silk screen image, 2 short patch wires are indicated
-  in the top left corner, the last one slightly longer is in located 
-  between hole C1+ and hole VIN+. Do not connect these 2 holes, just look
-  for the horizontal line indicated on the silkscreen. 
+  traces. See the the combined image where the patch traces are highlighted
+  in blue color.  Two short patch wires are located near the top left corner,
+  the last one, slightly longer, is located underneath the MT3608 module.
   * Resistors are not through hole but smt 1206 package to reduce drilling.
   * The copper is on the bottom side, to make it easy to solder the socket
   and capacitors. However, that makes it a bit complicated to solder the Arduino
