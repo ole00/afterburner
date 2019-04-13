@@ -5,11 +5,11 @@ FileVersion[20091103]
 
 PCB["outline" 3700.00mil 3100.00mil]
 
-Grid[5.00mil 0.0000 0.0000 1]
+Grid[25.00mil 0.0000 0.0000 1]
 PolyArea[200000000.000000]
 Thermal[0.500000]
 DRC[8.00mil 8.00mil 8.00mil 8.00mil 15.00mil 10.00mil]
-Flags("showdrc,nameonpcb,newfullpoly,snappin")
+Flags("showdrc,nameonpcb,clearnew,newfullpoly,snappin")
 Groups("1,c:2,s:3:4")
 Styles["Signal,10.00mil,40.00mil,20.00mil,10.00mil:Power,25.00mil,40.00mil,20.00mil,10.00mil:Fat,40.00mil,40.00mil,20.00mil,10.00mil:Skinny,8.00mil,36.00mil,20.00mil,10.00mil"]
 
@@ -794,7 +794,7 @@ Symbol['~' 12.00mil]
 	SymbolLine[20.00mil 35.00mil 25.00mil 30.00mil 8.00mil]
 )
 Attribute("PCB::grid::unit" "mil")
-Attribute("PCB::grid::size" "5.00mil")
+Attribute("PCB::grid::size" "25.00mil")
 Via[2550.00mil 1775.00mil 40.00mil 20.00mil 0.0000 20.00mil "" ""]
 Via[3125.00mil 1725.00mil 40.00mil 20.00mil 0.0000 20.00mil "" ""]
 Via[1790.00mil 1090.00mil 40.00mil 20.00mil 0.0000 20.00mil "" ""]
@@ -1237,6 +1237,36 @@ Element["" "" "" "" 2900.00mil 1650.00mil 0.0000 0.0000 0 100 ""]
 	Pin[0.0000 0.0000 60.00mil 30.00mil 66.00mil 28.00mil "1" "1" ""]
 
 	)
+
+Element["" "" "" "" 3150.00mil 1900.00mil 0.0000 0.0000 0 100 ""]
+(
+	Pin[0.0000 0.0000 60.00mil 30.00mil 66.00mil 34.00mil "Res3" "1" ""]
+
+	)
+
+Element["" "" "" "" 3150.00mil 2300.00mil 0.0000 0.0000 0 100 ""]
+(
+	Pin[0.0000 0.0000 60.00mil 30.00mil 66.00mil 34.00mil "Res3" "1" ""]
+
+	)
+
+Element["" "" "" "" 1850.00mil 2480.00mil -10.00mil 40.00mil 0 100 ""]
+(
+	Pin[0.0000 0.0000 60.00mil 30.00mil 66.00mil 34.00mil "1" "1" ""]
+
+	)
+
+Element["" "" "" "" 1650.00mil 2480.00mil -30.00mil 35.00mil 0 100 ""]
+(
+	Pin[0.0000 0.0000 60.00mil 30.00mil 66.00mil 34.00mil "1" "1" ""]
+
+	)
+
+Element["" "" "" "" 1750.00mil 2480.00mil 10.00mil 35.00mil 0 100 ""]
+(
+	Pin[0.0000 0.0000 60.00mil 30.00mil 66.00mil 34.00mil "1" "1" ""]
+
+	)
 Layer(1 "top" "copper")
 (
 	Line[2550.00mil 1775.00mil 3075.00mil 1775.00mil 20.00mil 20.00mil "clearline"]
@@ -1299,8 +1329,7 @@ Layer(2 "bottom" "copper")
 	Line[3050.00mil 1050.00mil 2900.00mil 900.00mil 40.00mil 20.00mil "clearline"]
 	Line[2650.00mil 2400.00mil 2500.00mil 2400.00mil 20.00mil 20.00mil "clearline"]
 	Line[2500.00mil 2400.00mil 2350.00mil 2550.00mil 20.00mil 20.00mil "clearline"]
-	Line[2350.00mil 2550.00mil 1625.00mil 2550.00mil 20.00mil 20.00mil "clearline"]
-	Line[1625.00mil 2550.00mil 1425.00mil 2350.00mil 20.00mil 20.00mil "clearline"]
+	Line[2350.00mil 2550.00mil 1575.00mil 2550.00mil 20.00mil 20.00mil "clearline"]
 	Line[2025.00mil 925.00mil 2875.00mil 925.00mil 40.00mil 20.00mil "clearline"]
 	Line[1750.00mil 1900.00mil 1875.00mil 1775.00mil 20.00mil 20.00mil "clearline"]
 	Line[1875.00mil 1775.00mil 2550.00mil 1775.00mil 20.00mil 20.00mil "clearline"]
@@ -1321,7 +1350,7 @@ Layer(2 "bottom" "copper")
 	Line[1900.00mil 1425.00mil 2050.00mil 1575.00mil 20.00mil 20.00mil "clearline"]
 	Line[2050.00mil 1575.00mil 2300.00mil 1575.00mil 20.00mil 20.00mil "clearline"]
 	Line[2300.00mil 1575.00mil 2375.00mil 1650.00mil 20.00mil 20.00mil "clearline"]
-	Line[1425.00mil 2350.00mil 1425.00mil 1325.00mil 20.00mil 20.00mil "clearline"]
+	Line[1425.00mil 2400.00mil 1425.00mil 1325.00mil 20.00mil 20.00mil "clearline"]
 	Line[1425.00mil 1325.00mil 1535.00mil 1215.00mil 20.00mil 20.00mil "clearline"]
 	Line[2750.00mil 600.00mil 2750.00mil 675.00mil 20.00mil 20.00mil "clearline"]
 	Line[1675.00mil 1525.00mil 1675.00mil 1425.00mil 20.00mil 20.00mil "clearline"]
@@ -1355,6 +1384,13 @@ Layer(2 "bottom" "copper")
 	Line[2950.00mil 1800.00mil 2875.00mil 1725.00mil 40.00mil 20.00mil "clearline"]
 	Line[1675.00mil 1425.00mil 1575.00mil 1325.00mil 20.00mil 20.00mil "clearline"]
 	Line[1535.00mil 1215.00mil 1665.00mil 1215.00mil 20.00mil 20.00mil "clearline"]
+	Line[2650.00mil 2400.00mil 3050.00mil 2400.00mil 20.00mil 20.00mil "clearline"]
+	Line[3050.00mil 2400.00mil 3150.00mil 2300.00mil 20.00mil 20.00mil "clearline"]
+	Line[3150.00mil 1900.00mil 3050.00mil 1900.00mil 10.00mil 20.00mil "clearline"]
+	Line[1575.00mil 2550.00mil 1425.00mil 2400.00mil 20.00mil 20.00mil "clearline"]
+	Line[1650.00mil 2475.00mil 1650.00mil 2450.00mil 40.00mil 20.00mil "clearline"]
+	Line[1650.00mil 2450.00mil 1725.00mil 2375.00mil 40.00mil 20.00mil "clearline"]
+	Line[1725.00mil 2375.00mil 2050.00mil 2375.00mil 40.00mil 20.00mil "clearline"]
 	Polygon("clearpoly,fullpoly")
 	(
 		[1075.00mil 550.00mil] [1125.00mil 500.00mil] [3200.00mil 500.00mil] [3250.00mil 550.00mil] [3250.00mil 2550.00mil] 
@@ -1393,6 +1429,7 @@ Layer(3 "info" "copper")
 	Text[2820.00mil 430.00mil 1 100 "D1" ""]
 	Text[2820.00mil 550.00mil 1 100 "(TX)" ""]
 	Text[2920.00mil 550.00mil 1 100 "(RX)" ""]
+	Text[1620.00mil 2405.00mil 1 100 "5V" ""]
 )
 Layer(4 "outline" "outline")
 (
@@ -1433,6 +1470,8 @@ Layer(6 "top silk" "silk")
 	Line[2950.00mil 1650.00mil 2925.00mil 1650.00mil 10.00mil 20.00mil "clearline"]
 	Line[2975.00mil 1675.00mil 2975.00mil 1625.00mil 10.00mil 20.00mil "clearline"]
 	Line[3000.00mil 1650.00mil 2975.00mil 1650.00mil 10.00mil 20.00mil "clearline"]
+	Line[3150.00mil 1950.00mil 3150.00mil 2050.00mil 10.00mil 20.00mil "clearline"]
+	Line[3150.00mil 2250.00mil 3150.00mil 2175.00mil 10.00mil 20.00mil "clearline"]
 	Arc[73.1764mm 37.1101mm 125.00mil 125.00mil 10.00mil 20.00mil -90 -90 "clearline"]
 	Arc[73.1764mm 37.1101mm 125.00mil 125.00mil 10.00mil 20.00mil 180 -90 "clearline"]
 	Arc[73.1764mm 37.1101mm 125.00mil 125.00mil 10.00mil 20.00mil 90 -90 "clearline"]
@@ -1449,7 +1488,7 @@ Layer(6 "top silk" "silk")
 	Text[3075.00mil 1600.00mil 0 104 "C2" "clearline"]
 	Text[1150.00mil 675.00mil 0 148 "Afterburner" "clearline"]
 	Text[1145.00mil 675.00mil 0 148 "Afterburner" "clearline"]
-	Text[1275.00mil 775.00mil 0 126 "v. 1.1" "clearline"]
+	Text[1275.00mil 775.00mil 0 126 "v. 1.2" "clearline"]
 	Text[1850.00mil 1375.00mil 0 104 "LED" "clearline"]
 	Text[1925.00mil 1975.00mil 0 104 "MT3608 module" "clearline"]
 	Text[1275.00mil 875.00mil 0 104 "layout" "clearline"]
@@ -1463,6 +1502,7 @@ Layer(6 "top silk" "silk")
 	Text[2125.00mil 950.00mil 0 104 "ZIF socket 20 pin" "clearline"]
 	Text[2525.00mil 1475.00mil 0 104 "OFF" "clearline"]
 	Text[2675.00mil 1475.00mil 0 104 "ON" "clearline"]
+	Text[3125.00mil 2075.00mil 0 104 "R3" "clearline"]
 	Polygon("clearpoly")
 	(
 		[1775.00mil 1460.00mil] [1830.00mil 1460.00mil] [1800.00mil 1490.00mil] [1770.00mil 1460.00mil] 
