@@ -37,9 +37,9 @@ Setup:
 
 * Set the programming voltage (VPP) on the voltage up-converter
   module (MT3608) depending on the GAL chip 
-  Atmel ATF16V8B - 10V
-  Lattice GAL16V8 - 10V, also works with 12V
-  Others - between 10 - 14V - untested 
+   - Atmel ATF16V8B: 10V
+   - Lattice GAL16V8: 10V, also works with 12V
+   - Others - between 10 - 14V - untested 
 
 * Check the programming voltage (VPP) without the GAL chip being
   inserted / connected to Arduino UNO. Test the voltage on MT3608
@@ -133,11 +133,13 @@ build, then you have several options.
   (side without copper)  so that the metal bits are flush with the plastic which keeps
   the pins together (plastic on the top), then solder the pins on the bottom side. You
   may then take off the plastic from the top side and slide it in from the bottom side.
+  * You may need to flip the image before the transfer to the copper board, because
+  the copper is on the bottom side.
   
 - Order it online on jlcpcb.com, pcbway.com, allpcb.com etc. Use one of the zip archive
   stored in the gerbers directory and upload it to the manufacturesr's site of your choice.
-  Use fab_1_1.zip for smaller PCB design that allows to program 16V8 devices only. 
-  Use fab_2_0.zip  for a bigger design that allows to program 16V8 and 22V10 devices.
+  Use fab_1_2.zip for smaller PCB design that allows to program 16V8 devices only. 
+  Use fab_2_1.zip  for a bigger design that allows to program 16V8 and 22V10 devices.
   The price difference should be minimal as both designs fit within 100x100 mm area.
   
   * Dimensions of the fab_1_1 board is 55x53 mm
