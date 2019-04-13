@@ -1203,6 +1203,15 @@ Element["" "" "" "" 1575.00mil 825.00mil 0.0000 0.0000 0 100 ""]
 	Pin[0.0000 0.0000 60.00mil 30.00mil 66.00mil 28.00mil "1" "1" ""]
 
 	)
+
+Element["" "Standard SMT resistor, capacitor etc" "" "1206" 2825.00mil 2350.00mil 31.50mil 31.50mil 2 100 ""]
+(
+	Pad[59.05mil -11.81mil 59.05mil 11.81mil 51.18mil 20.00mil 57.18mil "1" "1" "square"]
+	Pad[-59.05mil -11.81mil -59.05mil 11.81mil 51.18mil 20.00mil 57.18mil "2" "2" "square"]
+	ElementLine [-23.62mil 37.40mil 23.62mil 37.40mil 8.00mil]
+	ElementLine [-23.62mil -37.40mil 23.62mil -37.40mil 8.00mil]
+
+	)
 Layer(1 "top" "copper")
 (
 )
@@ -1314,6 +1323,10 @@ Layer(2 "bottom" "copper")
 	Line[1775.00mil 925.00mil 1650.00mil 1050.00mil 20.00mil 20.00mil "clearline"]
 	Line[1625.00mil 2075.00mil 1625.00mil 1500.00mil 20.00mil 20.00mil "clearline"]
 	Line[1625.00mil 1500.00mil 1550.00mil 1425.00mil 20.00mil 20.00mil "clearline"]
+	Line[2650.00mil 2400.00mil 2700.00mil 2350.00mil 20.00mil 20.00mil "clearline"]
+	Line[2700.00mil 2350.00mil 70.2551mm 2350.00mil 20.00mil 20.00mil "clearline"]
+	Line[2947.50mil 2172.50mil 2947.50mil 58.0784mm 20.00mil 20.00mil "clearline"]
+	Line[2947.50mil 58.0784mm 73.2549mm 2350.00mil 20.00mil 20.00mil "clearline"]
 	Text[41.2830mm 35.3774mm 0 104 "GND" "clearline"]
 	Text[1450.00mil 1700.00mil 1 104 "VPP" "clearline"]
 )
@@ -1391,7 +1404,7 @@ Layer(6 "top silk" "silk")
 	Text[75.7164mm 35.9671mm 0 104 "-" "clearline"]
 	Text[2150.00mil 1350.00mil 0 104 "R1 x 5" "clearline"]
 	Text[2750.00mil 1875.00mil 0 104 "VIN+" "clearline"]
-	Text[2750.00mil 2200.00mil 0 104 "VIN-" "clearline"]
+	Text[2775.00mil 2175.00mil 0 104 "VIN-" "clearline"]
 	Text[1850.00mil 1875.00mil 0 104 "VOUT+" "clearline"]
 	Text[1850.00mil 2175.00mil 0 104 "VOUT-" "clearline"]
 	Text[2925.00mil 1375.00mil 0 104 "C1" "clearline"]
@@ -1401,6 +1414,7 @@ Layer(6 "top silk" "silk")
 	Text[1725.00mil 1575.00mil 0 126 "LED" "clearline"]
 	Text[2225.00mil 925.00mil 0 126 "ZIF Socket 20 pin" "clearline"]
 	Text[71.9064mm 36.7291mm 0 104 "+" "clearline"]
+	Text[2975.00mil 2300.00mil 0 104 "R3" "clearline"]
 	Polygon("clearpoly")
 	(
 		[1810.00mil 1475.00mil] [1810.00mil 1525.00mil] [1785.00mil 1500.00mil] 
