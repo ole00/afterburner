@@ -1,0 +1,33 @@
+BOM for Afterburner 1.2
+========================
+* Resistor 4k7 through hole 0.25W, 5% or better tolerance  - 7x 
+* Capacitor electrolytic 10uF, 20V to 35 V, 20% tolerance or better (through hole) - 1x
+* Capacitor ceramic 100nF (through hole or smt) - 1x
+* 20 pin narrow ZIF socket OR 20 pin DIP IC socket 2.56 mm pin spacing - 1x
+* 5mm LED  (through hole) - 1x
+* MT3608 module - 1x
+* 2 Position 4mm SPDT 1P2T 3 Pin PCB Panel Vertical Slide Switch (0.1" pin spacing) - 1x
+* 40 Pin Male Single Row Strip 2.54mm Pin Header Connector 0.1" Straight - 1x
+* Arduino UNO
+
+*Optionally : Mini Size Led Panel Voltage Meter 3-Digital Lcd Display - 1x
+
+
+BOM for Afterburner 2.0
+=======================
+* Resistor 4k7 through hole 0.25W,  5% or better tolerance  - 11x
+* Capacitor electrolytic 10uF, 20V to 35V, 20% tolerance or better (through hole) - 1x
+* Capacitor ceramic 100nF (through hole or smt) - 2x
+* 20 pin narrow ZIF socket OR 20 pin DIP IC socket 0.1" pin spacing - 1x
+* 24 pin narrow ZIF socket OR 24 pin DIP IC socket 0.1" pin spacing - 1x
+* 5mm LED  (through hole) - 1x
+* MT3608 module - 1x
+* 2 Position 4mm SPDT 1P2T 3 Pin PCB Panel Vertical Slide Switch (0.1" pin spacing) - 1x
+* 40 Pin Male Single Row Strip 2.54mm Pin Header Connector 0.1" Straight - 1x
+* Arduino UNO
+
+*Optionally : Mini Size Led Panel Voltage Meter 3-Digital Lcd Display - 1x
+ 
+
+
+
