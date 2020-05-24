@@ -19,10 +19,12 @@ Arduio UNO, which does the programming of the chip.
 
 Supported GAL chips:
 
-* Atmel ATF16V8B, ATF22V10B, ATF22V10CQZ 
+* Atmel, ATF22V10B, ATF22V10CQZ 
 * Lattice GAL16V8A, GAL16V8B, GAL16V8D
 * Lattice GAL22V10B
 * National GAL16V8
+
+**Update 24/05/2020:** there is an issue programming the ATF16V8B with afterburner. Pick a different IC for your project until the issue is resolved, or use a different programmer. 
 
 Setup:
 * Upload the afterburner.ino sketch to your Arduino UNO.
