@@ -79,7 +79,7 @@ Setup:
   </pre>
   
 * Erase the GAL chip. Before writing / programming the chip it must
-  be erased - even if it is a branch new chip that has not been used 
+  be erased - even if it is a brand new chip that has not been used 
   before. Use the following command:
   <pre>
   ./afterburner e -t [GAL type]
@@ -92,24 +92,24 @@ Setup:
 
 How aferburner works:
 ---------------------
-* PC code reads and parses .jad files, then produces a binary which
-  can be the uploaded to Arduino via serial port. By default
+- PC code reads and parses .jad files, then produces a binary which
+  can be then uploaded to Arduino via serial port. By default
   /dev/ttyUSB0 is used, but that can be changed to any other device
   by passing the following option to afterburner:
   <pre>
   -d /my/serial/device
   </pre>
 
-* PC code of afterburner communicates with Arduino UNO's afterburner
+- PC code of afterburner communicates with Arduino UNO's afterburner
   sketch by a trivial text based protocol. You can also connect directly
   to Arduino UNO via serial terminal of your choice and issue some basic
   commands manually.
 
-* Arduino UNO's afterburner sketch does 2 things: 
-  1) parses commands and data sent from the PC afterburner code
-  2) toggles the GPIO pins and drives programming of the GAL content
+- Arduino UNO's afterburner sketch does 2 things: 
+  * parses commands and data sent from the PC afterburner code
+  * toggles the GPIO pins and drives programming of the GAL content
 
-* more information about GAL chips and their programming can be found here:
+- more information about GAL chips and their programming can be found here:
 
   http://www.bhabbott.net.nz/atfblast.html
   
@@ -187,7 +187,6 @@ Troubleshooting:
   * this happens for example on ATF devices when VPP is set to 12V. ATF should use VPP
     set to 10V when programmed by Afterburner.
 
-
 - afterburner reports it can not connect to /dev/ttyUSB0, permission denied
 
   * ensure your user is member of the of the dialup group or alernatively run
@@ -253,6 +252,7 @@ Troubleshooting:
   * the same way as on Linux: compile the source code
   * OR use pre-compiled afterburner binaries located in 'releases' directory
   * then run afterburner in terminal (use 'cmd' on WinXX) as described above
+  * ensure your serial device name is passed via '-d' option. For example -d COM5 on WinXX 
 
 - what are the .jed files and how to produce them
   
