@@ -24,7 +24,7 @@ Supported GAL chips:
 * Lattice GAL22V10B
 * National GAL16V8
 
-**Update 25/05/2020:** there was an issue programming the ATF16V8B  with afterburner. This is now fixed, but the arduino code needs to be recompiled and uploaded to your arduino in order to properly support ATF16V8B IC. The PC software does not need recompilation or update for this fix to work. Credits go to mecparts fox the fix and PerroLoco64 for the bug report.
+**Update 25/05/2020:** there was an issue programming the ATF16V8B  with afterburner. This is now fixed, but the arduino code needs to be recompiled and uploaded to your arduino in order to properly support ATF16V8B IC. The PC software does not need recompilation or update for this fix to work. Credits go to mecparts for the fix and PerroLoco64 for the bug report.
 
 Setup:
 * Upload the afterburner.ino sketch to your Arduino UNO.
