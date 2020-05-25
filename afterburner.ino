@@ -1014,9 +1014,9 @@ static void readOrVerifyGal(char verify)
     case ATF16V8B:
         //read without delay, no discard
         if (verify) {
-          i = verifyGalFuseMap(cfgV8, 0, 0);
+          i = verifyGalFuseMap(cfgV8AB, 0, 0);
         } else {
-          readGalFuseMap(cfgV8, 0, 0);
+          readGalFuseMap(cfgV8AB, 0, 0);
         }
         break;
       
@@ -1157,7 +1157,7 @@ static void writeGal()
         break;
       
     case ATF16V8B:
-        writeGalFuseMapV8(cfgV8); 
+        writeGalFuseMapV8(cfgV8AB); 
         break;
 
     case GAL22V10:
