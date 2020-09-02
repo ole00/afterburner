@@ -262,4 +262,5 @@ Troubleshooting:
   
   * Use WinCupl software from Atmel. Works under Wine as well.
   
-  https://www.microchip.com/design-centers/programmable-logic/spld-cpld/tools/software/wincupl
+  https://www.microchip.com/design-centers/fpgas-and-plds/splds-cplds/pld-design-resources
+  
