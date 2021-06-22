@@ -15,11 +15,11 @@ who did the most of the hard work of deciphering and publishing the programming
 protocol of these chips. Their programs were Windows based and relied on
 presence of parallel port (LPT). Afterburner was written for Linux OS 
 (also works on Win32/64, Mac OSX64), and requires serial connection to
-Arduio UNO, which does the programming of the chip.
+Arduio UNO, which does the programming of the GAL chip.
 
 Supported GAL chips:
 
-* Atmel, ATF16V8B ATF22V10B, ATF22V10CQZ 
+* Atmel ATF16V8B, ATF22V10B, ATF22V10CQZ 
 * Lattice GAL16V8A, GAL16V8B, GAL16V8D
 * Lattice GAL22V10B
 * National GAL16V8
@@ -168,9 +168,10 @@ Troubleshooting:
   10V, 11V, 12V, 13V, 14V, 15V. Do not go beyond 15V as you may damage the 
   GAL chip.
   
-  * measure the VPP only when the chip is physically DISCONNECTED. Some brands
-  of the GAL chip (Atmel) - when connected - iternally lower the voltage
-  on the Edit (VPP) pin (voltage divider?) and such voltage reading is misleading.
+  * measure the VPP only when the GAL chip is physically DISCONNECTED (taken
+  out of the afterburner socket). Some brands of the GAL chip (Atmel) - when
+  connected - iternally lower the voltage on the Edit (VPP) pin (voltage divider?)
+  and such voltage reading is misleading.
   
   * use an external power supply for your Arduino UNO, powering
   just via serial USB cable may not be sufficient for driving the GAL chip and the
@@ -191,6 +192,9 @@ Troubleshooting:
 
   * ensure your user is member of the of the dialup group or alernatively run
   afterburner  as superuser (use: sudo ./afterburner ...)
+
+  * ensure no other programm on your PC uses that serial port. Close putty, minicom or other
+  terminals you may be running.
 
 - afterburner fails to connect to /dev/ttyUSB0
 
@@ -258,4 +262,5 @@ Troubleshooting:
   
   * Use WinCupl software from Atmel. Works under Wine as well.
   
-  https://www.microchip.com/design-centers/programmable-logic/spld-cpld/tools/software/wincupl
+  https://www.microchip.com/design-centers/fpgas-and-plds/splds-cplds/pld-design-resources
+  
