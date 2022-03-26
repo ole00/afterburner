@@ -1199,7 +1199,7 @@ static char checkGalTypeViaPes(void)
     Serial.println();
 #endif
 
-    if (pes[7] == 'F' && pes[6]== '2' && pes[5]== '2' && pes[4]== 'V' && pes[3]== '1' && pes[2]=='0') {
+    if (pes[7] == 'F' && pes[6]== '2' && pes[5]== '2' && (pes[4]== 'V' || pes[4]=='L') && pes[3]== '1' && pes[2]=='0') {
        if (pes[1] == 'B') {
            type = ATF22V10B;
        } else {
