@@ -774,18 +774,30 @@ finish:
 
 
 static char operationReadInfo(void) {
-
+    char buf[MAX_LINE];
     char result;
 
     if (openSerial() != 0) {
         return -1;
     }
 
+    // Set gal type
+    sprintf(buf, "g%d\r", (int) gal);
+    if (verbose) {
+        printf("sending 'g' command...\n");
+    }
+    result = sendGenericCommand(buf, "set gal type failed ?", 4000, 0);
+    if (result) {
+        goto finish;
+    }
+    
+    // Read info
     if (verbose) {
         printf("sending 'p' command...\n");
     }
     result = sendGenericCommand("p\r", "info failed ?", 4000, 1);
 
+finish:
     closeSerial();
     return result;
 }
