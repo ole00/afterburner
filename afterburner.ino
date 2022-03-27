@@ -114,6 +114,8 @@ typedef enum {
   LAST_GAL_TYPE //dummy
 } GALTYPE;
 
+// help message for command g; must match enum above
+#define GALTYPE_HELPSTR "g1=GAL16V8 g2=GAL20V8 g3=GAL22V10 g4=ATF16V8B g5=ATF22V10B g6=ATF22V10C"
 
 // config bit numbers
 
@@ -240,6 +242,8 @@ void printHelp(char full) {
   Serial.println(F("commands:"));
   Serial.println(F("  h - print help"));
   Serial.println(F("  e - toggle echo")); 
+  Serial.println(F("  g - set GAL type"));
+  Serial.println(F("      " GALTYPE_HELPSTR));
   Serial.println(F("  p - read & print PES"));
   Serial.println(F("  r - read & print fuses"));  
   Serial.println(F("  u - upload fuses"));
