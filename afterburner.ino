@@ -36,7 +36,7 @@
                                                                        */
 
 
-#define VERSION "0.3"
+#define VERSION "0.4"
 
 //#define DEBUG_PES
 //#define DEBUG_VERIFY
@@ -208,7 +208,8 @@ galinfo[]=
 #define MAXFUSES 737
 
 
-GALTYPE gal; //the gal device index pointing to galinfo
+GALTYPE gal __attribute__ ((section (".noinit"))); //the gal device index pointing to galinfo, value is preserved between resets
+
 static short security = 0, erasetime = 100, progtime = 100, vpp = 0;
 
 char echoEnabled;
@@ -255,7 +256,6 @@ void setup() {
   Serial.begin(38400);
   isUploading = 0;
   endOfLine = 0;
-  gal = ATF16V8B;
   echoEnabled = 0;
   mapUploaded = 0;
   typeCheck = 1; //do type check
