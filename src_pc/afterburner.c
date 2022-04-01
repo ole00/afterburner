@@ -51,7 +51,7 @@ To compile: gcc -g3 -O0 afterburner afterburner.c
 
 #include "serial_port.h"
 
-#define VERSION "v.0.3"
+#define VERSION "v.0.3.1"
 
 
 #define MAX_LINE 200
@@ -589,7 +589,7 @@ static int waitForSerialPrompt(char* buf, int bufSize, int maxDelay) {
         if (readSize > 0) {
             bufPos += readSize;
             if (checkPromptExists(bufStart, bufTotal) >= 0) {
-                maxDelay = 0; //force exit
+                maxDelay = 4; //force exit, but read the rest of the line
             } else {
                 buf += readSize;
                 bufSize -= readSize;
