@@ -37,18 +37,26 @@ static inline SerialDeviceHandle serialDeviceOpen(char* deviceName) {
             return INVALID_HANDLE;
         }
 
-        dcbSerialParams.BaudRate = CBR_38400;  // Setting BaudRate = 38400
+        dcbSerialParams.BaudRate = CBR_57600; // Setting BaudRate
         dcbSerialParams.ByteSize = 8;         // Setting ByteSize = 8
         dcbSerialParams.StopBits = ONESTOPBIT;// Setting StopBits = 1
         dcbSerialParams.Parity   = NOPARITY;  // Setting Parity = None
+        dcbSerialParams.fOutxCtsFlow = FALSE;
+        dcbSerialParams.fOutxDsrFlow = FALSE;
+        dcbSerialParams.fDtrControl = DTR_CONTROL_DISABLE;
+        dcbSerialParams.fOutX = FALSE;
+        dcbSerialParams.fInX = FALSE;
+        dcbSerialParams.fRtsControl = RTS_CONTROL_DISABLE;
+        dcbSerialParams.fBinary = TRUE;
+        
 
         result = SetCommState(h, &dcbSerialParams);
         if (!result) {
             return INVALID_HANDLE;
         }
 
-        timeouts.ReadIntervalTimeout         = 50; // in milliseconds
-        timeouts.ReadTotalTimeoutConstant    = 50; // in milliseconds
+        timeouts.ReadIntervalTimeout         = 30; // in milliseconds
+        timeouts.ReadTotalTimeoutConstant    = 30; // in milliseconds
         timeouts.ReadTotalTimeoutMultiplier  = 10; // in milliseconds
         timeouts.WriteTotalTimeoutConstant   = 50; // in milliseconds
         timeouts.WriteTotalTimeoutMultiplier = 10; // in milliseconds
@@ -57,6 +65,8 @@ static inline SerialDeviceHandle serialDeviceOpen(char* deviceName) {
         if (!result) {
             return INVALID_HANDLE;
         }
+        //ensure no leftover bytes exist on the serial line
+        result = PurgeComm(h, PURGE_RXCLEAR | PURGE_TXCLEAR | PURGE_RXABORT | PURGE_TXABORT);
 
         return h;
     } else {
@@ -128,8 +138,8 @@ static inline SerialDeviceHandle serialDeviceOpen(char* deviceName) {
         struct termios serial;
 
         memset(&serial, 0, sizeof(struct termios));
-        cfsetispeed(&serial, B38400);
-        cfsetospeed(&serial, B38400);
+        cfsetispeed(&serial, B57600);
+        cfsetospeed(&serial, B57600);
 
         serial.c_cflag |= CS8; // no parity, 1 stop bit
         serial.c_cflag |= CREAD | CLOCAL;

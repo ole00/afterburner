@@ -253,12 +253,13 @@ void printHelp(char full) {
 // setup the Arduino board
 void setup() {
 // initialize serial:
-  Serial.begin(38400);
+  Serial.begin(57600);
   isUploading = 0;
   endOfLine = 0;
   echoEnabled = 0;
   mapUploaded = 0;
   typeCheck = 1; //do type check
+  lineIndex = 0;
 
   // Serial output from the GAL chip, input for Arduino
   pinMode(PIN_SDOUT, INPUT);
