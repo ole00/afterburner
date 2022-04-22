@@ -123,14 +123,25 @@ static inline int serialDeviceRead(SerialDeviceHandle deviceHandle, char* buffer
 
 #include <termios.h>
 
+
 #define SerialDeviceHandle int
 #define DEFAULT_SERIAL_DEVICE_NAME "/dev/ttyUSB0"
 
 #define INVALID_HANDLE -1
 
+#ifdef NO_CLOSE
+static SerialDeviceHandle serH = INVALID_HANDLE;
+#endif
+
 static inline SerialDeviceHandle serialDeviceOpen(char* deviceName) {
 
     SerialDeviceHandle h;
+#ifdef NO_CLOSE
+    if (serH != INVALID_HANDLE) {
+        return serH;
+    }
+#endif
+    
     h = open(deviceName, O_RDWR | O_NOCTTY  | O_NONBLOCK);
 
     if (h != INVALID_HANDLE) {
@@ -153,6 +164,9 @@ static inline SerialDeviceHandle serialDeviceOpen(char* deviceName) {
         //ensure no leftover bytes exist on the serial line
         tcdrain(h);
         tcflush(h, TCIOFLUSH); //flush both queues
+#ifdef NO_CLOSE
+        serH = h;
+#endif
         return h;
     } else {
         return INVALID_HANDLE;
@@ -164,7 +178,9 @@ void serialDeviceCheckName(char* name, int maxSize) {
 }
 
 static inline void serialDeviceClose(SerialDeviceHandle deviceHandle) {
+#ifndef NO_CLOSE
     close(deviceHandle);
+#endif
 }
 
 static inline int serialDeviceWrite(SerialDeviceHandle deviceHandle, char* buffer, int bytesToWrite) {
