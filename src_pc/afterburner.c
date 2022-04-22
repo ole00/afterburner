@@ -125,7 +125,7 @@ static char sendGenericCommand(const char* command, const char* errorText, int m
 
 static void printHelp() {
     printf("Afterburner " VERSION "  a GAL programming tool for Arduino based programmer\n");
-    printf("more info: molej.cz/index_aft.html\n");
+    printf("more info: https://github.com/ole00/afterburner\n");
     printf("usage: afterburner command(s) [options]\n");
     printf("commands: ierwvs\n");
     printf("   i : read device info and programming voltage\n");
