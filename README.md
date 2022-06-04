@@ -94,7 +94,7 @@ Setup:
 
 How aferburner works:
 ---------------------
-- PC code reads and parses .jad files, then produces a binary which
+- PC code reads and parses .jed files, then produces a binary which
   can be then uploaded to Arduino via serial port. By default
   /dev/ttyUSB0 is used, but that can be changed to any other device
   by passing the following option to afterburner:
