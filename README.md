@@ -23,6 +23,7 @@ Supported GAL chips:
 * Lattice GAL16V8A, GAL16V8B, GAL16V8D
 * Lattice GAL22V10B
 * National GAL16V8
+* Lattice GAL20V8B via [adapter board](https://github.com/ole00/afterburner/raw/master/img/gal20v8_adapter.png)
 
 **Please note that ATF16V8C or ATF16V8CZ are not currently supported.** Yes the B/C at the end of the part designator seems like a minor thing but in fact the programming protocol seems to be different compared to the B version (which is supported). Keep it in mind when ordering parts.  
 
