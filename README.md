@@ -267,3 +267,13 @@ Troubleshooting:
   
   https://www.microchip.com/design-centers/fpgas-and-plds/splds-cplds/pld-design-resources
   
+Other GAL related links:
+------------------------
+- GAL chip info: https://k1.spdns.de/Develop/Projects/GalAsm/info/galer/gal16_20v8.html
+
+- GAL chip programming protocol info: https://k1.spdns.de/Develop/Projects/GalAsm/info/galer/proggal.html
+  
+- JDEC file standard 3A: https://k1.spdns.de/Develop/Projects/GalAsm/info/JEDEC%20File%20Standard%203A.txt
+  
+- GAL Asm : https://github.com/dwery/galasm
+  
