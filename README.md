@@ -276,4 +276,5 @@ Other GAL related links:
 - JDEC file standard 3A: https://k1.spdns.de/Develop/Projects/GalAsm/info/JEDEC%20File%20Standard%203A.txt
   
 - GAL Asm : https://github.com/dwery/galasm
-  
+ 
+- CUPL Reference: http://ee.sharif.edu/~logic_circuits_t/readings/CUPL_Reference.pdf
