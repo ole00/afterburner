@@ -263,9 +263,13 @@ Troubleshooting:
 
 - what are the .jed files and how to produce them
   
-  * Use WinCupl software from Atmel. Works under Wine as well.
+  * Use WinCUPL software from Atmel. Works under Wine as well.
   
   https://www.microchip.com/design-centers/fpgas-and-plds/splds-cplds/pld-design-resources
+  
+  * WinCUPL User's manual: http://ww1.microchip.com/downloads/en/DeviceDoc/doc0737.pdf
+  
+  * Try GAL Asm to produce .jed files - see link bellow.
   
 Other GAL related links:
 ------------------------
