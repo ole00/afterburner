@@ -6,7 +6,7 @@ This is a GAL IC programmer software that allows to program GAL IC chips
 from various manfucaturers. It is based on work of several other people:
 
  Bruce Abbott: 
-     http://www.bhabbott.net.nz/atfblast.html
+     https://web.archive.org/web/20220121030038/http://www.bhabbott.net.nz/atfblast.html
 
  Manfred Winterhoff: 
      http://www.armory.com/%7Erstevew/Public/Pgmrs/GAL/_ClikMe1st.htm
