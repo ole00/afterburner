@@ -1,6 +1,7 @@
-BOM for Afterburner 1.2
+BOM for Afterburner 1.3
 ========================
 * Resistor 4k7 through hole 0.25W, 5% or better tolerance  - 7x 
+* (R4) Resistor 10k through hole 0.25W, 5% or better tolrance - 1x
 * Capacitor electrolytic 10uF, 20V to 35 V, 20% tolerance or better (through hole) - 1x
 * Capacitor ceramic 100nF (through hole or smt) - 1x
 * 20 pin narrow ZIF socket OR 20 pin DIP IC socket 2.56 mm pin spacing - 1x
@@ -13,9 +14,10 @@ BOM for Afterburner 1.2
 *Optionally : Mini Size Led Panel Voltage Meter 3-Digital Lcd Display - 1x
 
 
-BOM for Afterburner 2.0
+BOM for Afterburner 2.2
 =======================
-* Resistor 4k7 through hole 0.25W,  5% or better tolerance  - 11x
+* Resistor 4k7 through hole 0.25W, 5% or better tolerance  - 12x
+* (R4) Resistor 10k through hole 0.25W, 5% or better tolrance - 1x
 * Capacitor electrolytic 10uF, 20V to 35V, 20% tolerance or better (through hole) - 1x
 * Capacitor ceramic 100nF (through hole or smt) - 2x
 * 20 pin narrow ZIF socket OR 20 pin DIP IC socket 0.1" pin spacing - 1x
