@@ -25,7 +25,7 @@
 
    Requires:
    * afterburner PC program to upload JED fuse map, erase, read etc.
-   * simple programming circuit. See: http://molej.cz/index_aft.html
+   * simple programming circuit. See: https://github.com/ole00/afterburner
 
    Changelog:
    * 2019.02.02 - initial version 0.1
