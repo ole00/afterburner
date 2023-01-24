@@ -27,6 +27,10 @@ Supported GAL chips:
 
 **Please note that ATF16V8C or ATF16V8CZ are not currently supported.** Yes the B/C at the end of the part designator seems like a minor thing but in fact the programming protocol seems to be different compared to the B version (which is supported). Keep it in mind when ordering parts.  
 
+**Update 24/01/2023:** fixed an isse where GAL chip could be accidentally zapped/damaged during insertion into ZIF socket.
+Please upload the latest afterburner.ino into your Arduino. The PC software may or may not need recompilation depending on its version.
+If you are unsure, either download the latest or recompile it.
+
 **Update 25/05/2020:** there was an issue programming the ATF16V8B  with afterburner. This is now fixed, but the arduino code needs to be recompiled and uploaded to your arduino in order to properly support ATF16V8B IC. The PC software does not need recompilation or update for this fix to work. Credits go to mecparts for the fix and PerroLoco64 for the bug report.
 
 Setup:
