@@ -250,6 +250,24 @@ void printHelp(char full) {
   Serial.println(F("  t - test VPP"));
 }
 
+static void setupGpios(uint8_t pm) {
+
+  // Serial input of the GAL chip, output from Arduino
+  pinMode(PIN_SDIN, pm);
+
+  pinMode(PIN_STROBE, pm);
+  pinMode(PIN_PV, pm);
+  pinMode(PIN_RA0, pm);
+  pinMode(PIN_RA1, pm);
+  pinMode(PIN_RA2, pm);
+  pinMode(PIN_RA3, pm);
+  pinMode(PIN_RA4, pm);
+  pinMode(PIN_RA5, pm);
+  pinMode(PIN_SCLK, pm);
+
+  pinMode(PIN_VPP, pm);
+}
+
 // setup the Arduino board
 void setup() {
 // initialize serial:
@@ -259,27 +277,13 @@ void setup() {
   echoEnabled = 0;
   mapUploaded = 0;
   typeCheck = 1; //do type check
-  lineIndex = 0;
 
   // Serial output from the GAL chip, input for Arduino
   pinMode(PIN_SDOUT, INPUT);
-  // Serial input of the GAL chip, output from Arduino
-  pinMode(PIN_SDIN, OUTPUT);
 
-  pinMode(PIN_STROBE, OUTPUT);
-  pinMode(PIN_PV, OUTPUT);
-  pinMode(PIN_RA0, OUTPUT);
-  pinMode(PIN_RA1, OUTPUT);
-  pinMode(PIN_RA2, OUTPUT);
-  pinMode(PIN_RA3, OUTPUT);
-  pinMode(PIN_RA4, OUTPUT);
-  pinMode(PIN_RA5, OUTPUT);
-  pinMode(PIN_SCLK, OUTPUT);
-
-  pinMode(PIN_VPP, OUTPUT);
-  // Important - the output pins should be kept high.
-  // TurnOff function does that (keeps pin high).
-  turnOff();
+  // Set all GPIO pins to Input to prevent accidents when
+  // inserting the GAL IC into socket.
+  setupGpios(INPUT);
 
   printHelp(0);
   Serial.println(">");
@@ -539,11 +543,12 @@ static void turnOff(void)
     delay(2);
     setVCC(0);   // turn off VCC (if controlled)
 
-    
+    setupGpios(INPUT);
 }
 
 // GAL init sequence
 static void turnOn(char mode) {
+    setupGpios(OUTPUT);
 
     if (
       mode == WRITEGAL ||
@@ -1443,11 +1448,14 @@ static void printNoFusesError() {
 
 static void testVoltage(int seconds) {
   int i;
+
+  pinMode(PIN_VPP, OUTPUT);
   setVPP(1);
   for (i = 0 ; i < seconds; i++) {
     delay(1000);
   }
   setVPP(0);
+  pinMode(PIN_VPP, INPUT);
 }
 
 
