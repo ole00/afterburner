@@ -651,10 +651,6 @@ static char upload() {
     char line[64];
     unsigned int i, j, n;
 
-    if (openSerial() != 0) {
-        return -1;
-    }
-
     // Start  upload
     sprintf(buf, "u\r");
     sendLine(buf, MAX_LINE, 20);
@@ -773,7 +769,6 @@ static char operationWriteOrVerify(char doWrite) {
         result = sendGenericCommand("v\r", "verify failed ?", 4000, 0);
     }
 finish:
-    closeSerial();
     return result;
 }
 
@@ -782,16 +777,11 @@ static char operationReadInfo(void) {
 
     char result;
 
-    if (openSerial() != 0) {
-        return -1;
-    }
-
     if (verbose) {
         printf("sending 'p' command...\n");
     }
     result = sendGenericCommand("p\r", "info failed ?", 4000, 1);
 
-    closeSerial();
     return result;
 }
 
@@ -803,10 +793,6 @@ static char operationTestVpp(void) {
 
     char result;
 
-    if (openSerial() != 0) {
-        return -1;
-    }
-
     if (verbose) {
         printf("sending 't' command...\n");
     }
@@ -814,7 +800,6 @@ static char operationTestVpp(void) {
     //Voltage testing takes ~20 seconds
     result = sendGenericCommand("t\r", "info failed ?", 22000, 1);
 
-    closeSerial();
     return result;
 }
 
@@ -822,11 +807,7 @@ static char operationSetGalCheck(void) {
     int readSize;
     char result;
 
-    if (openSerial() != 0) {
-        return -1;
-    }
     result = sendGenericCommand(noGalCheck ? "F\r" : "f\r", "noGalCheck failed ?", 4000, 0);
-    closeSerial();
     return result;    
 }
 
@@ -835,12 +816,8 @@ static char operationSetGalType(Galtype type) {
     int readSize;
     char result;
 
-    if (openSerial() != 0) {
-        return -1;
-    }
     sprintf(buf, "g%i\r", (int)type); 
     result = sendGenericCommand(buf, "setGalType failed ?", 4000, 0);
-    closeSerial();
     return result;    
 }
 
@@ -849,10 +826,6 @@ static char operationEraseGal(void) {
     char buf[MAX_LINE];
     int readSize;
     char result;
-
-    if (openSerial() != 0) {
-        return -1;
-    }
 
     //Switch to upload mode to specify GAL
     sprintf(buf, "u\r");
@@ -868,7 +841,6 @@ static char operationEraseGal(void) {
 
     result = sendGenericCommand("c\r", "erase failed ?", 4000, 0);
 
-    closeSerial();
     return result;
 }
 
@@ -876,10 +848,6 @@ static char operationReadFuses(void) {
     char* response;
     char* buf = galbuffer;
     int readSize;
-
-    if (openSerial() != 0) {
-        return -1;
-    }
 
     //Switch to upload mode to specify GAL
     sprintf(buf, "u\r");
@@ -902,8 +870,6 @@ static char operationReadFuses(void) {
     response = stripPrompt(buf);
     printf("%s\n", response);
 
-    closeSerial();
-
     if (response[0] == 'E' && response[1] == 'R') {
         return -1;
     }
@@ -923,7 +889,11 @@ int main(int argc, char** argv) {
         printf("Afterburner " VERSION " \n");
     }
 
-    result = operationSetGalCheck();
+    result = openSerial();
+    
+    if (0 == result) {
+        result = operationSetGalCheck();
+    }
 
     if (gal != UNKNOWN && 0 == result) {
         result = operationSetGalType(gal);
@@ -948,6 +918,8 @@ int main(int argc, char** argv) {
             result = operationTestVpp();
         }
     }
+
+    closeSerial();
 
     if (verbose) {
         printf("result=%i\n", (char)result);
