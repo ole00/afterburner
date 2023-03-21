@@ -93,6 +93,11 @@
 #define VPPTEST 9
 #define INIT 100
 
+//check GAL type before starting an operation
+#define FLAG_BIT_TYPE_CHECK (1 << 0)
+
+// ATF16V8C flavour
+#define FLAG_BIT_ATF16V8C (1 << 1)
 
 // contents of pes[3]
 // Atmel PES is text string eg. 1B8V61F1 or 3Z01V22F1
@@ -222,7 +227,7 @@ char mapUploaded;
 char isUploading;
 char uploadError;
 unsigned char fusemap[MAXFUSES];
-char typeCheck; //check GAL type before starting an operation
+unsigned char flagBits;
 
 
 static void setFuseBit(unsigned short bitPos);
@@ -250,6 +255,15 @@ void printHelp(char full) {
   Serial.println(F("  t - test VPP"));
 }
 
+static void setFlagBit(uint8_t flag, uint8_t value) {
+    if (value) {
+        flagBits |= flag;
+    } else {
+        flagBits &= ~flag;
+    }
+}
+
+
 static void setupGpios(uint8_t pm) {
 
   // Serial input of the GAL chip, output from Arduino
@@ -276,7 +290,7 @@ void setup() {
   endOfLine = 0;
   echoEnabled = 0;
   mapUploaded = 0;
-  typeCheck = 1; //do type check
+  setFlagBit(FLAG_BIT_TYPE_CHECK, 1); //do type check
 
   // Serial output from the GAL chip, input for Arduino
   pinMode(PIN_SDOUT, INPUT);
@@ -681,6 +695,9 @@ static void readPes(void) {
 
   strobeRow(galinfo[gal].pesrow);
 
+  if (gal == ATF16V8B) {
+    setPV(1); //Required for ATF16V8C
+  }
 
   for(byteIndex = 0; byteIndex < galinfo[gal].pesbytes; byteIndex++) {
     unsigned char value = 0;
@@ -793,6 +810,17 @@ void parsePes(char type) {
     vpp -= 8; // -2V
 }
 
+static void setGalDefaults(void) {
+    if (gal == ATF16V8B || gal == ATF22V10B || gal == ATF22V10C) {
+        progtime = 20;
+        erasetime = 100;
+        vpp = 40; /* 10V */
+    } else {
+        progtime = 80;
+        erasetime = 80;
+        vpp = 44; /* 11V */
+    }
+}
 
 // print PES information
 void printPes(char type) {
@@ -1204,7 +1232,8 @@ static char checkGalTypeViaPes(void)
     }
     Serial.println();
 #endif
-
+    setFlagBit(FLAG_BIT_ATF16V8C, 0);
+    
     if (pes[7] == 'F' && pes[6]== '2' && pes[5]== '2' && (pes[4]== 'V' || pes[4]=='L') && pes[3]== '1' && pes[2]=='0') {
        if (pes[1] == 'B') {
            type = ATF22V10B;
@@ -1214,6 +1243,9 @@ static char checkGalTypeViaPes(void)
     }
     else if (pes[6] == 'F' && pes[5] == '1' && pes[4]== '6' && pes[3] == 'V' && pes[2]=='8') {
        type = ATF16V8B;
+       if (pes[1] == 'C') { // ATF16V8C
+           setFlagBit(FLAG_BIT_ATF16V8C, 1);
+       }       
     }
     else if (pes[2] != 0x00 && pes[2] != 0xFF) {
        for (type = (sizeof(galinfo) / sizeof(galinfo[0])) - 1; type; type--) {
@@ -1462,7 +1494,7 @@ static void testVoltage(int seconds) {
 // returns 1 if type check if OK, 0 if gal type does not match the type read from PES
 static char doTypeCheck(void) {
   
-  if (0 == typeCheck) {
+  if (0 == flagBits & FLAG_BIT_TYPE_CHECK) {
     return 1; // no need to do type check
   }
   readPes();
@@ -1572,15 +1604,18 @@ void loop() {
         char type = line[1] - '0';
         if (type >= 1 && type < LAST_GAL_TYPE) {
           gal = (GALTYPE) type;
+          if (0 == flagBits & FLAG_BIT_TYPE_CHECK) { //no type check requested
+            setGalDefaults();
+          }          
         } else {
           Serial.println(F("ER Unknown gal type"));
         }
       } break;
       case COMMAND_ENABLE_CHECK_TYPE: {
-        typeCheck = 1;
+        setFlagBit(FLAG_BIT_TYPE_CHECK, 1);
       } break;
       case COMMAND_DISABLE_CHECK_TYPE: {
-        typeCheck = 0;
+        setFlagBit(FLAG_BIT_TYPE_CHECK, 0);
       } break;
       default: {
         if (command != COMMAND_NONE) {
