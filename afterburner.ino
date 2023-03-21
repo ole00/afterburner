@@ -174,7 +174,6 @@ static struct
 {
     GALTYPE type;
     unsigned char id0,id1;          /* variant 1, variant 2 (eg. 16V8=0x00, 16V8A+=0x1A)*/
-    const char *name;               /* pointer to chip name               */
     short fuses;                    /* total number of fuses              */
     char pins;                      /* number of pins on chip             */
     char rows;                      /* number of fuse rows                */
@@ -183,10 +182,10 @@ static struct
     short uesfuse;                  /* first UES fuse number              */
     char uesbytes;                  /* number of UES bytes                */
     char eraserow;                  /* row adddeess for erase             */
-    char eraseallrow;               /* row address for erase all          */
+    char eraseallrow;               /* row address for erase all (also PES) */
     char pesrow;                    /* row address for PES read/write     */
     char pesbytes;                  /* number of PES bytes                */
-    char cfgrow;                    /* row address of config bits         */
+    char cfgrow;                    /* row address of config bits (ACW)   */
     unsigned short cfgbase;         /* base address of the config bit numbers */
     const unsigned char *cfg;       /* pointer to config bit numbers      */
     unsigned char cfgbits;          /* number of config bits              */
@@ -194,17 +193,17 @@ static struct
 }
 galinfo[]=
 {
-//                                      + fuses         + bits       +uesbytes   +pesrow          +cfgbase
-//                                      |     +pins     |  +uesrow   |  +eraserow|   +pesbytes    |        +cfg
-//   +-- type   + id0 + id1  +- name    |     |   +rows |  |   +uesfuse |   +eraseallrow +cfgrow  |        |       + cfgbits        +cfgmethod
-//   |          |     |      |          |     |   |     |  |   |     |  |   |    |   |   |        |        |       |                |
-    {UNKNOWN,   0x00, 0x00, "unknown",     0,  0,  0,   0,  0,    0, 0,  0,  0,  0,  8,  0,       0,        NULL,      0         , 0},
-    {GAL16V8,   0x00, 0x1A, "GAL16V8",  2194, 20, 32,  64, 32, 2056, 8, 63, 54, 58,  8, 60, CFG_BASE_16, cfgV8AB, sizeof(cfgV8AB), CFG_STROBE_ROW}, 
-    {GAL20V8,   0x20, 0x3A, "GAL20V8",  2706, 24, 40,  64, 40, 2568, 8, 63, 59, 58,  8, 60, CFG_BASE_20, cfgV8AB, sizeof(cfgV8AB), CFG_STROBE_ROW}, 
-    {GAL22V10,  0x48, 0x49, "GAL22V10", 5892, 24, 44, 132, 44, 5828, 8, 61, 60, 58, 10, 16, CFG_BASE_22, cfgV10,  sizeof(cfgV10) , CFG_SET_ROW   },
-    {ATF16V8B,  0x00, 0x00, "ATF16V8B", 2194, 20, 32,  64, 32, 2056, 8, 63, 54, 58,  8, 60, CFG_BASE_16, cfgV8AB, sizeof(cfgV8AB), CFG_STROBE_ROW},
-    {ATF22V10B, 0x00, 0x00, "ATF22V10B",5892, 24, 44, 132, 44, 5828, 8, 61, 60, 58, 10, 16, CFG_BASE_22, cfgV10,  sizeof(cfgV10) , CFG_SET_ROW   },
-    {ATF22V10C, 0x00, 0x00, "ATF22V10C",5892, 24, 44, 132, 44, 5828, 8, 61, 60, 58, 10, 16, CFG_BASE_22, cfgV10,  sizeof(cfgV10) , CFG_SET_ROW   },
+//                           + fuses         + bits       +uesbytes   +pesrow          +cfgbase
+//                           |     +pins     |  +uesrow   |  +eraserow|   +pesbytes    |        +cfg
+//   +-- type   + id0 + id1  |     |   +rows |  |   +uesfuse |   +eraseallrow +cfgrow  |        |       + cfgbits        +cfgmethod
+//   |          |     |      |     |   |     |  |   |     |  |   |    |   |   |        |        |       |                |
+    {UNKNOWN,   0x00, 0x00,     0,  0,  0,   0,  0,    0, 0,  0,  0,  0,  8,  0,       0,        NULL,      0         , 0},
+    {GAL16V8,   0x00, 0x1A,  2194, 20, 32,  64, 32, 2056, 8, 63, 54, 58,  8, 60, CFG_BASE_16, cfgV8AB, sizeof(cfgV8AB), CFG_STROBE_ROW}, 
+    {GAL20V8,   0x20, 0x3A,  2706, 24, 40,  64, 40, 2568, 8, 63, 59, 58,  8, 60, CFG_BASE_20, cfgV8AB, sizeof(cfgV8AB), CFG_STROBE_ROW}, 
+    {GAL22V10,  0x48, 0x49,  5892, 24, 44, 132, 44, 5828, 8, 61, 60, 58, 10, 16, CFG_BASE_22, cfgV10,  sizeof(cfgV10) , CFG_SET_ROW   },
+    {ATF16V8B,  0x00, 0x00,  2194, 20, 32,  64, 32, 2056, 8, 63, 54, 58,  8, 60, CFG_BASE_16, cfgV8AB, sizeof(cfgV8AB), CFG_STROBE_ROW},
+    {ATF22V10B, 0x00, 0x00,  5892, 24, 44, 132, 44, 5828, 8, 61, 60, 58, 10, 16, CFG_BASE_22, cfgV10,  sizeof(cfgV10) , CFG_SET_ROW   },
+    {ATF22V10C, 0x00, 0x00,  5892, 24, 44, 132, 44, 5828, 8, 61, 60, 58, 10, 16, CFG_BASE_22, cfgV10,  sizeof(cfgV10) , CFG_SET_ROW   },
 };
 
 // MAXFUSES calculated as the biggest required space to hold the fuse bitmap + UES bitmap + CFG bitmap
@@ -1354,6 +1353,23 @@ static unsigned short checkSum(unsigned short n)
     return (unsigned short)((c >> (8 - e)) + a);
 }
 
+static void printGalName() {
+    switch (gal) {
+    case GAL16V8: Serial.println(F("GAL16V8")); break;
+    case GAL20V8: Serial.println(F("GAL20V8")); break;
+    case GAL22V10: Serial.println(F("GAL22V10")); break;
+    case ATF16V8B:
+        if (flagBits & FLAG_BIT_ATF16V8C) {
+            Serial.println(F("ATF16V8C"));          
+        } else {
+            Serial.println(F("ATF16V8B"));
+        }
+        break;
+    case ATF22V10B: Serial.println(F("ATF22V10B")); break;
+    case ATF22V10C: Serial.println(F("ATF22V10C")); break;
+    default:  Serial.println(F("GAL")); break;
+    }
+}
 
 // prints the contents of fuse-map array in the form of JEDEC text file
 static void printJedec()
@@ -1362,7 +1378,7 @@ static void printJedec()
     unsigned char unused, start;
 
     Serial.print(F("JEDEC file for "));
-    Serial.println(galinfo[gal].name);
+    printGalName();
     Serial.print(F("*QP")); Serial.print(galinfo[gal].pins, DEC);
     Serial.print(F("*QF")); Serial.print(galinfo[gal].fuses, DEC);
     Serial.println(F("*QV0*F0*G0*X0*"));
