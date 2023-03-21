@@ -17,11 +17,14 @@
    Based on GALBLAST by Manfred Winterhoff
      http://www.armory.com/%7Erstevew/Public/Pgmrs/GAL/_ClikMe1st.htm
 
+   Based on GALmate by Yorck Thiele
+     https://www.ythiee.com/2021/06/06/galmate-hardware/
+
    Supports:
    * National GAL16V8
    * Lattice GAL16V8A, GAL16V8B, GAL16V8D
    * Lattice GAL22V10B
-   * Atmel ATF16V8B, ATF22V10B, ATF22V10CQZ 
+   * Atmel ATF16V8B, ATF16V8C, ATF22V10B, ATF22V10CQZ 
 
    Requires:
    * afterburner PC program to upload JED fuse map, erase, read etc.
@@ -119,6 +122,9 @@ typedef enum {
   LAST_GAL_TYPE //dummy
 } GALTYPE;
 
+#define BIT_NONE 0
+#define BIT_ZERO 1
+#define BIT_ONE  2
 
 // config bit numbers
 
@@ -289,6 +295,7 @@ void setup() {
   endOfLine = 0;
   echoEnabled = 0;
   mapUploaded = 0;
+  lineIndex = 0;
   setFlagBit(FLAG_BIT_TYPE_CHECK, 1); //do type check
 
   // Serial output from the GAL chip, input for Arduino
@@ -557,6 +564,7 @@ static void turnOff(void)
     setVCC(0);   // turn off VCC (if controlled)
 
     setupGpios(INPUT);
+    delay(100); //ensure VPP is low
 }
 
 // GAL init sequence
@@ -612,18 +620,21 @@ static void discardBits(short n)
 }
 
 // clock a bit and send it out to GAL SDIN
-static void sendBit(char bitValue)
+static void sendBit(char bitValue, char skipClkLow = 0)
 {
     setSDIN(bitValue);
     setSCLK(1);
-    setSCLK(0);
+    if (!skipClkLow) {
+        setSCLK(0);
+    }
 }
 
 // send n number of bits to GAL
 static void sendBits(short n, char bitValue)
 {
+    char skipClkLow = flagBits & FLAG_BIT_ATF16V8C;
     while (n-- > 0) {
-      sendBit(bitValue);
+      sendBit(bitValue, skipClkLow && n == 0);
     }
 }
 
@@ -659,13 +670,17 @@ static void strobe(unsigned short msec)
 
 // 16V8, 20V8 RA0-5 = row address, strobe.
 // 22V10 RA0-5 = 0, send row address (6 bits), strobe.
-static void strobeRow(char row)
+// setBit: 0 - do not set bit, 1- set bit value 0, 2 - set bit value 1
+static void strobeRow(char row, char setBit = BIT_NONE)
 {
   switch(gal) {
     case GAL16V8:
     case GAL20V8:
     case ATF16V8B:
       setRow(row);         // set RA0-5 to row number
+      if (setBit) {
+        sendBits(1, setBit - 1);
+      }      
       strobe(2);           // pulse /STB for 2ms
       break;
     case GAL22V10:
@@ -744,7 +759,7 @@ void parsePes(char type) {
     case ATF16V8B:
     case ATF22V10B:
     case ATF22V10C:
-        progtime = 10;
+        progtime = 20;
         erasetime = 100;
         vpp = 48;    /* 12.0V */
     break;
@@ -858,7 +873,7 @@ void printPes(char type) {
 
   //programming info
   if (UNKNOWN != type) {
-    Serial.print(F(" VPP="));
+    Serial.print(F("  VPP=")); //without the front space chars the print causes issues (why?)
     Serial.print(vpp >> 2, DEC);
     Serial.print(F("."));
     Serial.print((vpp & 3) * 25, DEC);
@@ -890,9 +905,17 @@ static void readGalFuseMap(const unsigned char* cfgArray, char useDelay, char do
   unsigned short row, bit;
   unsigned short addr;
 
+  if (flagBits & FLAG_BIT_ATF16V8C) {
+      setPV(0);
+  }
+
   // read fuse rows
   for(row = 0; row < galinfo[gal].rows; row++) {
-    strobeRow(row);
+    strobeRow(row); //set address of the row
+    if (flagBits & FLAG_BIT_ATF16V8C) {
+        setSDIN(0);
+        setPV(1);
+    }
     for(bit = 0; bit < galinfo[gal].bits; bit++) {
       // check the received bit is 1 and if so then set the fuse map
       if (receiveBit()) {
@@ -905,10 +928,18 @@ static void readGalFuseMap(const unsigned char* cfgArray, char useDelay, char do
     if (useDelay) {
       delay(useDelay);
     }
+    if (flagBits & FLAG_BIT_ATF16V8C) {
+        setPV(0);
+    }    
   }
 
    // read UES
   strobeRow(galinfo[gal].uesrow);
+  if (flagBits & FLAG_BIT_ATF16V8C) {
+      setSDIN(0);
+      setPV(1);
+  }
+
   if (doDiscardBits) {
     discardBits(doDiscardBits);
   }
@@ -922,10 +953,17 @@ static void readGalFuseMap(const unsigned char* cfgArray, char useDelay, char do
   if (useDelay) {
     delay(useDelay);
   }
+  if (flagBits & FLAG_BIT_ATF16V8C) {
+      setPV(0);
+  }
 
   // read CFG
   if (galinfo[gal].cfgmethod == CFG_STROBE_ROW) {
     strobeRow(galinfo[gal].cfgrow);
+    if (flagBits & FLAG_BIT_ATF16V8C) {
+      setSDIN(0);
+      setPV(1);
+    }     
   } else {
     setRow(galinfo[gal].cfgrow);
     strobe(1);
@@ -946,9 +984,17 @@ static unsigned short verifyGalFuseMap(const unsigned char* cfgArray, char useDe
   char mapBit;    // fuse bit stored in RAM
   unsigned short errors = 0;
 
+  if (flagBits & FLAG_BIT_ATF16V8C) {
+      setPV(0);
+  }
+
   // read fuse rows
   for(row = 0; row < galinfo[gal].rows; row++) {
     strobeRow(row);
+    if (flagBits & FLAG_BIT_ATF16V8C) {
+        setSDIN(0);
+        setPV(1);
+    }    
     for(bit = 0; bit < galinfo[gal].bits; bit++) {
       addr = galinfo[gal].rows;
       addr *= bit;
@@ -966,10 +1012,17 @@ static unsigned short verifyGalFuseMap(const unsigned char* cfgArray, char useDe
     if (useDelay) {
       delay(useDelay);
     }
+    if (flagBits & FLAG_BIT_ATF16V8C) {
+      setPV(0);
+    }    
   }
 
    // read UES
   strobeRow(galinfo[gal].uesrow);
+  if (flagBits & FLAG_BIT_ATF16V8C) {
+      setSDIN(0);
+      setPV(1);
+  } 
   if (doDiscardBits) {
     discardBits(doDiscardBits);
   }
@@ -989,10 +1042,16 @@ static unsigned short verifyGalFuseMap(const unsigned char* cfgArray, char useDe
   if (useDelay) {
     delay(useDelay);
   }
-
+  if (flagBits & FLAG_BIT_ATF16V8C) {
+      setPV(0);
+  }
   // read CFG
   if (galinfo[gal].cfgmethod == CFG_STROBE_ROW) {
     strobeRow(galinfo[gal].cfgrow);
+    if (flagBits & FLAG_BIT_ATF16V8C) {
+      setSDIN(0);
+      setPV(1);
+    }  
   } else {
     setRow(galinfo[gal].cfgrow);
     strobe(1);
@@ -1077,16 +1136,18 @@ static void writeGalFuseMapV8(const unsigned char* cfgArray) {
   unsigned short cfgAddr = galinfo[gal].cfgbase;
   unsigned char row, rbit;
   unsigned short addr;
+  unsigned char rbitMax = galinfo[gal].bits;
+  const unsigned char skipLastClk = (flagBits & FLAG_BIT_ATF16V8C) ? 1 : 0;  
 
   setPV(1);
   // write fuse rows
   for (row = 0; row < galinfo[gal].rows; row++) {
     setRow(row);
-    for(rbit = 0; rbit < galinfo[gal].bits; rbit++) {
+    for(rbit = 0; rbit < rbitMax; rbit++) {
       addr = galinfo[gal].rows;
       addr *= rbit;
       addr += row;
-      sendBit(getFuseBit(addr));
+      sendBit(getFuseBit(addr), rbit == rbitMax - 1 ? skipLastClk : 0);
     }
     strobe(progtime);
   }
@@ -1096,14 +1157,15 @@ static void writeGalFuseMapV8(const unsigned char* cfgArray) {
   for (rbit = 0; rbit < 64; rbit++) {
     addr = galinfo[gal].uesfuse;
     addr += rbit;
-    sendBit(getFuseBit(addr));
+    sendBit(getFuseBit(addr), rbit == 63 ? skipLastClk : 0);
   }
   strobe(progtime);
 
   // write CFG (all ICs use setRow)
+  rbitMax = galinfo[gal].cfgbits;
   setRow(galinfo[gal].cfgrow);
-  for(rbit = 0; rbit < galinfo[gal].cfgbits; rbit++) {
-    sendBit(getFuseBit(cfgAddr + cfgArray[rbit]));
+  for(rbit = 0; rbit < rbitMax; rbit++) {
+    sendBit(getFuseBit(cfgAddr + cfgArray[rbit]), rbit == rbitMax - 1 ? skipLastClk : 0);
   }
   strobe(progtime);
   setPV(0);
