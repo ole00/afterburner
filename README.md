@@ -10,22 +10,26 @@ from various manfucaturers. It is based on work of several other people:
 
  Manfred Winterhoff: 
      http://www.armory.com/%7Erstevew/Public/Pgmrs/GAL/_ClikMe1st.htm
+ 
+ Yorck Thiele:
+     https://www.ythiee.com/2021/06/06/galmate-hardware/
 
 who did the most of the hard work of deciphering and publishing the programming
-protocol of these chips. Their programs were Windows based and relied on
+protocol of these chips. Some of their early programs were Windows based and relied on
 presence of parallel port (LPT). Afterburner was written for Linux OS 
 (also works on Win32/64, Mac OSX64), and requires serial connection to
 Arduio UNO, which does the programming of the GAL chip.
 
 Supported GAL chips:
 
-* Atmel ATF16V8B, ATF16V8BQL, ATF22V10B, ATF22V10CQZ 
+* Atmel ATF16V8B, ATF16V8BQL, ATF16V8C, ATF22V10B, ATF22V10CQZ 
 * Lattice GAL16V8A, GAL16V8B, GAL16V8D
 * Lattice GAL22V10B
 * National GAL16V8
 * Lattice GAL20V8B via [adapter board](https://github.com/ole00/afterburner/raw/master/img/gal20v8_adapter.png)
 
-**Please note that ATF16V8C or ATF16V8CZ are not currently supported.** Yes the B/C at the end of the part designator seems like a minor thing but in fact the programming protocol seems to be different compared to the B version (which is supported). Keep it in mind when ordering parts.  
+**Update 21/03/2023:** Added support for ATF16V8C. Based on GALmate code by Yorck. Upload the latest afterburner.ino sketch 
+ and use parameter '-t ATF16V8B' with the PC app.
 
 **Update 24/01/2023:** fixed an isse where GAL chip could be accidentally zapped/damaged during insertion into ZIF socket.
 Please upload the latest afterburner.ino into your Arduino. The PC software may or may not need recompilation depending on its version.
@@ -280,6 +284,8 @@ Other GAL related links:
 - GAL chip info: https://k1.spdns.de/Develop/Projects/GalAsm/info/galer/gal16_20v8.html
 
 - GAL chip programming protocol info: https://k1.spdns.de/Develop/Projects/GalAsm/info/galer/proggal.html
+
+- GALmate: another open source GAL programmer: https://www.ythiee.com/2021/06/06/galmate-hardware/
   
 - JDEC file standard 3A: https://k1.spdns.de/Develop/Projects/GalAsm/info/JEDEC%20File%20Standard%203A.txt
   
