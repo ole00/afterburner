@@ -51,7 +51,7 @@ To compile: gcc -g3 -O0 afterburner afterburner.c
 
 #include "serial_port.h"
 
-#define VERSION "v.0.4"
+#define VERSION "v.0.4.1"
 
 
 #define MAX_LINE 200
@@ -598,8 +598,8 @@ static int waitForSerialPrompt(char* buf, int bufSize, int maxDelay) {
         if (maxDelay > 0) {
         /* WIN_API handles timeout itself */
 #ifndef _USE_WIN_API_
-            usleep(3 * 1000);
-            maxDelay -= 3;
+            usleep(10 * 1000);
+            maxDelay -= 10;
 #else
             maxDelay -= 30;           
 #endif            
