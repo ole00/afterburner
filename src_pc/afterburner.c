@@ -117,6 +117,7 @@ char opErase = 0;
 char opInfo = 0;
 char opVerify = 0;
 char opTestVPP = 0;
+char opSecureGal = 0;
 
 
 static int waitForSerialPrompt(char* buf, int bufSize, int maxDelay);
@@ -141,6 +142,7 @@ static void printHelp() {
     printf("  -d <serial_device> : name of the serial device. Default is: %s\n", DEFAULT_SERIAL_DEVICE_NAME);
     printf("                       serial params are: 38400, 8N1\n");
     printf("  -nc : do not check device GAL type before operation: force the GAL type set on command line\n");
+    printf("  -sec: enable security - protect the chip. Use with 'w' or 'v' commands.\n");
     printf("examples:\n");
     printf("  afterburner i -t ATF16V8B : reads and prints the device info\n");
     printf("  afterburner r -t ATF16V8B : reads the fuse map from the GAL chip and displays it\n");
@@ -151,7 +153,7 @@ static void printHelp() {
     printf("         of the chip. If the programing voltage is unknown use 10V.\n");
     printf("  - known VPP voltages as tested on Afterburner with Arduino UNO: \n");
     printf("        Lattice GAL16V8D, GAL22V10D: 12V \n");
-    printf("        Atmel   ATF16V8D, ATF22V10C: 10V \n");
+    printf("        Atmel   ATF16V8B, AFT16V8C, ATF22V10C: 10V \n");
 }
 
 static char checkArgs(int argc, char** argv) {
@@ -176,7 +178,10 @@ static char checkArgs(int argc, char** argv) {
             deviceName = argv[i];
         } else if (strcmp("-nc", param) == 0) {
             noGalCheck = 1;
-        } else if (param[0] != '-') {
+        } else if (strcmp("-sec", param) == 0) {
+            opSecureGal = 1;
+        }
+        else if (param[0] != '-') {
             modes = param;
         }
     }
@@ -844,6 +849,20 @@ static char operationSetGalType(Galtype type) {
     return result;    
 }
 
+static char operationSecureGal() {
+    int readSize;
+    char result;
+
+    if (openSerial() != 0) {
+        return -1;
+    }
+    if (verbose) {
+        printf("sending 's' command...\n");
+    }
+    result = sendGenericCommand("s\r", "secure GAL failed ?", 4000, 0);
+    closeSerial();
+    return result;
+}
 
 static char operationEraseGal(void) {
     char buf[MAX_LINE];
@@ -946,6 +965,11 @@ int main(int argc, char** argv) {
             result = operationWriteOrVerify(0);
         } else if (opTestVPP) {
             result = operationTestVpp();
+        }
+        if (0 == result && (opWrite || opVerify)) {
+            if (opSecureGal) {
+                operationSecureGal();
+            }
         }
     }
 

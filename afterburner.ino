@@ -83,6 +83,7 @@
 #define COMMAND_SET_GAL_TYPE 'g'
 #define COMMAND_ENABLE_CHECK_TYPE 'f'
 #define COMMAND_DISABLE_CHECK_TYPE 'F'
+#define COMMAND_ENABLE_SECURITY 's'
 
 #define READGAL 0
 #define VERIFYGAL 1
@@ -866,14 +867,14 @@ void printPes(char type) {
     case GAL16V8: Serial.print(F("GAL16V8 ")); break;
     case GAL20V8: Serial.print(F("GAL20V8 ")); break;
     case GAL22V10: Serial.print(F("GAL20V10 ")); break;
-    case ATF16V8B: Serial.print(F("ATF16V8B ")); break;
+    case ATF16V8B: Serial.print(0 == (flagBits & FLAG_BIT_ATF16V8C) ? F("ATF16V8B "): F("ATF16V8C ")); break;
     case ATF22V10B: Serial.print(F("ATF22V10B ")); break;
     case ATF22V10C: Serial.print(F("ATF22V10C ")); break;
   }
 
   //programming info
   if (UNKNOWN != type) {
-    Serial.print(F("  VPP=")); //without the front space chars the print causes issues (why?)
+    Serial.print(F(" VPP="));
     Serial.print(vpp >> 2, DEC);
     Serial.print(F("."));
     Serial.print((vpp & 3) * 25, DEC);
@@ -1279,6 +1280,17 @@ static void eraseGAL(void)
     turnOff();
 }
 
+// sets security bit - disables fuse reading
+static void secureGAL(void)
+{
+    turnOn(WRITEGAL);
+
+    setPV(1);
+    strobeRow(61, BIT_ONE); // strobe row and send one bit with value 1
+
+    setPV(0);
+    turnOff();
+}
 
 static char checkGalTypeViaPes(void)
 {
@@ -1666,6 +1678,13 @@ void loop() {
       case COMMAND_ERASE_GAL: {
         if (doTypeCheck()) {
           eraseGAL();
+        }
+      } break;
+
+      // sets the security bit
+      case COMMAND_ENABLE_SECURITY: {
+        if (doTypeCheck()) {
+          secureGAL();
         }
       } break;
 
