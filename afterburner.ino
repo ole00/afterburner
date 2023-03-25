@@ -39,7 +39,7 @@
                                                                        */
 
 
-#define VERSION "0.4.1"
+#define VERSION "0.4.2"
 
 //#define DEBUG_PES
 //#define DEBUG_VERIFY
@@ -84,6 +84,8 @@
 #define COMMAND_ENABLE_CHECK_TYPE 'f'
 #define COMMAND_DISABLE_CHECK_TYPE 'F'
 #define COMMAND_ENABLE_SECURITY 's'
+#define COMMAND_ENABLE_APD 'z'
+#define COMMAND_DISABLE_APD 'Z'
 
 #define READGAL 0
 #define VERIFYGAL 1
@@ -102,6 +104,9 @@
 
 // ATF16V8C flavour
 #define FLAG_BIT_ATF16V8C (1 << 1)
+
+// Keep the power-down feature enabled for ATF C GALs
+#define FLAG_BIT_APD (1 << 2)
 
 // contents of pes[3]
 // Atmel PES is text string eg. 1B8V61F1 or 3Z01V22F1
@@ -136,6 +141,9 @@ typedef enum {
 #define CFG_STROBE_ROW 0
 #define CFG_SET_ROW 1
 
+// Atmel power-down row
+#define CFG_ROW_APD 59
+
 // common CFG fuse address map for cfg16V8 and cfg20V8
 // the only difference is the starting address: 2048 for cfg16V8 and 2560 for cfg20V8
 // total size: 82
@@ -166,6 +174,7 @@ static const unsigned char cfgV8AB[]=
 
 // common CFG fuse address map for cfg22V10
 // starting address: 5808
+// total size 20
 static const unsigned char cfgV10[]=
 {
       1,0,3,2,5,4,7,6,9,8,11,10,13,12,15,14,17,16,19,18,
@@ -214,7 +223,7 @@ galinfo[]=
 };
 
 // MAXFUSES calculated as the biggest required space to hold the fuse bitmap + UES bitmap + CFG bitmap
-// MAXFUSES = ((132 * 44 bits) / 8)  + uesbytes + (20 / 8)
+// MAXFUSES = ((132 * 44 bits) / 8)  + uesbytes + ((20 + 1) / 8)      // +1 is the power-down extra fuse
 //               726 + 8 + 3
 #define MAXFUSES 737
 
@@ -479,7 +488,8 @@ void parseUploadLine() {
     //checksum
     case 'c': {
       unsigned short val = parse4hex(3);
-      unsigned short cs = checkSum(galinfo[gal].fuses);
+      unsigned char apdFuse = (flagBits & FLAG_BIT_APD) ? 1 : 0;
+      unsigned short cs = checkSum(galinfo[gal].fuses + apdFuse);
       if (cs == val) {
         Serial.println(F("OK checksum matches"));
       } else {
@@ -974,6 +984,21 @@ static void readGalFuseMap(const unsigned char* cfgArray, char useDelay, char do
       setFuseBit(cfgAddr + cfgArray[bit]);
     }
   }
+
+  //check APD fuse bit - only for ATF16V8C or ATF22V10C
+  if ((flagBits & FLAG_BIT_ATF16V8C) || gal == ATF22V10C) {
+    setPV(0);
+    if (gal == ATF22V10C) {
+      setRow(0);
+      sendAddress(6, CFG_ROW_APD);
+      strobe(1);
+    } else { //ATF16V8C
+      setRow(CFG_ROW_APD);
+      strobe(1);
+      setPV(1);
+    }
+    setFlagBit(FLAG_BIT_APD, receiveBit());
+  }
 }
 
 // generic fuse-map verification, fuse map bits are compared against read bits
@@ -1068,6 +1093,30 @@ static unsigned short verifyGalFuseMap(const unsigned char* cfgArray, char useDe
       errors++;
     }
   }
+
+  //verify PD fuse on Atmel's C GALs
+  if ((flagBits & FLAG_BIT_ATF16V8C) || gal == ATF22V10C) {
+    setPV(0);
+    if (gal == ATF22V10C) {
+      setRow(0);
+      sendAddress(6, CFG_ROW_APD);
+      strobe(1);
+    } else { //ATF16V8C
+      setRow(CFG_ROW_APD);
+      strobe(1);
+      setPV(1);
+    }
+
+    mapBit = (flagBits & FLAG_BIT_APD)? 1 : 0;
+    fuseBit = receiveBit();
+    if (mapBit != fuseBit) {
+#ifdef DEBUG_VERIFY
+      Serial.println(F("C pd"));
+#endif
+      errors++;
+    }
+  }
+
   return errors;
 }
 
@@ -1170,6 +1219,13 @@ static void writeGalFuseMapV8(const unsigned char* cfgArray) {
   }
   strobe(progtime);
   setPV(0);
+
+  // disable power-down if the APD flag is not set (only for ATF16V8C)
+  if (skipLastClk && (flagBits & FLAG_BIT_APD) == 0) {
+    setPV(1);
+    strobeRow(CFG_ROW_APD, BIT_ZERO); // strobe row and send one bit with value 0
+    setPV(0);
+  }
 }
 
 // fuse-map writing function for V10 GAL chips
@@ -1222,15 +1278,14 @@ static void writeGalFuseMapV10(const unsigned char* cfgArray, char fillUesStart,
   strobe(progtime);
   setPV(0);
 
-  if (useSdin) {
+  if (useSdin && (flagBits & FLAG_BIT_APD) == 0) {
     // disable power-down feature (JEDEC bit #5892)
     setRow(0);
-    sendAddress(6, 59);
+    sendAddress(6, CFG_ROW_APD);
     setPV(1);
     strobe(progtime);
     setPV(0);
   }
-  
 }
 
 // main fuse-map writing function
@@ -1450,11 +1505,12 @@ static void printJedec()
 {
     unsigned short i, j, k, n;
     unsigned char unused, start;
+    uint8_t apdFuse = (flagBits & FLAG_BIT_APD) ? 1 : 0;
 
     Serial.print(F("JEDEC file for "));
     printGalName();
     Serial.print(F("*QP")); Serial.print(galinfo[gal].pins, DEC);
-    Serial.print(F("*QF")); Serial.print(galinfo[gal].fuses, DEC);
+    Serial.print(F("*QF")); Serial.print(galinfo[gal].fuses + apdFuse, DEC);
     Serial.println(F("*QV0*F0*G0*X0*"));
     
     for( i = k = 0; i < galinfo[gal].bits; i++) {
@@ -1503,6 +1559,7 @@ static void printJedec()
     line[0] = 0;
 
 
+    // UES in byte form
     Serial.print(F("N UES"));
     for (j = 0;j < galinfo[gal].uesbytes; j++) {
         n = 0;
@@ -1521,6 +1578,7 @@ static void printJedec()
     }
     Serial.println(F("*"));
 
+    // UES in bit form
     Serial.print(F("L"));
     printFormatedNumberDec4(k);
     Serial.print(F(" "));
@@ -1534,7 +1592,7 @@ static void printJedec()
     }
     Serial.println(F("*"));
 
-
+    // CFG bits
     if (k < galinfo[gal].fuses) {
       Serial.print(F("L"));
       printFormatedNumberDec4(k);
@@ -1547,7 +1605,17 @@ static void printJedec()
            Serial.print(F("0"));
         }
       }
+      //ATF16V8C
+      if (apdFuse) {
+        Serial.print(F("1"));
+        setFuseBit(k); // set for correct check-sum calculation
+      }
       Serial.println(F("*"));
+    } else if (apdFuse) { //ATF22V10C
+      Serial.print(F("L"));
+      printFormatedNumberDec4(k);
+      Serial.println(F(" 1*"));
+      setFuseBit(k); // set for correct check-sum calculation
     }
 
     Serial.print(F("N PES"));
@@ -1557,7 +1625,7 @@ static void printJedec()
     }
     Serial.println(F("*"));
     Serial.print(F("C"));
-    printFormatedNumberHex4(checkSum(galinfo[gal].fuses));
+    printFormatedNumberHex4(checkSum(galinfo[gal].fuses + apdFuse));
     Serial.println();
     Serial.println(F("*"));
 }
@@ -1686,6 +1754,17 @@ void loop() {
         if (doTypeCheck()) {
           secureGAL();
         }
+      } break;
+
+      // keep atmel power-down feature enabled during write
+      case COMMAND_ENABLE_APD: {
+        setFlagBit(FLAG_BIT_APD, 1);
+        Serial.println(F("OK APD set"));
+      } break;
+
+      case COMMAND_DISABLE_APD: {
+        setFlagBit(FLAG_BIT_APD, 0);
+        Serial.println(F("OK APD cleared"));
       } break;
 
       // toggles terminal echo

@@ -51,7 +51,7 @@ To compile: gcc -g3 -O0 afterburner afterburner.c
 
 #include "serial_port.h"
 
-#define VERSION "v.0.4.1"
+#define VERSION "v.0.4.2"
 
 
 #define MAX_LINE 200
@@ -118,6 +118,7 @@ char opInfo = 0;
 char opVerify = 0;
 char opTestVPP = 0;
 char opSecureGal = 0;
+char flagEnableApd = 0;
 
 
 static int waitForSerialPrompt(char* buf, int bufSize, int maxDelay);
@@ -451,6 +452,18 @@ static int parseFuseMap(char *ptr) {
             }
         }
     }
+    if (lastfuse == 2195 && gal == ATF16V8B) {
+        flagEnableApd = fusemap[2194];
+        if (verbose) {
+            printf("PD fuse detected: %i\n", fusemap[2194]);
+        }
+    }
+    if (lastfuse == 5893 && gal == ATF22V10C) {
+        flagEnableApd = fusemap[5892];
+        if (verbose) {
+            printf("PD fuse detected: %i\n", fusemap[5892]);
+        }
+    }
     return n;
 }
 
@@ -655,9 +668,12 @@ static char upload() {
     char buf[MAX_LINE];
     char line[64];
     unsigned int i, j, n;
+    unsigned short csum;
+    int apdFuse = flagEnableApd;
+    int totalFuses = galinfo[gal].fuses;
 
-    if (openSerial() != 0) {
-        return -1;
+    if (apdFuse) {
+        totalFuses++;
     }
 
     // Start  upload
@@ -671,7 +687,7 @@ static char upload() {
     //fuse map
     buf[0] = 0;
     fuseSet = 0;
-    for (i = 0; i < galinfo[gal].fuses;) {
+    for (i = 0; i < totalFuses;) {
         unsigned char f = 0;
         if (i % 32 == 0) {
             if (i != 0) {
@@ -689,7 +705,7 @@ static char upload() {
             sprintf(buf, "#f %04i ", i);
         }
         f = 0;
-        for (j = 0; j < 8 && i < galinfo[gal].fuses; j++,i++) {
+        for (j = 0; j < 8 && i < totalFuses; j++,i++) {
             if (fusemap[i]) {
                 f |= (1 << j);
                 fuseSet = 1;
@@ -711,10 +727,11 @@ static char upload() {
     }
 
     //checksum
+    csum = checkSum(totalFuses);
     if (verbose) {
-        printf("sending csum: %04X\n", checkSum(galinfo[gal].fuses));
+        printf("sending csum: %04X\n", csum);
     }
-    sprintf(buf, "#c %04X\r", checkSum(galinfo[gal].fuses));
+    sprintf(buf, "#c %04X\r", csum);
     sendLine(buf, MAX_LINE, 300);
 
     //end of upload
@@ -722,6 +739,7 @@ static char upload() {
 
 }
 
+//returns 0 on success
 static char sendGenericCommand(const char* command, const char* errorText, int maxDelay, char printResult) {
     char buf[MAX_LINE];
     int readSize;
@@ -759,6 +777,16 @@ static char operationWriteOrVerify(char doWrite) {
     result = parseFuseMap(galbuffer);
     if (verbose) {
         printf("parse result=%i\n", result);
+    }
+
+    if (openSerial() != 0) {
+        return -1;
+    }
+
+    // set power-down fuse bit (do it before upload to correctly calculate check-sum)
+    result = sendGenericCommand(flagEnableApd ? "z\r" : "Z\r", "APD set failed ?", 4000, 0);
+    if (result) {
+        goto finish;
     }
     result = upload();
     if (result) {
