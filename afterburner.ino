@@ -24,17 +24,12 @@
    * National GAL16V8
    * Lattice GAL16V8A, GAL16V8B, GAL16V8D
    * Lattice GAL22V10B
+   * Lattice GAL20V8
    * Atmel ATF16V8B, ATF16V8C, ATF22V10B, ATF22V10CQZ 
 
    Requires:
    * afterburner PC program to upload JED fuse map, erase, read etc.
    * simple programming circuit. See: https://github.com/ole00/afterburner
-
-   Changelog:
-   * 2019.02.02 - initial version 0.1
-   * 2019.04.09 - v. 0.3, 
-                - added set & check of gal type,
-                - fixed ATF22V10 and GAL22V10 CFG reading bug (porting bug)
 
                                                                        */
 
