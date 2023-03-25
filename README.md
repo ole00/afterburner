@@ -28,14 +28,17 @@ Supported GAL chips:
 * National GAL16V8
 * Lattice GAL20V8B via [adapter board](https://github.com/ole00/afterburner/raw/master/img/gal20v8_adapter.png)
 
+**Update 25/03/2023:** Added support securing the GAL contents. Use '-sec' parameter during write or verify to protect the GAL.
+ Added support for Atmel's Power-Down feature on ATF16V8C and ATF22V10C GALs. The Power-Down is enabled or diabled depending
+ on the JED file contents. Both features are based on GALmate software. Upload the latest afterburner.ino sketch and
+ recompile the PC software, or use the precompiled PC software binaries (ver 0.4.2) in the 'releases' directory.
+
 **Update 21/03/2023:** Added support for ATF16V8C. Based on GALmate code by Yorck. Upload the latest afterburner.ino sketch 
  and use parameter '-t ATF16V8B' with the PC app.
 
 **Update 24/01/2023:** fixed an isse where GAL chip could be accidentally zapped/damaged during insertion into ZIF socket.
 Please upload the latest afterburner.ino into your Arduino. The PC software may or may not need recompilation depending on its version.
 If you are unsure, either download the latest or recompile it.
-
-**Update 25/05/2020:** there was an issue programming the ATF16V8B  with afterburner. This is now fixed, but the arduino code needs to be recompiled and uploaded to your arduino in order to properly support ATF16V8B IC. The PC software does not need recompilation or update for this fix to work. Credits go to mecparts for the fix and PerroLoco64 for the bug report.
 
 Setup:
 * Upload the afterburner.ino sketch to your Arduino UNO.
