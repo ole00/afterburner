@@ -294,4 +294,4 @@ Other GAL related links:
   
 - GAL Asm : https://github.com/dwery/galasm
  
-- CUPL Reference: http://ee.sharif.edu/~logic_circuits_t/readings/CUPL_Reference.pdf
+- CUPL Reference: https://web.archive.org/web/20200215065020/http://ee.sharif.edu/~logic_circuits_t/readings/CUPL_Reference.pdf
