@@ -29,14 +29,7 @@ Requires:
 * simple programming circuit.
 
 Changelog:
-* 2019.02.02 - initial version 0.1
-* 2019.03.24 - version 0.2
-             - added support for Win32 and Win64 builds
-             - fixed serial port setup for Mac OSX
-* 2019.04.09 - version 0.3
-             - fixed error detection
-             - 'i' command now requires GAL type to be passed
-               on the command line
+* use 'git log'
 
 This is the PC part that communicates with Arduino UNO by serial line.
 To compile: gcc -g3 -O0 afterburner afterburner.c
@@ -48,13 +41,14 @@ To compile: gcc -g3 -O0 afterburner afterburner.c
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <stdint.h>
 
 #include "serial_port.h"
 
-#define VERSION "v.0.4.2"
+#define VERSION "v.0.5.1"
 
 
-#define MAX_LINE 200
+#define MAX_LINE 1024
 
 #define MAXFUSES 10000
 #define GALBUFSIZE 16384
@@ -111,6 +105,10 @@ unsigned short checksum;
 char galbuffer[GALBUFSIZE];
 char fusemap[MAXFUSES];
 char noGalCheck = 0;
+char varVppExists = 0;
+char printSerialWhileWaiting = 0;
+int calOffset = 0xFFFF; //calibration offset is not applied
+char enableSecurity = 0;
 
 char opRead = 0;
 char opWrite = 0;
@@ -118,6 +116,8 @@ char opErase = 0;
 char opInfo = 0;
 char opVerify = 0;
 char opTestVPP = 0;
+char opCalibrateVPP = 0;
+char opMeasureVPP = 0;
 char opSecureGal = 0;
 char opWritePes = 0;
 char flagEnableApd = 0;
@@ -132,15 +132,17 @@ static void printHelp() {
     printf("Afterburner " VERSION "  a GAL programming tool for Arduino based programmer\n");
     printf("more info: https://github.com/ole00/afterburner\n");
     printf("usage: afterburner command(s) [options]\n");
-    printf("commands: ierwvs\n");
+    printf("commands: ierwvsbm\n");
     printf("   i : read device info and programming voltage\n");
     printf("   r : read fuse map from the GAL chip and display it, -t option must be set\n");
     printf("   w : write fuse map, -f  and -t options must be set\n");
     printf("   v : verify fuse map, -f and -t options must be set\n");
     printf("   e : erase the GAL chip,  -t option must be set. Optionally '-all' can be set.\n");
     printf("   p : write PES. -t and -pes options must be set. GAL must be erased with '-all' option.\n");
-    printf("   s : sets VPP ON to check the programming voltage. Ensure the GAL is NOT inserted.\n");
-    printf("options:\n");
+    printf("   s : set VPP ON to check the programming voltage. Ensure the GAL is NOT inserted.\n");
+    printf("   b : calibrate variable VPP on new board designs. Ensure the GAL is NOT inserted.\n");
+    printf("   m : measure variable VPP on new board designs. Ensure the GAL is NOT inserted.\n");   
+        printf("options:\n");
     printf("  -v : verbose mode\n");
     printf("  -t <gal_type> : the GAL type. use GAL16V8 GAL20V8 GAL22V10 ATF16V8B ATF22V10B ATF22V10C\n");
     printf("  -f <file> : JEDEC fuse map file\n");
@@ -148,6 +150,7 @@ static void printHelp() {
     printf("                       serial params are: 38400, 8N1\n");
     printf("  -nc : do not check device GAL type before operation: force the GAL type set on command line\n");
     printf("  -sec: enable security - protect the chip. Use with 'w' or 'v' commands.\n");
+    printf("  -co <offset>: Set calibration offset. Use with 'b' command. Value: -20 (-0.2V) to 25 (+0.25V)\n");
     printf("  -all: use with 'e' command to erase all data including PES.\n");
     printf("  -pes <PES> : use with 'p' command to specify new PES. PES format is 8 hex bytes with a delimiter.\n");
     printf("               For example 00:03:3A:A1:00:00:00:90\n");
@@ -168,7 +171,7 @@ static void printHelp() {
 
 
 static int8_t verifyArgs(char* type) {
-    if (!opRead && !opWrite && !opErase && !opInfo && !opVerify && !opTestVPP && !opWritePes) {
+    if (!opRead && !opWrite && !opErase && !opInfo && !opVerify && !opTestVPP && !opCalibrateVPP && !opMeasureVPP && !opWritePes) {
         printHelp();
         printf("Error: no command specified.\n");
         return -1;
@@ -181,7 +184,7 @@ static int8_t verifyArgs(char* type) {
         printf("Error: invalid command combination. Use 'Erase all' in a separate step\n");
         return -1;
     }
-    if ((opRead || opWrite || opVerify) && (opTestVPP)) {
+    if ((opRead || opWrite || opVerify) && (opTestVPP || opCalibrateVPP || opMeasureVPP)) {
         printf("Error: VPP functions can not be conbined with read/write/verify operations\n");
         return -1;
     }
@@ -249,10 +252,21 @@ static int8_t checkArgs(int argc, char** argv) {
         }  else if (strcmp("-pes", param) == 0) {
             i++;
             pesString = argv[i];
+        } else if (strcmp("-co", param) == 0) {
+            i++;
+            calOffset = atoi(argv[i]);
+            if (calOffset < -20 || calOffset > 25) {
+                printf("Calibration offset out of range (-20..25 inclusive).\n");
+            }
         }
         else if (param[0] != '-') {
             modes = param;
         }
+    }
+    if (calOffset < -20) {
+        calOffset = -20;
+    } else if (calOffset > 25) {
+        calOffset = 25;
     }
 
     i = 0;
@@ -276,7 +290,12 @@ static int8_t checkArgs(int argc, char** argv) {
         case 's':
             opTestVPP = 1;
             break;
-
+        case 'b':
+            opCalibrateVPP = 1;
+            break;
+        case 'm':
+            opMeasureVPP = 1;
+            break;
         case 'p':
             opWritePes = 1;
             break;
@@ -553,6 +572,14 @@ static int openSerial(void) {
     labelPos = strstr(buf, "AFTerburner v.") -  buf;
 
     if (labelPos >= 0 && labelPos < 500 && buf[total - 3] == '>') {
+        // check for new board desgin: variable VPP
+        labelPos = strstr(buf + labelPos, " varVpp ") -  buf;
+        if (labelPos > 0 && labelPos < 500) {
+            if (verbose) {
+                printf("variable VPP board detected\n");
+            }
+            varVppExists = 1;
+        }
         //all OK
         return 0;
     }
@@ -630,12 +657,32 @@ static char* findLastLine(char* buf) {
     return result;
 }
 
+static char* printBuffer(char* bufPrint, int readSize) {
+    int i;
+    char doPrint = 1;
+    for (i = 0; i < readSize;i++) {
+        if (*bufPrint == '>') {
+            doPrint = 0;
+        }
+        if (doPrint) {
+            printf("%c", *bufPrint);
+            if (*bufPrint == '\n' || *bufPrint == '\r') {
+                fflush(stdout);
+            }
+            bufPrint++;
+        }
+    }
+    return bufPrint;
+}
+
 static int waitForSerialPrompt(char* buf, int bufSize, int maxDelay) {
     char* bufStart = buf;
     int bufTotal = bufSize;
     int bufPos = 0;
     int readSize;
-
+    char* bufPrint = buf;
+    char doPrint = printSerialWhileWaiting;
+    
     memset(buf, 0, bufSize);
 
     while (maxDelay > 0) {
@@ -648,6 +695,9 @@ static int waitForSerialPrompt(char* buf, int bufSize, int maxDelay) {
                 buf += readSize;
                 bufSize -= readSize;
             }
+            if (printSerialWhileWaiting) {
+                bufPrint = printBuffer(bufPrint, readSize);
+            }                
         }
         if (maxDelay > 0) {
         /* WIN_API handles timeout itself */
@@ -793,7 +843,7 @@ static char sendGenericCommand(const char* command, const char* errorText, int m
         if (lastLine == 0 || (lastLine[0] == 'E' && lastLine[1] == 'R')) {
             printf("%s\n", response);
             return -1;
-        } else if (printResult) {
+        } else if (printResult && printSerialWhileWaiting == 0) {
             printf("%s\n", response);
         }
     }
@@ -879,13 +929,72 @@ static char operationTestVpp(void) {
     if (verbose) {
         printf("sending 't' command...\n");
     }
-    printf("Turn the Pot on the MT3608 module to check / set the VPP\n");
+    if (varVppExists) {
+        printf("Turn the Pot on the MT3608 module to set the VPP to 16.5V (+/- 0.05V)\n");
+    } else {
+        printf("Turn the Pot on the MT3608 module to check / set the VPP\n");
+    }
+    //print the measured voltages if the feature is available
+    printSerialWhileWaiting = 1;
+
     //Voltage testing takes ~20 seconds
     result = sendGenericCommand("t\r", "info failed ?", 22000, 1);
+    printSerialWhileWaiting = 0;
 
     closeSerial();
     return result;
 }
+
+static char operationCalibrateVpp(void) {
+    char result;
+
+    if (openSerial() != 0) {
+        return -1;
+    }
+
+    if (calOffset != 0xFFFF) {
+        char cmd [8] = {0};
+        char val = (char)('0' + (calOffset + 20) / 5);
+        sprintf(cmd, "B%c\r", val);
+        if (verbose) {
+            printf("sending 'B%c' command...\n", val);
+        }
+        result = sendGenericCommand(cmd, "VPP cal. offset failed", 4000, 1);
+    }
+
+    if (verbose) {
+        printf("sending 'b' command...\n");
+    }
+    
+    printf("VPP voltages are scanned - this might take a while...\n");
+    printSerialWhileWaiting = 1;
+    result = sendGenericCommand("b\r", "VPP calibration failed", 16000, 1);
+    printSerialWhileWaiting = 0;
+
+    closeSerial();
+    return result;
+}
+
+static char operationMeasureVpp(void) {
+    char result;
+
+    if (openSerial() != 0) {
+        return -1;
+    }
+
+    if (verbose) {
+        printf("sending 'm' command...\n");
+    }
+    
+    //print the measured voltages if the feature is available
+    printSerialWhileWaiting = 1;
+    result = sendGenericCommand("m\r", "VPP measurement failed", 22000, 1);
+    printSerialWhileWaiting = 0;
+
+    closeSerial();
+    return result;
+}
+
 
 static char operationSetGalCheck(void) {
     int readSize;
@@ -1073,6 +1182,15 @@ int main(int argc, char** argv) {
         if (0 == result && (opWrite || opVerify)) {
             if (opSecureGal) {
                 operationSecureGal();
+            }
+        }
+        //variable VPP functions (for new board designs)
+        if (varVppExists) {
+            if (0 == result && opCalibrateVPP) {
+                result = operationCalibrateVpp();
+            }
+            if (0 == result && opMeasureVPP) {
+                result = operationMeasureVpp();
             }
         }
     }
