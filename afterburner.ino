@@ -34,7 +34,7 @@
                                                                        */
 
 
-#define VERSION "0.4.2"
+#define VERSION "0.5.0"
 
 //#define DEBUG_PES
 //#define DEBUG_VERIFY
@@ -58,8 +58,32 @@
 #define PIN_RA5         6
 #define PIN_SCLK        7
 
+// pin multiplex: ZIF_PIN <----> ARDUINO PIN or Shift register pin (0b1xxx)
+#define PIN_ZIF3          2
+#define PIN_ZIF4          0b1
+#define PIN_ZIF5          0b1000
+#define PIN_ZIF6          0b100
+#define PIN_ZIF7          0b10
+#define PIN_ZIF8          5
+#define PIN_ZIF9          6
+#define PIN_ZIF10         7
+#define PIN_ZIF11         8
+#define PIN_ZIF13         12
+#define PIN_ZIF14         11
+#define PIN_ZIF15         10
+#define PIN_ZIF16         9
+#define PIN_ZIF21         0b10000
+#define PIN_ZIF22         4
+#define PIN_ZIF23         3
+#define PIN_ZIF_GND_CTRL  13
 
-
+//A0: VPP sense
+//A3: DIGI_POT CS
+#define PIN_SHR_EN   A1
+#define PIN_SHR_CS   A2
+//clk and dat is shared SPI bus
+#define PIN_SHR_CLK  A4
+#define PIN_SHR_DAT  A5
 
 #define COMMAND_NONE 0
 #define COMMAND_UNKNOWN 1
@@ -83,6 +107,9 @@
 #define COMMAND_ENABLE_SECURITY 's'
 #define COMMAND_ENABLE_APD 'z'
 #define COMMAND_DISABLE_APD 'Z'
+#define COMMAND_MEASURE_VPP 'm'
+#define COMMAND_CALIBRATE_VPP 'b'
+#define COMMAND_CALIBRATION_OFFSET 'B'
 
 #define READGAL 0
 #define VERIFYGAL 1
@@ -227,7 +254,8 @@ galinfo[]=
 
 GALTYPE gal __attribute__ ((section (".noinit"))); //the gal device index pointing to galinfo, value is preserved between resets
 
-static short security = 0, erasetime = 100, progtime = 100, vpp = 0;
+static short erasetime = 100, progtime = 100;
+static uint8_t vpp = 0;
 
 char echoEnabled;
 unsigned char pes[12];
@@ -239,7 +267,7 @@ char isUploading;
 char uploadError;
 unsigned char fusemap[MAXFUSES];
 unsigned char flagBits;
-
+char varVppExists;
 
 static void setFuseBit(unsigned short bitPos);
 static unsigned short checkSum(unsigned short n);
@@ -247,9 +275,15 @@ static char checkGalTypeViaPes(void);
 static void turnOff(void);
 static void printFormatedNumberHex2(unsigned char num) ;
 
+#include "aftb_vpp.h"
+
 // print some help on the serial console
 void printHelp(char full) {
   Serial.println(F("AFTerburner v." VERSION));
+  // indication for PC software that the new board desgin is used
+  if (varVppExists) {
+    Serial.println(F(" varVpp "));
+  }
   if (!full) {
     Serial.println(F("type 'h' for help"));
     return;
@@ -263,7 +297,9 @@ void printHelp(char full) {
   Serial.println(F("  w - write uploaded fuses"));
   Serial.println(F("  v - verify fuses"));
   Serial.println(F("  c - erase chip"));
-  Serial.println(F("  t - test VPP"));
+  Serial.println(F("  t - test & set VPP"));
+  Serial.println(F("  b - calibrate VPP"));
+  Serial.println(F("  m - measure VPP"));
 }
 
 static void setFlagBit(uint8_t flag, uint8_t value) {
@@ -274,6 +310,56 @@ static void setFlagBit(uint8_t flag, uint8_t value) {
     }
 }
 
+static void setPinMux(uint8_t pm) {
+  switch (gal) {
+  case GAL16V8:
+  case ATF16V8B:
+    pinMode(PIN_ZIF10, INPUT); //GND via MOSFET
+    pinMode(PIN_ZIF11, INPUT);
+    pinMode(PIN_ZIF13, INPUT);
+    pinMode(PIN_ZIF14, INPUT);
+    pinMode(PIN_ZIF16, INPUT_PULLUP); //DOUT
+    // ensure ZIF10 is Grounded via transistor
+    digitalWrite(PIN_ZIF_GND_CTRL, pm == OUTPUT ? HIGH: LOW);
+    break;        
+
+  case GAL20V8:
+    pinMode(PIN_ZIF10, pm);
+    pinMode(PIN_ZIF11, pm);
+    pinMode(PIN_ZIF13, pm);
+    pinMode(PIN_ZIF14, pm); 
+    pinMode(PIN_ZIF15, INPUT_PULLUP); //DOUT
+    pinMode(PIN_ZIF16, pm);       
+    // ensure ZIF10 GND pull is disabled
+    digitalWrite(PIN_ZIF_GND_CTRL, LOW);
+
+    //pull down unused pins
+    digitalWrite(PIN_ZIF14, LOW);
+    digitalWrite(PIN_ZIF16, LOW);
+    digitalWrite(PIN_ZIF23, LOW);
+
+    break;
+
+  case GAL22V10:
+  case ATF22V10B:
+  case ATF22V10C:
+    pinMode(PIN_ZIF10, pm);
+    pinMode(PIN_ZIF11, pm);
+    pinMode(PIN_ZIF13, pm);
+    pinMode(PIN_ZIF14, INPUT_PULLUP); //DOUT
+    pinMode(PIN_ZIF15, pm);
+    pinMode(PIN_ZIF16, pm);       
+    // ensure ZIF10 GND pull is disabled
+    digitalWrite(PIN_ZIF_GND_CTRL, LOW);
+
+    //pull down unused pins
+    digitalWrite(PIN_ZIF15, LOW);
+    digitalWrite(PIN_ZIF16, LOW);
+    digitalWrite(PIN_ZIF22, LOW);
+    digitalWrite(PIN_ZIF22, LOW);
+    break;
+  }
+}
 
 static void setupGpios(uint8_t pm) {
 
@@ -291,6 +377,35 @@ static void setupGpios(uint8_t pm) {
   pinMode(PIN_SCLK, pm);
 
   pinMode(PIN_VPP, pm);
+  if (varVppExists) {
+    pinMode(PIN_ZIF_GND_CTRL, OUTPUT);   
+    //disconnect shift register pins (High Z) when pm == Input
+    digitalWrite(PIN_SHR_EN, pm == INPUT ? HIGH : LOW);
+    setPinMux(pm);
+  }
+}
+
+#define SHR_SET_BIT(X) digitalWrite(PIN_SHR_CLK, 0); \
+                        digitalWrite(PIN_SHR_DAT, (X) ? HIGH : LOW); \
+                        digitalWrite(PIN_SHR_CLK, 1)
+                        
+static void setShiftReg(uint8_t val) {
+  //assume CS is high
+
+  //ensure CLK is high (might be set low by other SPI devices)
+  digitalWrite(PIN_SHR_CLK, 1);
+  
+  // set CS low
+  digitalWrite(PIN_SHR_CS, 0);
+  SHR_SET_BIT(val & 0b10000000);
+  SHR_SET_BIT(val & 0b1000000);
+  SHR_SET_BIT(val & 0b100000);
+  SHR_SET_BIT(val & 0b10000);
+  SHR_SET_BIT(val & 0b1000);
+  SHR_SET_BIT(val & 0b100);
+  SHR_SET_BIT(val & 0b10);
+  SHR_SET_BIT(val & 0b1);
+  digitalWrite(PIN_SHR_CS, 1);
 }
 
 // setup the Arduino board
@@ -304,6 +419,12 @@ void setup() {
   lineIndex = 0;
   setFlagBit(FLAG_BIT_TYPE_CHECK, 1); //do type check
 
+  //check & initialise variable voltage (old / new board design)
+  varVppExists = varVppInit();
+
+  // shift register
+  pinMode(PIN_SHR_EN, OUTPUT);
+
   // Serial output from the GAL chip, input for Arduino
   pinMode(PIN_SDOUT, INPUT);
 
@@ -312,6 +433,17 @@ void setup() {
   setupGpios(INPUT);
 
   printHelp(0);
+
+  if (varVppExists) {
+    // reads the calibration values
+    if (varVppCheckCalibration()) {
+      Serial.println(F("I: VPP calib. OK"));
+    }
+    // set shift reg Chip select
+    pinMode(PIN_SHR_CS, OUTPUT);
+    digitalWrite(PIN_SHR_CS, 1); //unselect the POT's SPI bus
+  }
+
   Serial.println(">");
 }
 
@@ -359,7 +491,8 @@ char handleTerminalCommands() {
     } else if (lineIndex  > 2) {
       c = line[0];  
       if (!isUploading || c != '#') {
-        if (c != COMMAND_SET_GAL_TYPE) {
+        // prevent 2 character commands from being flagged as invalid
+        if (!(c == COMMAND_SET_GAL_TYPE || c == COMMAND_CALIBRATION_OFFSET)) {
           c = COMMAND_UNKNOWN; 
         }
       }
@@ -488,6 +621,9 @@ void parseUploadLine() {
       unsigned short cs = checkSum(galinfo[gal].fuses + apdFuse);
       if (cs == val) {
         Serial.println(F("OK checksum matches"));
+        // Conditioning jed files might not have any fuse set, so as long as
+        // they supply empty checksum (C0000) the upload is OK.
+        mapUploaded = 1;
       } else {
         uploadError = 1;
         Serial.print(F("ER checksum:"));
@@ -525,48 +661,153 @@ static void setVCC(char on) {
 }
 
 static void setVPP(char on) {
-  //programming voltage is controlled by VPP_PIN,
-  //but the programming voltage must be set manually by user turning a Pot
-  digitalWrite(PIN_VPP, on ? 1 : 0);
-  
-  //Serial.print(F("VPP set to:"));
-  //Serial.println( on ? "12V": "5V");
-  delay(10);
+    // new board desgin
+    if (varVppExists) {
+        uint8_t v = VPP_11V0;
+
+        // when PES is read the VPP is not determined via PES
+        if (on == READPES) {
+            if (gal == ATF16V8B || gal == ATF22V10B || gal == ATF22V10B) {
+                v = VPP_10V0; 
+            } else {
+                v = VPP_11V5;
+            }
+        } else {
+            //safety check
+            if (vpp < 36) {
+                vpp = 36; //9V
+            } else
+            if (vpp > 66) {
+                vpp = 40; //12V
+            }
+            v = (vpp >> 1) - 18; // 18: 2 * 9V, resolution 0.5V (not 0.25V) hence 'vpp >> 1'
+#if 0            
+            Serial.print(F("setVPP "));
+            Serial.print(vpp);
+            Serial.print(F(" index="));
+            Serial.println(v);
+#endif            
+        }
+        varVppSet(on ? v : VPP_5V0);
+        delay(50); //settle the voltage
+    }
+    // old board design
+    else {
+        //programming voltage is controlled by VPP_PIN,
+        //but the programming voltage must be set manually by user turning a Pot
+        digitalWrite(PIN_VPP, on ? 1 : 0);
+        
+        //Serial.print(F("VPP set to:"));
+        //Serial.println( on ? "12V": "5V");
+        delay(10);      
+    }
+
 }
 
-
-
 static void setSTB(char on) {
-   digitalWrite(PIN_STROBE, on ? 1:0);
+  if (varVppExists) {
+    const unsigned short b = galinfo[gal].cfgbase;
+    const uint8_t pin = (b == CFG_BASE_16) ? PIN_ZIF15 : PIN_ZIF13;
+    digitalWrite(pin, on ? 1:0);
+  } else {
+    digitalWrite(PIN_STROBE, on ? 1:0);
+  }
 }
 
 static void setPV(char on) {
-   digitalWrite(PIN_PV, on ? 1:0);
+  if (varVppExists) {
+    const unsigned short b = galinfo[gal].cfgbase;
+    uint8_t pin = PIN_ZIF23;
+
+    if (b == CFG_BASE_22) {
+      pin = PIN_ZIF3;
+    } else
+    if (b == CFG_BASE_20) {
+      pin = PIN_ZIF22;
+    }
+    digitalWrite(pin, on ? 1:0);
+  } else {
+    digitalWrite(PIN_PV, on ? 1:0);
+  }
 }
 
 static void setSDIN(char on) {
-  digitalWrite(PIN_SDIN, on ? 1:0);
+  if (varVppExists) {
+    const unsigned short b = galinfo[gal].cfgbase;
+    const uint8_t pin = (b == CFG_BASE_16) ? PIN_ZIF9 : PIN_ZIF11;
+    digitalWrite(pin, on ? 1:0);
+  } else {
+    digitalWrite(PIN_SDIN, on ? 1:0);
+  }
 }
 
 static void setSCLK(char on){
-   digitalWrite(PIN_SCLK, on ? 1:0);
+  if (varVppExists) {
+    const unsigned short b = galinfo[gal].cfgbase;
+    uint8_t pin = (b == CFG_BASE_16) ? PIN_ZIF8 : PIN_ZIF10;
+    digitalWrite(pin, on ? 1:0);
+  } else {
+    digitalWrite(PIN_SCLK, on ? 1:0);
+  }
 }
 
 // output row address (RA0-5)
 static void setRow(char row)
 {
-  digitalWrite(PIN_RA0, (row & 0x1));
-  digitalWrite(PIN_RA1, ((row & 0x2) ? 1:0));
-  digitalWrite(PIN_RA2, ((row & 0x4) ? 1:0));
-  digitalWrite(PIN_RA3, ((row & 0x8) ? 1:0));
-  digitalWrite(PIN_RA4, ((row & 0x10) ? 1:0));
-  digitalWrite(PIN_RA5, ((row & 0x20) ? 1:0));
+  if (varVppExists) {
+    uint8_t srval = 0;
+    const unsigned short b = galinfo[gal].cfgbase;
+    if (b == CFG_BASE_16) {
+      digitalWrite(PIN_ZIF22, (row & 0x1)); //RA0
+      digitalWrite(PIN_ZIF3 , (row & 0x2)); //RA1
+      if (row & 0x4) srval  |= PIN_ZIF4; //RA2
+      if (row & 0x8) srval  |= PIN_ZIF5; //RA3
+      if (row & 0x10) srval |= PIN_ZIF6; //RA4
+      if (row & 0x20) srval |= PIN_ZIF7; //RA5
+    } else 
+    if (b == CFG_BASE_22) {
+      if (row & 0x1) srval  |= PIN_ZIF4; //RA0
+      if (row & 0x2) srval  |= PIN_ZIF5; //RA1
+      if (row & 0x4) srval  |= PIN_ZIF6; //RA2
+      if (row & 0x8) srval  |= PIN_ZIF7; //RA3
+      digitalWrite(PIN_ZIF8, (row & 0x10)); //RA4
+      digitalWrite(PIN_ZIF9, (row & 0x20)); //RA5
+    } else { //CGF_BASE_20
+      if (row & 0x1) srval  |= PIN_ZIF21; //RA0
+      digitalWrite(PIN_ZIF3 , (row & 0x2)); //RA1
+      if (row & 0x4) srval  |= PIN_ZIF4; //RA2
+      if (row & 0x8) srval  |= PIN_ZIF5; //RA3
+      digitalWrite(PIN_ZIF8, (row & 0x10)); //RA4
+      digitalWrite(PIN_ZIF9, (row & 0x20)); //RA5           
+    }
+    setShiftReg(srval);
+  } else {
+    digitalWrite(PIN_RA0, (row & 0x1));
+    digitalWrite(PIN_RA1, ((row & 0x2) ? 1:0));
+    digitalWrite(PIN_RA2, ((row & 0x4) ? 1:0));
+    digitalWrite(PIN_RA3, ((row & 0x8) ? 1:0));
+    digitalWrite(PIN_RA4, ((row & 0x10) ? 1:0));
+    digitalWrite(PIN_RA5, ((row & 0x20) ? 1:0));
+  }
 }
 
 // serial data out form the GAL chip -> received by Arduino
 static char getSDOUT(void)
 {
-  return digitalRead(PIN_SDOUT) != 0;
+  if (varVppExists) {
+    const unsigned short b = galinfo[gal].cfgbase;
+    uint8_t pin = PIN_ZIF16;
+    
+    if (b == CFG_BASE_22) {
+      pin = PIN_ZIF14;
+    } else
+    if (b == CFG_BASE_20) {
+      pin = PIN_ZIF15;
+    }
+    return digitalRead(pin) != 0;
+  } else {
+    return digitalRead(PIN_SDOUT) != 0;
+  }
 }
 
 // GAL finish sequence
@@ -589,6 +830,9 @@ static void turnOff(void)
 static void turnOn(char mode) {
     setupGpios(OUTPUT);
 
+    if (mode == READPES) {
+        mode = 2;      
+    } else
     if (
       mode == WRITEGAL ||
       mode == ERASEGAL ||
@@ -596,7 +840,6 @@ static void turnOn(char mode) {
       mode == BURNSECURITY ||
       mode == WRITEPES ||
       mode == VPPTEST ||
-      mode == READPES ||
       mode == READGAL 
     ) {
         mode = 1;
@@ -698,7 +941,7 @@ static void strobeRow(char row, char setBit = BIT_NONE)
       setRow(row);         // set RA0-5 to row number
       if (setBit) {
         sendBits(1, setBit - 1);
-      }      
+      }
       strobe(2);           // pulse /STB for 2ms
       break;
     case GAL22V10:
@@ -711,7 +954,6 @@ static void strobeRow(char row, char setBit = BIT_NONE)
       setSDIN(0);          // SDIN low
    }
 }
-
 
 // read PES: programmer electronic signature (ATF = text string, others = Vendor/Vpp/timing)
 static void readPes(void) {
@@ -790,13 +1032,30 @@ static unsigned char getDuration(unsigned char index) {
   }
 }
 
+static void setGalDefaults(void) {
+    if (gal == ATF16V8B || gal == ATF22V10B || gal == ATF22V10C) {
+        progtime = 20;
+        erasetime = 100;
+        vpp = 40; /* 10V */
+    } else {
+        progtime = 80;
+        erasetime = 80;
+        vpp = 44; /* 11V */
+    }
+}
+
 void parsePes(char type) {
   unsigned char algo;
 
   if (UNKNOWN == type) {
     type = gal; 
   }
-  
+
+#if DEBUG_PES
+  Serial.print(F("Parse pes. gal="));
+  Serial.println(type, DEC);
+#endif
+
   switch (type) {
     case ATF16V8B:
     case ATF22V10B:
@@ -864,18 +1123,6 @@ void parsePes(char type) {
 
     //Afterburnes seems to work with programming voltages reduced by 2V
     vpp -= 8; // -2V
-}
-
-static void setGalDefaults(void) {
-    if (gal == ATF16V8B || gal == ATF22V10B || gal == ATF22V10C) {
-        progtime = 20;
-        erasetime = 100;
-        vpp = 40; /* 10V */
-    } else {
-        progtime = 80;
-        erasetime = 80;
-        vpp = 44; /* 11V */
-    }
 }
 
 // print PES information
@@ -972,10 +1219,10 @@ static void readGalFuseMap(const unsigned char* cfgArray, char useDelay, char do
     }
     if (flagBits & FLAG_BIT_ATF16V8C) {
         setPV(0);
-    }    
+    }
   }
 
-   // read UES
+  // read UES
   strobeRow(galinfo[gal].uesrow);
   if (flagBits & FLAG_BIT_ATF16V8C) {
       setSDIN(0);
@@ -1005,7 +1252,7 @@ static void readGalFuseMap(const unsigned char* cfgArray, char useDelay, char do
     if (flagBits & FLAG_BIT_ATF16V8C) {
       setSDIN(0);
       setPV(1);
-    }     
+    }
   } else {
     setRow(galinfo[gal].cfgrow);
     strobe(1);
@@ -1051,7 +1298,7 @@ static unsigned short verifyGalFuseMap(const unsigned char* cfgArray, char useDe
     if (flagBits & FLAG_BIT_ATF16V8C) {
         setSDIN(0);
         setPV(1);
-    }    
+    }
     for(bit = 0; bit < galinfo[gal].bits; bit++) {
       addr = galinfo[gal].rows;
       addr *= bit;
@@ -1071,7 +1318,7 @@ static unsigned short verifyGalFuseMap(const unsigned char* cfgArray, char useDe
     }
     if (flagBits & FLAG_BIT_ATF16V8C) {
       setPV(0);
-    }    
+    }
   }
 
    // read UES
@@ -1218,7 +1465,7 @@ static void writeGalFuseMapV8(const unsigned char* cfgArray) {
   unsigned char row, rbit;
   unsigned short addr;
   unsigned char rbitMax = galinfo[gal].bits;
-  const unsigned char skipLastClk = (flagBits & FLAG_BIT_ATF16V8C) ? 1 : 0;  
+  const unsigned char skipLastClk = (flagBits & FLAG_BIT_ATF16V8C) ? 1 : 0;
 
   setPV(1);
   // write fuse rows
@@ -1404,7 +1651,7 @@ static char checkGalTypeViaPes(void)
        type = ATF16V8B;
        if (pes[1] == 'C' || pes[1] == 'Z') { // ATF16V8C, ATF16V8CZ
            setFlagBit(FLAG_BIT_ATF16V8C, 1);
-       }       
+       }
     }
     else if (pes[2] != 0x00 && pes[2] != 0xFF) {
        for (type = (sizeof(galinfo) / sizeof(galinfo[0])) - 1; type; type--) {
@@ -1670,13 +1917,40 @@ static void printNoFusesError() {
 static void testVoltage(int seconds) {
   int i;
 
-  pinMode(PIN_VPP, OUTPUT);
-  setVPP(1);
-  for (i = 0 ; i < seconds; i++) {
-    delay(1000);
+  // New board design: set VPP to 16.5V and measure values 
+  // on analogue pin A1
+  if (varVppExists) {
+    int16_t v;
+    uint8_t okCnt = 0;
+    
+    varVppSetMax();
+    for (i = 0 ; i < seconds; i++) {
+      delay(1000);
+      v = varVppMeasureVpp(1); //measure and print
+      if (v >= 1640 && v <= 1664) {
+        okCnt++;
+        // stop early if the VPP is set correctly (still allow time for POT fine-tuning)
+        if (okCnt > 3) {
+          Serial.println(F("VPP OK"));
+          i = seconds;
+        }
+      } else {
+        okCnt = 0;
+      }
+    }
+    varVppSet(VPP_5V0);
   }
-  setVPP(0);
-  pinMode(PIN_VPP, INPUT);
+  // Legacy board design: set the VPP_EN pin "On" and check 
+  // with multimeter the desired VPP voltage specific for GAL chip.
+  else {
+    pinMode(PIN_VPP, OUTPUT);
+    setVPP(1);
+    for (i = 0 ; i < seconds; i++) {
+        delay(1000);
+    }
+    setVPP(0);
+    pinMode(PIN_VPP, INPUT);
+  }
 }
 
 
@@ -1689,6 +1963,49 @@ static char doTypeCheck(void) {
   readPes();
   parsePes(UNKNOWN);
   return testProperGAL();
+}
+
+static void measureVpp(uint8_t index) {
+  varVppSet(index);
+  delay(150);
+  varVppMeasureVpp(1); //print measured value
+  delay(5000);
+}
+
+static void measureVppValues(void) {
+  if (!varVppExists) {
+    Serial.println(F("ER variable VPP not supported"));
+    return;
+  }
+  Serial.print(F("VPP calib. offset: "));
+  Serial.println(calOffset);
+
+  Serial.print(F("VPP: 4.2 - 5.0V : "));
+  measureVpp(VPP_5V0);
+
+  Serial.print(F("VPP: 9.0V : "));
+  measureVpp(VPP_9V0);
+
+  Serial.print(F("VPP: 12.0V : "));
+  measureVpp(VPP_12V0);
+
+  Serial.print(F("VPP: 14.0V : "));
+  measureVpp(VPP_14V0);
+
+  Serial.print(F("VPP: 16.0V : "));
+  measureVpp(VPP_16V0);
+
+  varVppSet(VPP_5V0);
+}
+
+static void calibrateVpp(void) {
+  if (!varVppExists) {
+    Serial.println(F("ER variable VPP not supported"));
+    return;
+  }
+  if (varVppCalibrate()) {
+    Serial.println(F("Calibration OK"));
+  }
 }
 
 // Arduino main loop
@@ -1773,7 +2090,7 @@ void loop() {
         if (mapUploaded) {
           if (doTypeCheck()) {
             writeGal();
-            //TODO security
+            //security is handled by COMMAND_ENABLE_SECURITY command
           }
         } else {
           printNoFusesError();
@@ -1826,7 +2143,7 @@ void loop() {
           gal = (GALTYPE) type;
           if (0 == flagBits & FLAG_BIT_TYPE_CHECK) { //no type check requested
             setGalDefaults();
-          }          
+          }
         } else {
           Serial.println(F("ER Unknown gal type"));
         }
@@ -1835,8 +2152,35 @@ void loop() {
         setFlagBit(FLAG_BIT_TYPE_CHECK, 1);
       } break;
       case COMMAND_DISABLE_CHECK_TYPE: {
+        int i = 0;
+        while(i < 12){
+            pes[i++] = 0;
+        }
         setFlagBit(FLAG_BIT_TYPE_CHECK, 0);
       } break;
+
+      case COMMAND_MEASURE_VPP: {
+        measureVppValues();
+      } break;
+
+      // calibration offset helps to offset the resistor tolerances in voltage dividers and also
+      // small differences in analog ref which is ~3.3 V derived from LDO.
+      case COMMAND_CALIBRATION_OFFSET: {
+        int8_t offset = line[1] - '0';
+        if (offset >=0 && offset < 9) {
+          //0:-0.2V 1:-1.5V  2: -0.1V 3: -0.05V 4: 0V  5: 0.05V  6: 0.1V 7: 0.15V 8: 0.20V 9:0.25V
+          calOffset = (offset - 4) * 5;
+          Serial.print(F("Using cal offset: "));
+          Serial.println(calOffset);
+        } else {
+          Serial.println(F("ER: cal offset failed"));
+        }
+      } break;
+
+      case COMMAND_CALIBRATE_VPP: {
+        calibrateVpp();
+      } break;
+
       default: {
         if (command != COMMAND_NONE) {
           Serial.print(F("ER Unknown command: "));
