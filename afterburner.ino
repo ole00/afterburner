@@ -1366,7 +1366,7 @@ static char checkGalTypeViaPes(void)
     }
     else if (pes[6] == 'F' && pes[5] == '1' && pes[4]== '6' && pes[3] == 'V' && pes[2]=='8') {
        type = ATF16V8B;
-       if (pes[1] == 'C') { // ATF16V8C
+       if (pes[1] == 'C' || pes[1] == 'Z') { // ATF16V8C, ATF16V8CZ
            setFlagBit(FLAG_BIT_ATF16V8C, 1);
        }       
     }
