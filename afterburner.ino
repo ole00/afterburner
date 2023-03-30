@@ -68,10 +68,12 @@
 #define COMMAND_UPLOAD 'u'
 #define COMMAND_DEBUG 'd'
 #define COMMAND_READ_PES 'p'
+#define COMMAND_WRITE_PES 'P'
 #define COMMAND_READ_FUSES 'r'
 #define COMMAND_WRITE_FUSES 'w'
 #define COMMAND_VERIFY_FUSES 'v'
 #define COMMAND_ERASE_GAL 'c'
+#define COMMAND_ERASE_GAL_ALL '~'
 #define COMMAND_UTX '#'
 #define COMMAND_ECHO 'e'
 #define COMMAND_TEST_VOLTAGE 't'
@@ -209,12 +211,12 @@ galinfo[]=
 //   +-- type   + id0 + id1  |     |   +rows |  |   +uesfuse |   +eraseallrow +cfgrow  |        |       + cfgbits        +cfgmethod
 //   |          |     |      |     |   |     |  |   |     |  |   |    |   |   |        |        |       |                |
     {UNKNOWN,   0x00, 0x00,     0,  0,  0,   0,  0,    0, 0,  0,  0,  0,  8,  0,       0,        NULL,      0         , 0},
-    {GAL16V8,   0x00, 0x1A,  2194, 20, 32,  64, 32, 2056, 8, 63, 54, 58,  8, 60, CFG_BASE_16, cfgV8AB, sizeof(cfgV8AB), CFG_STROBE_ROW}, 
-    {GAL20V8,   0x20, 0x3A,  2706, 24, 40,  64, 40, 2568, 8, 63, 59, 58,  8, 60, CFG_BASE_20, cfgV8AB, sizeof(cfgV8AB), CFG_STROBE_ROW}, 
-    {GAL22V10,  0x48, 0x49,  5892, 24, 44, 132, 44, 5828, 8, 61, 60, 58, 10, 16, CFG_BASE_22, cfgV10,  sizeof(cfgV10) , CFG_SET_ROW   },
-    {ATF16V8B,  0x00, 0x00,  2194, 20, 32,  64, 32, 2056, 8, 63, 54, 58,  8, 60, CFG_BASE_16, cfgV8AB, sizeof(cfgV8AB), CFG_STROBE_ROW},
-    {ATF22V10B, 0x00, 0x00,  5892, 24, 44, 132, 44, 5828, 8, 61, 60, 58, 10, 16, CFG_BASE_22, cfgV10,  sizeof(cfgV10) , CFG_SET_ROW   },
-    {ATF22V10C, 0x00, 0x00,  5892, 24, 44, 132, 44, 5828, 8, 61, 60, 58, 10, 16, CFG_BASE_22, cfgV10,  sizeof(cfgV10) , CFG_SET_ROW   },
+    {GAL16V8,   0x00, 0x1A,  2194, 20, 32,  64, 32, 2056, 8, 63, 62, 58,  8, 60, CFG_BASE_16, cfgV8AB, sizeof(cfgV8AB), CFG_STROBE_ROW},
+    {GAL20V8,   0x20, 0x3A,  2706, 24, 40,  64, 40, 2568, 8, 63, 62, 58,  8, 60, CFG_BASE_20, cfgV8AB, sizeof(cfgV8AB), CFG_STROBE_ROW},
+    {GAL22V10,  0x48, 0x49,  5892, 24, 44, 132, 44, 5828, 8, 61, 62, 58, 10, 16, CFG_BASE_22, cfgV10,  sizeof(cfgV10) , CFG_SET_ROW   },
+    {ATF16V8B,  0x00, 0x00,  2194, 20, 32,  64, 32, 2056, 8, 63, 62, 58,  8, 60, CFG_BASE_16, cfgV8AB, sizeof(cfgV8AB), CFG_STROBE_ROW},
+    {ATF22V10B, 0x00, 0x00,  5892, 24, 44, 132, 44, 5828, 8, 61, 62, 58, 10, 16, CFG_BASE_22, cfgV10,  sizeof(cfgV10) , CFG_SET_ROW   },
+    {ATF22V10C, 0x00, 0x00,  5892, 24, 44, 132, 44, 5828, 8, 61, 62, 58, 10, 16, CFG_BASE_22, cfgV10,  sizeof(cfgV10) , CFG_SET_ROW   },
 };
 
 // MAXFUSES calculated as the biggest required space to hold the fuse bitmap + UES bitmap + CFG bitmap
@@ -495,6 +497,17 @@ void parseUploadLine() {
       }
     } break;
     
+    // PES
+    case 'p': {
+      uint8_t i = 0;
+      uint8_t j = 3;
+      while (i < 8) {
+        pes[i] = parse2hex(j);
+        i++;
+        j+=3; //AB:00:...  - 3 characters per one PES byte
+      }
+    } break;
+
     default:
       uploadError = 1;
       Serial.println(F("ER unknown upload cmd"));
@@ -732,6 +745,30 @@ static void readPes(void) {
   turnOff();
 }
 
+static void writePes(void) {
+  uint8_t rbit;
+  uint8_t b, p;
+
+  if (gal == ATF16V8B || gal == ATF22V10B || gal == ATF22V10C) {
+    Serial.println(F("ER write PES not supported"));
+    return;
+  }
+
+  turnOn(WRITEPES);
+
+  setPV(1);
+
+  setRow(galinfo[gal].pesrow);
+  for (rbit = 0; rbit < 64; rbit++) {
+    b = pes[rbit >> 3];
+    p = b & (1 << (rbit & 0b111));
+    sendBit(p);
+  }
+  strobe(progtime);
+
+  turnOff();
+}
+
 
 static unsigned char getDuration(unsigned char index) {
   switch (index) {
@@ -775,7 +812,7 @@ void parsePes(char type) {
             progtime = getDuration(((((unsigned short)pes[5] << 8)| pes[4]) >> 5) & 15);
             vpp = 2 * ((pes[5] >> 1) & 31) + 20;
         }
-        else switch(gal) {
+        else switch(type) {
         case GAL16V8:
         case GAL20V8:
           erasetime=100;
@@ -1315,12 +1352,12 @@ static void writeGal()
 }
 
 // erases fuse-map in the GAL
-static void eraseGAL(void)
+static void eraseGAL(char eraseAll)
 {
     turnOn(ERASEGAL);
     
     setPV(1);
-    setRow(galinfo[gal].eraserow);
+    setRow(eraseAll ? galinfo[gal].eraseallrow : galinfo[gal].eraserow);
     if (gal == GAL16V8 || gal == ATF16V8B || gal==GAL20V8) {
         sendBit(1);
     }
@@ -1716,6 +1753,13 @@ void loop() {
         printPes(type);
       } break;
 
+      case COMMAND_WRITE_PES : {
+        char type;
+        type = checkGalTypeViaPes();
+        parsePes(type);
+        writePes();
+      } break;
+
       // read fuse-map from the GAL and print it in the JEDEC form
       case COMMAND_READ_FUSES : {
         if (doTypeCheck()) {
@@ -1739,7 +1783,13 @@ void loop() {
       // erases the fuse-map on the GAL chip
       case COMMAND_ERASE_GAL: {
         if (doTypeCheck()) {
-          eraseGAL();
+          eraseGAL(0);
+        }
+      } break;
+      // erases PES and the fuse-map on the GAL chip
+      case COMMAND_ERASE_GAL_ALL: {
+        if (doTypeCheck()) {
+          eraseGAL(1);
         }
       } break;
 
