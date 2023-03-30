@@ -1040,7 +1040,7 @@ static void setGalDefaults(void) {
     } else {
         progtime = 80;
         erasetime = 80;
-        vpp = 44; /* 11V */
+        vpp = 48; /* 12V */
     }
 }
 
@@ -1958,6 +1958,7 @@ static void testVoltage(int seconds) {
 static char doTypeCheck(void) {
   
   if (0 == flagBits & FLAG_BIT_TYPE_CHECK) {
+    setGalDefaults();
     return 1; // no need to do type check
   }
   readPes();
