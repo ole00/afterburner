@@ -230,7 +230,6 @@ static short security = 0, erasetime = 100, progtime = 100, vpp = 0;
 char echoEnabled;
 unsigned char pes[12];
 char line[64];
-char programName[32];
 short lineIndex;
 char endOfLine;
 char mapUploaded;
