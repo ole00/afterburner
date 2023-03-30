@@ -53,8 +53,8 @@ Setup:
 
 * Set the programming voltage (VPP) on the voltage up-converter
   module (MT3608) depending on the GAL chip 
-   - Atmel ATF16V8B: 10V
-   - Lattice GAL16V8: 10V, also works with 12V
+   - Atmel ATF*: 10 .. 10.5V
+   - Lattice GAL*: 12V
    - Others - between 10 - 14V - untested 
 
 * Check the programming voltage (VPP) without the GAL chip being
