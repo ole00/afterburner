@@ -102,6 +102,7 @@ galinfo[] = {
 char verbose = 0;
 char* filename = 0;
 char* deviceName = 0;
+char* pesString = NULL;
 
 SerialDeviceHandle serialF = INVALID_HANDLE;
 Galtype gal;
@@ -118,7 +119,9 @@ char opInfo = 0;
 char opVerify = 0;
 char opTestVPP = 0;
 char opSecureGal = 0;
+char opWritePes = 0;
 char flagEnableApd = 0;
+char flagEraseAll = 0;
 
 
 static int waitForSerialPrompt(char* buf, int bufSize, int maxDelay);
@@ -134,7 +137,8 @@ static void printHelp() {
     printf("   r : read fuse map from the GAL chip and display it, -t option must be set\n");
     printf("   w : write fuse map, -f  and -t options must be set\n");
     printf("   v : verify fuse map, -f and -t options must be set\n");
-    printf("   e : erase the GAL chip,  -t options must be set\n");
+    printf("   e : erase the GAL chip,  -t option must be set. Optionally '-all' can be set.\n");
+    printf("   p : write PES. -t and -pes options must be set. GAL must be erased with '-all' option.\n");
     printf("   s : sets VPP ON to check the programming voltage. Ensure the GAL is NOT inserted.\n");
     printf("options:\n");
     printf("  -v : verbose mode\n");
@@ -144,20 +148,79 @@ static void printHelp() {
     printf("                       serial params are: 38400, 8N1\n");
     printf("  -nc : do not check device GAL type before operation: force the GAL type set on command line\n");
     printf("  -sec: enable security - protect the chip. Use with 'w' or 'v' commands.\n");
+    printf("  -all: use with 'e' command to erase all data including PES.\n");
+    printf("  -pes <PES> : use with 'p' command to specify new PES. PES format is 8 hex bytes with a delimiter.\n");
+    printf("               For example 00:03:3A:A1:00:00:00:90\n");
     printf("examples:\n");
     printf("  afterburner i -t ATF16V8B : reads and prints the device info\n");
     printf("  afterburner r -t ATF16V8B : reads the fuse map from the GAL chip and displays it\n");
     printf("  afterburner wv -f fuses.jed -t ATF16V8B : reads fuse map from file and writes it to \n");
     printf("              the GAL chip. Does the fuse map verification at the end.\n");
+    printf("  afterburner ep -t GAL20V8 -all -pes 00:03:3A:A1:00:00:00:90  Fully erases the GAL chip\n");
+    printf("              and writes new PES. Does not work with Atmel chips.\n");
     printf("hints:\n");
     printf("  - use the 'i' command first to check and set the right programming voltage (VPP)\n");
     printf("         of the chip. If the programing voltage is unknown use 10V.\n");
     printf("  - known VPP voltages as tested on Afterburner with Arduino UNO: \n");
-    printf("        Lattice GAL16V8D, GAL22V10D: 12V \n");
+    printf("        Lattice GAL16V8D, GAL20V8B, GAL22V10D: 12V \n");
     printf("        Atmel   ATF16V8B, AFT16V8C, ATF22V10C: 10V \n");
 }
 
-static char checkArgs(int argc, char** argv) {
+
+static int8_t verifyArgs(char* type) {
+    if (!opRead && !opWrite && !opErase && !opInfo && !opVerify && !opTestVPP && !opWritePes) {
+        printHelp();
+        printf("Error: no command specified.\n");
+        return -1;
+    }
+    if (opWritePes && (NULL == pesString || strlen(pesString) != 23)) {
+        printf("Error: invalid or no PES specified.\n");
+        return -1;
+    }
+    if ((opRead || opWrite || opVerify) && opErase && flagEraseAll) {
+        printf("Error: invalid command combination. Use 'Erase all' in a separate step\n");
+        return -1;
+    }
+    if ((opRead || opWrite || opVerify) && (opTestVPP)) {
+        printf("Error: VPP functions can not be conbined with read/write/verify operations\n");
+        return -1;
+    }
+    if (0 == filename && (opWrite == 1 || opVerify == 1)) {
+        printf("Error: missing JED filename\n");
+        return -1;
+    }
+    if (0 == type && (opWrite || opRead || opErase || opVerify || opInfo || opWritePes))  {
+        printf("Error: missing GAL type. Use -t <type> to specify.\n");
+        return -1;
+    } else if (0 != type) {
+        if (strcmp("GAL16V8", type) == 0) {
+            gal = GAL16V8;
+        }
+        if (strcmp("GAL20V8", type) == 0) {
+            gal = GAL20V8;
+        }
+        if (strcmp("GAL22V10", type) == 0) {
+            gal = GAL22V10;
+        }
+        if (strcmp("ATF16V8B", type) == 0) {
+            gal = ATF16V8B;
+        }
+        if (strcmp("ATF22V10B", type) == 0) {
+            gal = ATF22V10B;
+        }
+        if (strcmp("ATF22V10C", type) == 0) {
+            gal = ATF22V10C;
+        }
+
+        if (UNKNOWN == gal) {
+            printf("Error: unknow GAL type. Types: GAL16V8 GAL20V8 GAL22V10 ATF16V8B ATF22V10B ATF22V10C\n");
+            return -1;
+        }
+    }
+    return 0;
+}
+
+static int8_t checkArgs(int argc, char** argv) {
     int i;
     char* type = 0;
     char* modes = 0;
@@ -181,6 +244,11 @@ static char checkArgs(int argc, char** argv) {
             noGalCheck = 1;
         } else if (strcmp("-sec", param) == 0) {
             opSecureGal = 1;
+        } else if (strcmp("-all", param) == 0) {
+            flagEraseAll = 1;
+        }  else if (strcmp("-pes", param) == 0) {
+            i++;
+            pesString = argv[i];
         }
         else if (param[0] != '-') {
             modes = param;
@@ -209,49 +277,17 @@ static char checkArgs(int argc, char** argv) {
             opTestVPP = 1;
             break;
 
+        case 'p':
+            opWritePes = 1;
+            break;
         default:
             printf("Error: unknown operation '%c' \n", modes[i]);
         }
         i++;
     }
 
-    if (opRead == 0 && opWrite == 0 && opErase == 0 && opInfo == 0 && opVerify == 0 && opTestVPP == 0) {
-        printHelp();
-        printf("Error: no command specified.\n");
+    if (verifyArgs(type)) {
         return -1;
-    }
-
-    if (0 == filename && (opWrite == 1 || opVerify == 1)) {
-        printf("Error: missing JED filename\n");
-        return -1;
-    }
-    if (0 == type && (opWrite || opRead || opErase || opVerify || opInfo))  {
-        printf("Error: missing GAL type. Use -t <type> to specify.\n");
-        return -1;
-    } else if (0 != type) {
-        if (strcmp("GAL16V8", type) == 0) {
-            gal = GAL16V8;
-        }
-        if (strcmp("GAL20V8", type) == 0) {
-            gal = GAL20V8;
-        }
-        if (strcmp("GAL22V10", type) == 0) {
-            gal = GAL22V10;
-        }
-        if (strcmp("ATF16V8B", type) == 0) {
-            gal = ATF16V8B;
-        }
-        if (strcmp("ATF22V10B", type) == 0) {
-            gal = ATF22V10B;
-        }
-        if (strcmp("ATF22V10C", type) == 0) {
-            gal = ATF22V10C;
-        }
-
-        if (UNKNOWN == gal) {
-            printf("Error: unknow GAL type. Types: GAL16V8 GAL20V8 GAL22V10 ATF16V8B ATF22V10B ATF22V10C\n");
-            return -1;
-        }
     }
 
     return 0;
@@ -640,7 +676,7 @@ static int sendLine(char* buf, int bufSize, int maxDelay) {
     }
 
     total = strlen(buf);
-    // write the query into the modem's file
+    // write the query into the serial port's file
     // file is opened non blocking so we have to ensure all contents is written
     while (total > 0) {
         writeSize = serialDeviceWrite(serialF, buf, total);
@@ -892,6 +928,40 @@ static char operationSecureGal() {
     return result;
 }
 
+static char operationWritePes(void) {
+    char buf[MAX_LINE];
+    int readSize;
+    char result;
+
+    if (openSerial() != 0) {
+        return -1;
+    }
+
+    //Switch to upload mode to specify GAL
+    sprintf(buf, "u\r");
+    sendLine(buf, MAX_LINE, 300);
+
+    //set GAL type
+    sprintf(buf, "#t %i\r", (int) gal);
+    sendLine(buf, MAX_LINE, 300);
+
+    //set new PES
+    sprintf(buf, "#p %s\r", pesString);
+    sendLine(buf, MAX_LINE, 300);
+
+    //Exit upload mode (ensure the return texts are discarded by waiting 100 ms)
+    sprintf(buf, "#e\r");
+    sendLine(buf, MAX_LINE, 100);
+
+    if (verbose) {
+        printf("sending 'P' command...\n");
+    }
+    result = sendGenericCommand("P\r", "write PES failed ?", 4000, 0);
+
+    closeSerial();
+    return result;
+}
+
 static char operationEraseGal(void) {
     char buf[MAX_LINE];
     int readSize;
@@ -913,7 +983,11 @@ static char operationEraseGal(void) {
     sprintf(buf, "#e\r");
     sendLine(buf, MAX_LINE, 100);
 
-    result = sendGenericCommand("c\r", "erase failed ?", 4000, 0);
+    if (flagEraseAll) {
+        result = sendGenericCommand("~\r", "erase all failed ?", 4000, 0);
+    } else {
+        result = sendGenericCommand("c\r", "erase failed ?", 4000, 0);
+    }
 
     closeSerial();
     return result;
@@ -993,6 +1067,8 @@ int main(int argc, char** argv) {
             result = operationWriteOrVerify(0);
         } else if (opTestVPP) {
             result = operationTestVpp();
+        } else if (opWritePes) {
+            result = operationWritePes();
         }
         if (0 == result && (opWrite || opVerify)) {
             if (opSecureGal) {
