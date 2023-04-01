@@ -327,8 +327,9 @@ static void setPinMux(uint8_t pm) {
     pinMode(PIN_ZIF10, pm);
     pinMode(PIN_ZIF11, pm);
     pinMode(PIN_ZIF13, pm);
-    pinMode(PIN_ZIF14, pm); 
-    pinMode(PIN_ZIF15, INPUT_PULLUP); //DOUT
+    pinMode(PIN_ZIF14, pm);
+    // ensure pull-up is enabled during reading and disabled when inactive
+    pinMode(PIN_ZIF15, pm == OUTPUT ? INPUT_PULLUP: INPUT); //DOUT
     pinMode(PIN_ZIF16, pm);       
     // ensure ZIF10 GND pull is disabled
     digitalWrite(PIN_ZIF_GND_CTRL, LOW);
