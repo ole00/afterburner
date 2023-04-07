@@ -4,7 +4,7 @@ BOM for Afterburner 3.0
 * (R8, R4) Resistor 10k (TH or SMT 0805) 1% or better tolrance - 2x
 * (R5) Resistor 100k (TH or SMT 0805) 1% or better tolrance - 1x
 * (R6) Resistor 20k (TH or SMT 0805) 1% or better tolrance - 1x
-* (R7, R3) Resistor 3k3 (TH or SMT 0805) 1% or better tolrance - 2x
+* (R7, R3, R2) Resistor 3k3 (TH or SMT 0805) 1% or better tolrance - 3x
 * (R9) Cermet trimmer (TH Suntan TSR-3362P-202R 2k) - 1x
 
 * (C1, C5) Capacitor electrolytic 10uF, 25V or 50V, 20% tolerance or better (through hole) - 2x
