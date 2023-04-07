@@ -44,7 +44,7 @@ The new design features:
 Drawbacks compared to the old Afterburner design:
 
 * more parts required, most notably the digial pot MCP4131 and a shift register 74hc595
-* a few more steps during ininital VPP calibration. But once the calibration is done it does not need to be changed for different GAL chips.
+* a few more steps during initial VPP calibration. But once the calibration is done it does not need to be changed for different GAL chips.
 * the PCB design for etched  board is no longer provided because of the higher complexity. Please use a PCB fabrication service or use the older Afterburner design (see above).
 
 
@@ -170,7 +170,7 @@ Soldering steps:
   * check which type of components you have, you can mix and match SMT and through hole components as most of the footprints are doubled to accomodate different parts.
   * **Important:** C5, C6 and C7 are VPP decoupling capacitors and must be rated to **at least 25V!** You can use 50V rated caps, but do not use 16V or lower ratings.
   * Even thoug C5 (10uF, 25V) offers a SMT footprint, I used a through hole part because it reduces the VPP swings better than my SMT cap.
-  * start with the smallest parst, solder the resistors and small capacitors.
+  * start with the smallest parts, solder the resistors and small capacitors.
   * solder the two ICS: U1 (digital pot) and U2 (shift register)
   * solder the LED, the switch and the big capacitors
   * **special step** solder a thin wire between the MT3608 module and the PCB hole marked as POT. See the image bellow.
@@ -214,7 +214,7 @@ Troubleshooting:
 
   * you can either desolder the module by using soldering wick (to remove all solder on the connection pins on the MT3608 module). Then use a low temperature melting solder (like Quick Chip or similar) on the connection joints to loosen up the module. Clean the residues of the low melting solder with soldering wick. Then solder the POT wire and solder the chip back on the PCB. The drawback of this method is that if you use excessive heat during desoldering you can damage the MT3608 module (I've done that). If the module is damaged, it will prouduce a magic smoke next time the board is turned on. If that happens, desolder the module, use a new module (don't forget to solder the POT wire) and solder it on the board.
 
-  * Another option is to connect the POT wire directly to the MT3608 IC's Feedback (FB) pin 3. This is quite delicate as the IC pins are quite small. Before before connecting the power, **ensure the pin 2 and pin 3 are not bridged!**
+  * Another option is to connect the POT wire directly to the MT3608 IC's Feedback (FB) pin 3. This is quite delicate as the IC pins are quite small. Before connecting the power, **ensure the pin 2 and pin 3 are not bridged!**
 
   <pre>
   |  Blue Potentiometer     |
