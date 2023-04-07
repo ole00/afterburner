@@ -189,7 +189,14 @@ Troubleshooting:
   the pin 1 location). Note that the 16V8 GALs have to be inserted close to the ZIF lever - see the title image above.
   
   * ensure the VPP is set correctly on the MT3608 module. Ensure you've gone through all the calibration steps (commands: 's' then 'b' and 'm') and calibration is correct. See the Setup section.
-    
+
+- what is the Push switch used for? When do I use it?
+  * Normally, the button should be in the Off position (LED is not lit). Also when insering
+    the GAL chip or when removing the GAL chip from the ZIF socket the switch should be Off.
+  * When using Afterburner's PC app with commands to Identify (i), Read or Verify (r, v) or 
+    Write (w) the switch has to be On (LED is lit).
+  * So in general: insert the GAL when the switch is Off, then turn the switch On, run the 
+    PC app command. When finished turn the switch Off, remove the GAL chip from the socket.
 
 - afterburner reports it can not connect to /dev/ttyUSB0, permission denied
 
