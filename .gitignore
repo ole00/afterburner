@@ -4,4 +4,7 @@
 afterburner
 misc
 *.exe
-
+*.pld
+*.PLD
+*.JED
+*.zip
