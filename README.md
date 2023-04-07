@@ -1,6 +1,6 @@
 # afterburner
 GAL chip programmer for Arduino
-![Board image](https://github.com/ole00/afterburner/raw/master/img/afterburner_small.jpg "afterburner")
+![Board image](https://github.com/ole00/afterburner/raw/master/img/afterburner_new_design.jpg "afterburner")
 
 This is a GAL IC programmer software that allows to program GAL IC chips
 from various manfucaturers. It is based on work of several other people:
@@ -22,49 +22,74 @@ Arduio UNO, which does the programming of the GAL chip.
 
 Supported GAL chips:
 
-* Atmel ATF16V8B, ATF16V8BQL, ATF16V8C, ATF16V8CZ, ATF22V10B, ATF22V10CQZ 
+* Atmel ATF16V8B, ATF16V8BQL, ATF16V8C, ATF22V10B, ATF22V10CQZ 
 * Lattice GAL16V8A, GAL16V8B, GAL16V8D
 * Lattice GAL22V10B
 * National GAL16V8
-* Lattice GAL20V8B via [adapter board](https://github.com/ole00/afterburner/raw/master/img/gal20v8_adapter.png)
+* Lattice GAL20V8B (no adapter needed)
 
-**Update 25/03/2023:** Added support securing the GAL contents. Use '-sec' parameter during write or verify to protect the GAL.
- Added support for Atmel's Power-Down feature on ATF16V8C and ATF22V10C GALs. The Power-Down is enabled or diabled depending
- on the JED file contents. Both features are based on GALmate software. Upload the latest afterburner.ino sketch and
- recompile the PC software, or use the precompiled PC software binaries (ver 0.4.2) in the 'releases' directory.
+**This is a new Afterburner design with variable programming voltage control and with single ZIF socket for 20 and 24 pin GAL chips.**
+The PC software is backward compatible with the older Afterburner desgin/boards.
+You can still access the older/simpler ![design here](https://github.com/ole00/afterburner/tree/version_4_legacy "Afterburner legacy")
 
-**Update 21/03/2023:** Added support for ATF16V8C. Based on GALmate code by Yorck. Upload the latest afterburner.ino sketch 
- and use parameter '-t ATF16V8B' with the PC app.
 
-**Update 24/01/2023:** fixed an isse where GAL chip could be accidentally zapped/damaged during insertion into ZIF socket.
-Please upload the latest afterburner.ino into your Arduino. The PC software may or may not need recompilation depending on its version.
-If you are unsure, either download the latest or recompile it.
+The new design features:
+
+* variable programming voltage control via digital potentiometer
+* single 24 pin ZIF socket for 16V8, 20V8 and 22V10 GALs. The adapter for GAL20V8 is no longer needed.
+* simpler connection to MT3608 module (no need to modify the module)
+* both Through Hole and SMT footprints present on a single PCB. This allows
+  to mix & match SMT and TH parts based on your skills and availability.
+
+Drawbacks compared to the old Afterburner design:
+
+* more parts required, most notably the digial pot MCP4131 and a shift register 74hc595
+* a few more steps during ininital VPP calibration. But once the calibration is done it does not need to be changed for different GAL chips.
+* the PCB design for etched  board is no longer provided because of the higher complexity. Please use a PCB fabrication service or use the older Afterburner design (see above).
+
 
 Setup:
-* Upload the afterburner.ino sketch to your Arduino UNO.
+---------------------
 
-* Connect the pins of the GAL chip to Arduino UNO according to
-  the schematics images. Ideally use a PCB (ether etched or made
-  in a fab) that's provided in 'pcb' and 'gerbers' directory.
-  You can also hardwire on protoboard or breadboard.
+* Upload the afterburner.ino sketch to your Arduino UNO. Use Arduino IDE to upload the sketch, both IDE version 1.8.X and 2.X should work.
+
+* Build the Afterburner hardware. Buy the PCB from the an online PCB production service (use provided gerber archive in 'gerbers' directory). Then solder the components on the PCB - check the schematic.pdf and BOM.txt for parts list.
 
 * Compile the afteburner.c to get afterburner executable. Run
-  ./compile.sh to do that.
+  ./compile.sh to do that. Alternatively use the precompiled binaries in the 'releases' directory.
 
-* Set the programming voltage (VPP) on the voltage up-converter
-  module (MT3608) depending on the GAL chip 
-   - Atmel ATF*: 10 .. 10.5V
-   - Lattice GAL*: 12V
-   - Others - between 10 - 14V - untested 
+* Calibrate the variable voltage. This needs to be done only once, before you start using Afterburner for programming GAL chips.
 
-* Check the programming voltage (VPP) without the GAL chip being
-  inserted / connected to Arduino UNO. Test the voltage on MT3608
-  module VOUT- and VOUT+ pins while running the following command:
+  * **Calibration step 1)** Turn the small potentiometer (R8) on the Afterburner to the middle position. This pot acts as compensation resistor for the digital pot.
+
+  * **Calibration step 2)** Set the progamming voltage (VPP) to 16.5V: Check the programming voltage (VPP) without the GAL chip being inserted / connected to Afterburner. Test the voltage on MT3608 module VOUT- and VOUT+ pins while running the following command:
   <pre>
   ./afterburner s
   </pre>
+  While the command is running turn the pot on the MT3608 module (not the Afterburner's pot) counter clockwise (5 to 20 full turns). The VPP voltage should be displayed on the console, but for the very first setup use a multimeter to verify the VPP voltage as well.
+  Re-run the command (if needed) to give you more time to set the 16.5V VPP.
+
+  * **Calibration step 3)** This step scans the available voltages and records the pot taps. Run the following command:
+  <pre>
+  ./afterburner b
+  </pre>
+  You will see several messages on the console. Check the one with '*Index for VPP 900 is'. This is the lowest supported VPP of 9V and the index should ideally be between 15 and 35.
+  If you see a different index value (lower or higher) move the Afterburner's compensation pot (R8) either a bit lower or higher (depending on the VPP 900 index value) and go back to Calibration step 2). Repeat the Calibration steps 2) and 3) until you find the good value on VPP 900 index. If everyting goes OK the last VPP index (VPP 1650) should be 128.
+
+  * **Calibration step 4)** Measure the actual VPP to verify the value read by Arduino is correct. Run the following command while mesuring the VPP on your multimeter:
+  <pre>
+  ./afterburner m
+  </pre>
+  Afterburner will set the VPP to several values (5V, 9V, 12V, 14V, 16V) and print the voltage readings as read by Arduinos's ADC. These values should match with readings from your multimeter (except for the 5V which is OK if it is a value from 4.2V - 5.0 V). Important are the values of the higher voltages. If they are off by more than +/-0.05V then you can set the calibration offset by runnig Calibration step 3) with an extra parameter '-co X':
+  <pre>
+  ./afterburner b -co X
+  </pre>
+  Where X is a number form -20 (represening -0.2V offset) to value 25 (representing +0.25V offset). If your multimeter reads 12.1V and the reading on the text console shows 12.00V you need to set positive offset of +0.1V ('-co 10'). If your multimeter reads 11.85V and the reading on the text console shows 12.05V you need to set negative offset of -0.2V ('-co -20'). After setting the calibration offset, the readings on your multimeter should read the same values as the text on the console (+/- 0.05V). The calibration is then done. If (when specifying negative offset value) the calibration fails, turn the MT3608 Pot about 10-15 degrees counter-clockwise (to rise the VPP a tiny bit) and re-deo the Calibration step 4.
+
+  * Note that if you use your calibrated Afterburner board with a different Arduino (made by a different company or slightly different design), you may need to re-do the calibration.
+
   
-* Check the chip identification by runnig the following command:
+* With the GAL chip inserted and power button pressed (or in ON position) check the chip identification by runnig the following command:
   <pre>
   ./afterburner i -t [GAL_type]
   </pre>
@@ -73,8 +98,7 @@ Setup:
   <pre>
   PES info: Atmel ATF16V8B  VPP=10.0 Timing: prog=10 erase=25
   </pre>
-  then all should be well and you can try to  erase the chip and then
-  programm it to contain your .jed file.
+  then all should be well and you can try to  erase the chip and then   programm it to contain your .jed file.
 
   If you get an unknown chip identification like:
   <pre>
@@ -104,24 +128,24 @@ Setup:
   ./afterburner wv -t [GAL type] -f my_new_gal.jed
   </pre>
 
+* If you are not sure which GAL type strings are accepted by Afterburner, simply set a wrong type and it will print the list of supported types: 
+  <pre>
+  ./afterburner wv -t WHICH
+  </pre>
+
 How aferburner works:
 ---------------------
-- PC code reads and parses .jed files, then produces a binary which
-  can be then uploaded to Arduino via serial port. By default
-  /dev/ttyUSB0 is used, but that can be changed to any other device
-  by passing the following option to afterburner:
+- PC code reads and parses .jed files, then uploades the data to Arduino via serial port. By default /dev/ttyUSB0 is used, but that can be changed to any other serial port device by passing the following option to afterburner:
   <pre>
   -d /my/serial/device
   </pre>
 
 - PC code of afterburner communicates with Arduino UNO's afterburner
-  sketch by a trivial text based protocol. You can also connect directly
-  to Arduino UNO via serial terminal of your choice and issue some basic
-  commands manually.
+  sketch by a trivial text based protocol to run certain commands (like erase, read, write, upload data etc.). If you are curious, you can also connect directly to Arduino UNO via serial terminal and issue some basic commands manually.
 
 - Arduino UNO's afterburner sketch does 2 things: 
-  * parses commands and data sent from the PC afterburner code
-  * toggles the GPIO pins and drives programming of the GAL content
+  * parses commands and data sent from the PC afterburner app
+  * toggles the GPIO pins and drives programming of the GAL contents
 
 - more information about GAL chips and their programming can be found here:
 
@@ -132,75 +156,40 @@ How aferburner works:
 
 PCB:
 ---------------
-If you decide to use a PCB rather than making breadboard or protoboard
-build, then you have several options. 
-- Etch your own PCB. 
-  * The etching design is stored in 'pcb' directory, use
-  afterburner_etch_1200dpi_bot.png file to transfer the design to the
-  copper board.
-  * It's a single sided design, but you'll have to patch 3
-  traces. See the the combined image where the patch traces are highlighted
-  in blue color.  Two short patch wires are located near the top left corner,
-  the last one, slightly longer, is located underneath the MT3608 module.
-  * Resistors are not through hole but smt 1206 package to reduce drilling.
-  * The copper is on the bottom side, to make it easy to solder the socket
-  and capacitors. However, that makes it a bit complicated to solder the Arduino
-  pins. What needs to be done is to push the pins from the top part of the board 
-  (side without copper)  so that the metal bits are flush with the plastic which keeps
-  the pins together (plastic on the top), then solder the pins on the bottom side. You
-  may then take off the plastic from the top side and slide it in from the bottom side.
-  * You may need to flip the image before the transfer to the copper board, because
-  the copper is on the bottom side.
+The new design no longer has an etched PCB design available. The most oconenient way to get the PCB is to order it online on jlcpcb.com, pcbway.com, allpcb.com or other online services. Use the zip archive stored in the gerbers directory and upload it to the manufacturer's site of your choice.
+  Upload the afterburner_fab_3_0.zip and set the following parameters (if required). 
   
-- Order it online on jlcpcb.com, pcbway.com, allpcb.com etc. Use one of the zip archive
-  stored in the gerbers directory and upload it to the manufacturesr's site of your choice.
-  Use fab_1_2.zip for smaller PCB design that allows to program 16V8 devices only. 
-  Use fab_2_1.zip  for a bigger design that allows to program 16V8 and 22V10 devices.
-  The price difference should be minimal as both designs fit within 100x100 mm area.
-  
-  * Dimensions of the fab_1_1 board is 55x53 mm
-  * Dimensions of the fab_2_0 board is 57*72 mm
+  * Dimensions are 79x54 mm
   * 2 layer board
   * PCB Thickness: 1.6, or 1.2
   * Copper Weight: 1
   * The rest of the options can stay default or choose whatever you fancy (colors, finish etc.)
   
-  
+Soldering steps:
+----------------
+  * check which type of components you have, you can mix and match SMT and through hole components as most of the footprints are doubled to accomodate different parts.
+  * **Important:** C5, C6 and C7 are VPP decoupling capacitors and must be rated to **at least 25V!** You can use 50V rated caps, but do not use 16V or lower ratings.
+  * Even thoug C5 (10uF, 25V) offers a SMT footprint, I used a through hole part because it reduces the VPP swings better than my SMT cap.
+  * start with the smallest parst, solder the resistors and small capacitors.
+  * solder the two ICS: U1 (digital pot) and U2 (shift register)
+  * solder the LED, the switch and the big capacitors
+  * **special step** solder a thin wire between the MT3608 module and the PCB hole marked as POT. See the image bellow.
+  * solder the MT3608 module - the POT connection wire must be already soldered!
+  * calibrate the board. See calibration steps in the Setup section.
+  * solder the ZIF socket
+   ![POT wire image.](https://github.com/ole00/afterburner/raw/master/img/mt3608_wire.jpg "POT wire")
 
 Troubleshooting:
 ----------------
 - it does not work!
 
-  * double check the schematics and the connection between Arduino UNO and
-  the GAL chip.
+  * double check the solder joints on the PCB, ensure they are soldered. Especially SMT soldering when done manually can accidentally miss some of the pads. 
   
   * ensure the GAL chip is inserted to the IC socket the right way (check 
-  the pin 1 location)
+  the pin 1 location). Note that the 16V8 GALs have to be inserted close to the ZIF lever - see the title image above.
   
-  * ensure the VPP is set correctly on the MT3608 module. If unsure which
-  voltage to use then try individual voltages one by one:
-  10V, 11V, 12V, 13V, 14V, 15V. Do not go beyond 15V as you may damage the 
-  GAL chip.
-  
-  * measure the VPP only when the GAL chip is physically DISCONNECTED (taken
-  out of the afterburner socket). Some brands of the GAL chip (Atmel) - when
-  connected - iternally lower the voltage on the Edit (VPP) pin (voltage divider?)
-  and such voltage reading is misleading.
-  
-  * use an external power supply for your Arduino UNO, powering
-  just via serial USB cable may not be sufficient for driving the GAL chip and the
-  voltage up-converter
-
-- I've set the VPP voltage to 14 V, put the chip into the Ziff socket, turned on
-  the power switch then run Afterburner with the 'i' command. My Arduino made a tiny
-  short buzzing noise and then reset itself. What went wrong ?
-  
-  * most likely the VPP is set too high and the IC does not like that, it pulls the VPP
-   pin down several times causing the Arduino to reset on brown out. Solution: reduce the
-   VPP voltage by turning the pot clockwise on the MT3608 module.
-  
-  * this happens for example on ATF devices when VPP is set to 12V. ATF should use VPP
-    set to 10V when programmed by Afterburner.
+  * ensure the VPP is set correctly on the MT3608 module. Ensure you've gone through all the calibration steps (commands: 's' then 'b' and 'm') and calibration is correct. See the Setup section.
+    
 
 - afterburner reports it can not connect to /dev/ttyUSB0, permission denied
 
@@ -218,12 +207,14 @@ Troubleshooting:
   ls -alF /dev/ttyUSB*
   </pre>
 
-- my MT3608 module does not have EN pin
+- I want to program ATF16V8C, but it is not listed as supported by the PC app.
+  * use parameter '-t ATF16V8B'. Afterburner finds out it is a C version.
 
-  * that's unfortanetly a common problem. You have to mod the module as follows:
+- I forgot to solder the POT wire to the MT3608 module. The MT3608 is already soldered and I can't reach underneath the module to solder the wire.
 
-  * cut the PCB trace between pin 4 & 5 of the MT3608 chip. Verify the trace
-  is cut by continuity probe (no beep is audible) between pins 4 & 5.
+  * you can either desolder the module by using soldering wick (to remove all solder on the connection pins on the MT3608 module). Then use a low temperature melting solder (like Quick Chip or similar) on the connection joints to loosen up the module. Clean the residues of the low melting solder with soldering wick. Then solder the POT wire and solder the chip back on the PCB. The drawback of this method is that if you use excessive heat during desoldering you can damage the MT3608 module (I've done that). If the module is damaged, it will prouduce a magic smoke next time the board is turned on. If that happens, desolder the module, use a new module (don't forget to solder the POT wire) and solder it on the board.
+
+  * Another option is to connect the POT wire directly to the MT3608 IC's Feedback (FB) pin 3. This is quite delicate as the IC pins are quite small. Before before connecting the power, **ensure the pin 2 and pin 3 are not bridged!**
 
   <pre>
   |  Blue Potentiometer     |
@@ -234,33 +225,22 @@ Troubleshooting:
   |  |______________|
   |
   |   3  2  1
-  |   |  |  |
+  |-> |  |  |         MT3608 MODULE
   |  +-------+
   |  |       |
   |  |4  5   |
   |  +-------+
-  |   |X |  |
+  |   |  |  |
   |
   |<-- left long edge of the module
   </pre> 
 
-  * X marks the spot - here make the vertical cut. Do not cut the pins
-  itself! Just cut the trace between the pins, which is only barely visible
-  without magnification.
-  
-  * solder a thin keynar wire to pin 4 which is your ENable pin.
-  
-  ![See the MT3608 image in img directory for more details.](https://github.com/ole00/afterburner/raw/master/img/mt3608_mod.jpg "EN pin mod")
-    
-
-  * Once that is done, toggling the EN pin will change the output voltage
-  of the module between 5V (actually slightly less than that) and the
-  voltage set by the potentiometer (10V and more).
+  * The small arrow (->) in the above diagram marks the pin where the wire has to be soldered.
 
 - my MT3608 module does not seem to work - turning the pot does nothing
 
   * The pot needs to be turned at least 10 revolutions counter-clockwise
-  to do anything useful. Keep trying.
+  to do anything useful. Keep turning.
 
 - where to get the MT3608 module ?
 
@@ -270,7 +250,10 @@ Troubleshooting:
   * the same way as on Linux: compile the source code
   * OR use pre-compiled afterburner binaries located in 'releases' directory
   * then run afterburner in terminal (use 'cmd' on WinXX) as described above
-  * ensure your serial device name is passed via '-d' option. For example -d COM5 on WinXX 
+  * ensure your serial device name is passed via '-d' option. For example -d COM5 on WinXX
+
+- I have the older Afterburner PCB design, can I use the new PC software and Arduino sketch?
+  * Yes, both programs are compatible with the old Aftterburner boards (1.X and 2.X).
 
 - what are the .jed files and how to produce them
   
@@ -294,4 +277,4 @@ Other GAL related links:
   
 - GAL Asm : https://github.com/dwery/galasm
  
-- CUPL Reference: https://web.archive.org/web/20200215065020/http://ee.sharif.edu/~logic_circuits_t/readings/CUPL_Reference.pdf
+- CUPL Reference: http://ee.sharif.edu/~logic_circuits_t/readings/CUPL_Reference.pdf
