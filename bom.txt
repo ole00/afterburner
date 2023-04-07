@@ -1,35 +1,27 @@
-BOM for Afterburner 1.3
-========================
-* Resistor 4k7 through hole 0.25W, 5% or better tolerance  - 7x 
-* (R4) Resistor 10k through hole 0.25W, 5% or better tolrance - 1x
-* Capacitor electrolytic 10uF, 20V to 35 V, 20% tolerance or better (through hole) - 1x
-* Capacitor ceramic 100nF (through hole or smt) - 1x
-* 20 pin narrow ZIF socket OR 20 pin DIP IC socket 2.56 mm pin spacing - 1x
-* 5mm LED  (through hole) - 1x
-* MT3608 module - 1x
-* 2 Position 4mm SPDT 1P2T 3 Pin PCB Panel Vertical Slide Switch (0.1" pin spacing) - 1x
-* 40 Pin Male Single Row Strip 2.54mm Pin Header Connector 0.1" Straight - 1x
-* Arduino UNO
-
-*Optionally : Mini Size Led Panel Voltage Meter 3-Digital Lcd Display - 1x
-
-
-BOM for Afterburner 2.2
+BOM for Afterburner 3.0
 =======================
-* Resistor 4k7 through hole 0.25W, 5% or better tolerance  - 12x
-* (R4) Resistor 10k through hole 0.25W, 5% or better tolrance - 1x
-* Capacitor electrolytic 10uF, 20V to 35V, 20% tolerance or better (through hole) - 1x
-* Capacitor ceramic 100nF (through hole or smt) - 2x
-* 20 pin narrow ZIF socket OR 20 pin DIP IC socket 0.1" pin spacing - 1x
+* (R1 - 5x) Resistor 4k7 (TH or SMT 0805) 0.25W, 5% or better tolerance  - 5x
+* (R8, R4) Resistor 10k (TH or SMT 0805) 1% or better tolrance - 2x
+* (R5) Resistor 100k (TH or SMT 0805) 1% or better tolrance - 1x
+* (R6) Resistor 20k (TH or SMT 0805) 1% or better tolrance - 1x
+* (R7, R3) Resistor 3k3 (TH or SMT 0805) 1% or better tolrance - 2x
+* (R9) Cermet trimmer (TH Suntan TSR-3362P-202R 2k) - 1x
+
+* (C1, C5) Capacitor electrolytic 10uF, 25V or 50V, 20% tolerance or better (through hole) - 2x
+* (C4) Capacitor electrolytic 220uF, 16V or higher, 20% tolerance or better (through hole) - 1x
+* (C2, C3, C8, C9) Capacitor ceramic 100nF 10V or higher (TH or SMT 0805) - 4x
+* (C6) Capacitor ceramic 100nF 25V or higher (TH or SMT 0805) - 1x
+* (C7) Capacitor ceramic 2nF 25V or higher (TH or SMT 0805) - 1x
+
+* (D1) 5mm LED (TH or SMT 0805) - 1x
+* (Q1) N-MOSFET (SMT: BSS138P - SOT23 or TH: BS170G - TO92, or similar)  - 1x
+
+* (U1) MCP4131-103 (DIP or SOIC) Digital potentiometer 10k - 1x
+* (U2) 74HC595 (DIP or SOIC) Shift register - 1x
+
 * 24 pin narrow ZIF socket OR 24 pin DIP IC socket 0.1" pin spacing - 1x
-* 5mm LED  (through hole) - 1x
 * MT3608 module - 1x
-* 2 Position 4mm SPDT 1P2T 3 Pin PCB Panel Vertical Slide Switch (0.1" pin spacing) - 1x
+* Square 7x7x12mm 6 Pin DPDT Mini Push Button Self-locking Multimeter Switch (YTSPS-22E70L, 2mm pin spacing) - 1x
 * 40 Pin Male Single Row Strip 2.54mm Pin Header Connector 0.1" Straight - 1x
 * Arduino UNO
-
-*Optionally : Mini Size Led Panel Voltage Meter 3-Digital Lcd Display - 1x
- 
-
-
 
