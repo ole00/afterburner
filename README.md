@@ -1,6 +1,6 @@
 # afterburner
 GAL chip programmer for Arduino
-![Board image](https://github.com/ole00/afterburner/raw/master/img/afterburner_small.jpg "afterburner")
+![Board image](https://github.com/ole00/afterburner/raw/version_4_legacy/img/afterburner_small.jpg "afterburner")
 
 This is a GAL IC programmer software that allows to program GAL IC chips
 from various manfucaturers. It is based on work of several other people:
@@ -26,7 +26,7 @@ Supported GAL chips:
 * Lattice GAL16V8A, GAL16V8B, GAL16V8D
 * Lattice GAL22V10B
 * National GAL16V8
-* Lattice GAL20V8B via [adapter board](https://github.com/ole00/afterburner/raw/master/img/gal20v8_adapter.png)
+* Lattice GAL20V8B via [adapter board](https://github.com/ole00/afterburner/raw/version_4_legacy/img/gal20v8_adapter.png)
 
 **Update 25/03/2023:** Added support securing the GAL contents. Use '-sec' parameter during write or verify to protect the GAL.
  Added support for Atmel's Power-Down feature on ATF16V8C and ATF22V10C GALs. The Power-Down is enabled or diabled depending
@@ -250,7 +250,7 @@ Troubleshooting:
   
   * solder a thin keynar wire to pin 4 which is your ENable pin.
   
-  ![See the MT3608 image in img directory for more details.](https://github.com/ole00/afterburner/raw/master/img/mt3608_mod.jpg "EN pin mod")
+  ![See the MT3608 image in img directory for more details.](https://github.com/ole00/afterburner/raw/version_4_legacy/img/mt3608_mod.jpg "EN pin mod")
     
 
   * Once that is done, toggling the EN pin will change the output voltage
