@@ -84,7 +84,7 @@ Setup:
   <pre>
   ./afterburner b -co X
   </pre>
-  Where X is a number form -20 (represening -0.2V offset) to value 25 (representing +0.25V offset). If your multimeter reads 12.1V and the reading on the text console shows 12.00V you need to set positive offset of +0.1V ('-co 10'). If your multimeter reads 11.85V and the reading on the text console shows 12.05V you need to set negative offset of -0.2V ('-co -20'). After setting the calibration offset, the readings on your multimeter should read the same values as the text on the console (+/- 0.05V). The calibration is then done. If (when specifying negative offset value) the calibration fails, turn the MT3608 Pot about 10-15 degrees counter-clockwise (to rise the VPP a tiny bit) and re-deo the Calibration step 4.
+  Where X is a number from -20 (represening -0.2V offset) to value 25 (representing +0.25V offset). If your multimeter reads 12.1V and the reading on the text console shows 12.00V you need to set positive offset of +0.1V ('-co 10'). If your multimeter reads 11.85V and the reading on the text console shows 12.05V you need to set negative offset of -0.2V ('-co -20'). After setting the calibration offset, the readings on your multimeter should read the same values as the text on the console (+/- 0.05V). The calibration is then done. If (when specifying negative offset value) the calibration fails, turn the MT3608 Pot about 10-15 degrees counter-clockwise (to rise the VPP a tiny bit) and re-do the Calibration step 4.
 
   * Note that if you use your calibrated Afterburner board with a different Arduino (made by a different company or slightly different design), you may need to re-do the calibration.
 
@@ -156,7 +156,7 @@ How aferburner works:
 
 PCB:
 ---------------
-The new design no longer has an etched PCB design available. The most oconenient way to get the PCB is to order it online on jlcpcb.com, pcbway.com, allpcb.com or other online services. Use the zip archive stored in the gerbers directory and upload it to the manufacturer's site of your choice.
+The new design no longer has an etched PCB design available. The most convenient way to get the PCB is to order it online on jlcpcb.com, pcbway.com, allpcb.com or other online services. Use the zip archive stored in the gerbers directory and upload it to the manufacturer's site of your choice.
   Upload the afterburner_fab_3_0.zip and set the following parameters (if required). 
   
   * Dimensions are 79x54 mm
@@ -169,7 +169,7 @@ Soldering steps:
 ----------------
   * check which type of components you have, you can mix and match SMT and through hole components as most of the footprints are doubled to accomodate different parts.
   * **Important:** C5, C6 and C7 are VPP decoupling capacitors and must be rated to **at least 25V!** You can use 50V rated caps, but do not use 16V or lower ratings.
-  * Even thoug C5 (10uF, 25V) offers a SMT footprint, I used a through hole part because it reduces the VPP swings better than my SMT cap.
+  * Even though C5 (10uF, 25V) offers a SMT footprint, I used a through hole part because it reduces the VPP swings better than my SMT cap.
   * start with the smallest parts, solder the resistors and small capacitors.
   * solder the two ICS: U1 (digital pot) and U2 (shift register)
   * solder the LED, the switch and the big capacitors
