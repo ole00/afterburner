@@ -24,7 +24,7 @@ Supported GAL chips:
 
 * Atmel ATF16V8B, ATF16V8BQL, ATF16V8C, ATF22V10B, ATF22V10CQZ 
 * Lattice GAL16V8A, GAL16V8B, GAL16V8D
-* Lattice GAL22V10B
+* Lattice GAL22V10B, GAL22V10D
 * National GAL16V8
 * Lattice GAL20V8B (no adapter needed)
 
