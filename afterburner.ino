@@ -1155,7 +1155,7 @@ void printPes(char type) {
   switch (type) {
     case GAL16V8: Serial.print(F("GAL16V8 ")); break;
     case GAL20V8: Serial.print(F("GAL20V8 ")); break;
-    case GAL22V10: Serial.print(F("GAL20V10 ")); break;
+    case GAL22V10: Serial.print(F("GAL22V10 ")); break;
     case ATF16V8B: Serial.print(0 == (flagBits & FLAG_BIT_ATF16V8C) ? F("ATF16V8B "): F("ATF16V8C ")); break;
     case ATF22V10B: Serial.print(F("ATF22V10B ")); break;
     case ATF22V10C: Serial.print(F("ATF22V10C ")); break;
