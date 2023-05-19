@@ -17,6 +17,7 @@ BOM for Afterburner 3.0
 * (Q1) N-MOSFET (SMT: BSS138P - SOT23 or TH: BS170G - TO92, or similar)  - 1x
 
 * (U1) MCP4131-103 (DIP or SOIC) Digital potentiometer 10k - 1x
+       Alternatively MCP4151-103 can be used as well.
 * (U2) 74HC595 (DIP or SOIC) Shift register - 1x
 
 * 24 pin narrow ZIF socket OR 24 pin DIP IC socket 0.1" pin spacing - 1x
