@@ -1,4 +1,5 @@
-//MCP4131 digital pot - bitbanged control
+//MCP4131 digital pot (bitbanged control) for Afterburner GAL project.
+//  * compatible with MCP4151 (resolution of the wiper is halved to match MCP4131)
 
 //set default pins
 #ifndef POT_CS
@@ -26,19 +27,32 @@
 #define ADDR_WIPER1 1
 #define ADDR_TCON  4
 #define ADDR_STAT  5
+#define ADDR_INCREMENT 100
 #define CMD_READ  (0b11 << 10)
+#define CMD_INCREMENT (0b01 << 2)
 
 #define mcp4131_disableWiper() mcp4131_write(ADDR_TCON, 0b111111101)
 #define mcp4131_enableWiper() mcp4131_write(ADDR_TCON, 0b111111111)
 #define mcp4131_read(A)  mcp4131_reg((A),0,1)
 #define mcp4131_write(A,V)  mcp4131_reg((A),(V),0)
 
+static uint8_t mcp4151_detected;
+
 // read or write the mcp4131 register
 static uint16_t  mcp4131_reg(uint8_t address, uint16_t value, uint8_t read_reg) {
-    int8_t i;
+    int8_t i = 15; //16 bit command
     uint16_t r = address;
 
     r <<= 12;
+
+    if (mcp4151_detected && address == ADDR_WIPER) {
+        value <<= 1; //multiply the wiper value by 2
+    }
+
+    if (address == ADDR_INCREMENT) {
+        r = CMD_INCREMENT;
+        i = 7; // 8 bit command
+    } else
     if (read_reg) {
         r |= CMD_READ; 
     } else {
@@ -52,7 +66,6 @@ static uint16_t  mcp4131_reg(uint8_t address, uint16_t value, uint8_t read_reg) 
     //activate IC
     digitalWrite(POT_CS, 0);
 
-    i = 15;   
     while (i >= 0) {
         //write address and command (bits 15 to 10)       
         if ((!read_reg) || i > 9) {
@@ -78,6 +91,10 @@ static uint16_t  mcp4131_reg(uint8_t address, uint16_t value, uint8_t read_reg) 
         pinMode(POT_DAT, OUTPUT);
     }
 
+    if (mcp4151_detected && address == ADDR_WIPER && read_reg) {
+        value >>= 1; //divide the wiper value by 2
+    }
+
     //disable IC
     digitalWrite(POT_CS, 1);
     return r & 0x1FF; //clamp value to 9 bits
@@ -95,6 +112,9 @@ static void mcp4131_init(void) {
 // returns 1 if POT is detected, 0 otherwise
 static uint8_t mcp4131_detect(void) {
     uint16_t r;
+
+    mcp4151_detected = 0;
+
     mcp4131_disableWiper();
 
     //note checking is done while the wiper is disabled - no resistance is applied
@@ -108,6 +128,28 @@ static uint8_t mcp4131_detect(void) {
     if (r != 0b101) {
         return 0; 
     }
+
+    //sanity check whether the incrementing works
+    mcp4131_write(ADDR_WIPER, 127); 
+    mcp4131_write(ADDR_INCREMENT, 0); 
+    r = mcp4131_read(ADDR_WIPER);
+    if (r != 128) {
+        return 0;
+    }
+    //detect MCP4151 by incrementing again - MCP4131 clamps the value to 128, MCP4151 increments to 129
+    mcp4131_write(ADDR_INCREMENT, 0);
+    r = mcp4131_read(ADDR_WIPER);
+#if 0    
+    Serial.print(F("MCP41541 detect: "));
+    Serial.println(r == 129 ? 1 : 0, DEC);
+#endif
+    if (r == 129) {
+        mcp4151_detected = 1;
+    } else 
+    if (r != 128) {
+        return 0; //error - the value should be clamped to 128
+    }
+
     mcp4131_write(ADDR_WIPER, POT_DEFAULT_VALUE);
 #if POT_WIPER_ENABLED
     mcp4131_enableWiper();

@@ -34,7 +34,7 @@
                                                                        */
 
 
-#define VERSION "0.5.0"
+#define VERSION "0.5.2"
 
 //#define DEBUG_PES
 //#define DEBUG_VERIFY
