@@ -179,6 +179,13 @@ Soldering steps:
   * solder the ZIF socket
    ![POT wire image.](https://github.com/ole00/afterburner/raw/master/img/mt3608_wire.jpg "POT wire")
 
+MT3608 modules:
+---------------
+  * There is a report some of the MT3608 modules / clones are not compatible with Afterburner. Thanks @meup for the information.
+  * The incompatible MT3608 'clone' causes calibration issue and basically breaks the variable voltage functionality.
+  * Bellow is the image of the good and bad MT3608 modules. If you happen to have the incompatible module, see issue #31 for possible solution.
+  ![mt3608_modules](https://github.com/ole00/afterburner/raw/master/img/mt3608_modules.jpg "mt3608_modules")
+
 Troubleshooting:
 ----------------
 - it does not work!
@@ -252,6 +259,7 @@ Troubleshooting:
 - where to get the MT3608 module ?
 
   * usual places: ebay, aliexpress
+  * **IMPORTANT - check the module compatibility - there are some incompatible modules (see above)**
 
 - how to run afterburner on Win32, Win64 or MacOSX ?
   * the same way as on Linux: compile the source code
