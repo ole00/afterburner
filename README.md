@@ -3,7 +3,7 @@ GAL chip programmer for Arduino
 ![Board image](https://github.com/ole00/afterburner/raw/master/img/afterburner_new_design.jpg "afterburner")
 
 This is a GAL IC programmer software that allows to program GAL IC chips
-from various manfucaturers. It is based on work of several other people:
+from various manufcaturers. It is based on work of several other people:
 
  Bruce Abbott: 
      https://web.archive.org/web/20220121030038/http://www.bhabbott.net.nz/atfblast.html
@@ -18,7 +18,7 @@ who did the most of the hard work of deciphering and publishing the programming
 protocol of these chips. Some of their early programs were Windows based and relied on
 presence of parallel port (LPT). Afterburner was written for Linux OS 
 (also works on Win32/64, Mac OSX64), and requires serial connection to
-Arduio UNO, which does the programming of the GAL chip.
+Arduino UNO, which does the programming of the GAL chip.
 
 Supported GAL chips:
 
@@ -39,11 +39,11 @@ The new design features:
 * single 24 pin ZIF socket for 16V8, 20V8 and 22V10 GALs. The adapter for GAL20V8 is no longer needed.
 * simpler connection to MT3608 module (no need to modify the module)
 * both Through Hole and SMT footprints present on a single PCB. This allows
-  to mix & match SMT and TH parts based on your skills and availability.
+  to mix & match SMT and TH parts based on your skills and components availability.
 
 Drawbacks compared to the old Afterburner design:
 
-* more parts required, most notably the digial pot MCP4131 and a shift register 74hc595
+* more parts required, most notably the digital pot MCP4131 and a shift register 74hc595
 * a few more steps during initial VPP calibration. But once the calibration is done it does not need to be changed for different GAL chips.
 * the PCB design for etched  board is no longer provided because of the higher complexity. Please use a PCB fabrication service or use the older Afterburner design (see above).
 
@@ -62,7 +62,7 @@ Setup:
 
   * **Calibration step 1)** Turn the small potentiometer (R8) on the Afterburner to the middle position. This pot acts as compensation resistor for the digital pot.
 
-  * **Calibration step 2)** Set the progamming voltage (VPP) to 16.5V: Check the programming voltage (VPP) without the GAL chip being inserted / connected to Afterburner. Test the voltage on MT3608 module VOUT- and VOUT+ pins while running the following command:
+  * **Calibration step 2)** Set the programming voltage (VPP) to 16.5V: Check the programming voltage (VPP) without the GAL chip being inserted / connected to Afterburner. Test the voltage on MT3608 module VOUT- and VOUT+ pins while running the following command:
   <pre>
   ./afterburner s
   </pre>
@@ -74,31 +74,31 @@ Setup:
   ./afterburner b
   </pre>
   You will see several messages on the console. Check the one with '*Index for VPP 900 is'. This is the lowest supported VPP of 9V and the index should ideally be between 15 and 35.
-  If you see a different index value (lower or higher) move the Afterburner's compensation pot (R8) either a bit lower or higher (depending on the VPP 900 index value) and go back to Calibration step 2). Repeat the Calibration steps 2) and 3) until you find the good value on VPP 900 index. If everyting goes OK the last VPP index (VPP 1650) should be 128.
+  If you see a different index value (lower or higher) move the Afterburner's compensation pot (R8) either a bit lower or higher (depending on the VPP 900 index value) and go back to Calibration step 2). Repeat the Calibration steps 2) and 3) until you find the good value on VPP 900 index. If everything goes OK the last VPP index (VPP 1650) should be 128.
 
-  * **Calibration step 4)** Measure the actual VPP to verify the value read by Arduino is correct. Run the following command while mesuring the VPP on your multimeter:
+  * **Calibration step 4)** Measure the actual VPP to verify the value read by Arduino is correct. Run the following command while measuring the VPP on your multimeter:
   <pre>
   ./afterburner m
   </pre>
-  Afterburner will set the VPP to several values (5V, 9V, 12V, 14V, 16V) and print the voltage readings as read by Arduinos's ADC. These values should match with readings from your multimeter (except for the 5V which is OK if it is a value from 4.2V - 5.0 V). Important are the values of the higher voltages. If they are off by more than +/-0.05V then you can set the calibration offset by runnig Calibration step 3) with an extra parameter '-co X':
+  Afterburner will set the VPP to several values (5V, 9V, 12V, 14V, 16V) and print the voltage readings as read by Arduinos's ADC. These values should match with readings from your multimeter (except for the 5V which is OK if it is a value from 4.2V - 5.0 V). Important are the values of the higher voltages. If they are off by more than +/-0.05V then you can set the calibration offset by running Calibration step 3) with an extra parameter '-co X':
   <pre>
   ./afterburner b -co X
   </pre>
-  Where X is a number from -20 (represening -0.2V offset) to value 25 (representing +0.25V offset). If your multimeter reads 12.1V and the reading on the text console shows 12.00V you need to set positive offset of +0.1V ('-co 10'). If your multimeter reads 11.85V and the reading on the text console shows 12.05V you need to set negative offset of -0.2V ('-co -20'). After setting the calibration offset, the readings on your multimeter should read the same values as the text on the console (+/- 0.05V). The calibration is then done. If (when specifying negative offset value) the calibration fails, turn the MT3608 Pot about 10-15 degrees counter-clockwise (to rise the VPP a tiny bit) and re-do the Calibration step 4.
+  Where X is a number from -20 (representing -0.2V offset) to value 25 (representing +0.25V offset). If your multimeter reads 12.1V and the reading on the text console shows 12.00V you need to set positive offset of +0.1V ('-co 10'). If your multimeter reads 11.85V and the reading on the text console shows 12.05V you need to set negative offset of -0.2V ('-co -20'). After setting the calibration offset, the readings on your multimeter should read the same values as the text on the console (+/- 0.05V). The calibration is then done. If (when specifying negative offset value) the calibration fails, turn the MT3608 Pot about 10-15 degrees counter-clockwise (to rise the VPP a tiny bit) and re-do the Calibration step 4.
 
   * Note that if you use your calibrated Afterburner board with a different Arduino (made by a different company or slightly different design), you may need to re-do the calibration.
 
   
-* With the GAL chip inserted and power button pressed (or in ON position) check the chip identification by runnig the following command:
+* With the GAL chip inserted and power button pressed (or in ON position) check the chip identification by running the following command:
   <pre>
   ./afterburner i -t [GAL_type]
   </pre>
 
-  If you get some meaningfull GAL chip identification like:
+  If you get some meaningful GAL chip identification like:
   <pre>
   PES info: Atmel ATF16V8B  VPP=10.0 Timing: prog=10 erase=25
   </pre>
-  then all should be well and you can try to  erase the chip and then   programm it to contain your .jed file.
+  then all should be well and you can try to  erase the chip and then program it to contain your .jed file.
 
   If you get an unknown chip identification like:
   <pre>
@@ -135,7 +135,7 @@ Setup:
 
 How aferburner works:
 ---------------------
-- PC code reads and parses .jed files, then uploades the data to Arduino via serial port. By default /dev/ttyUSB0 is used, but that can be changed to any other serial port device by passing the following option to afterburner:
+- PC code reads and parses .jed files, then uploads the data to Arduino via serial port. By default /dev/ttyUSB0 is used, but that can be changed to any other serial port device by passing the following option to afterburner:
   <pre>
   -d /my/serial/device
   </pre>
@@ -167,7 +167,7 @@ The new design no longer has an etched PCB design available. The most convenient
   
 Soldering steps:
 ----------------
-  * check which type of components you have, you can mix and match SMT and through hole components as most of the footprints are doubled to accomodate different parts.
+  * check which type of components you have, you can mix and match SMT and through hole components as most of the footprints are doubled to accommodate different parts.
   * **Important:** C5, C6 and C7 are VPP decoupling capacitors and must be rated to **at least 25V!** You can use 50V rated caps, but do not use 16V or lower ratings.
   * Even though C5 (10uF, 25V) offers a SMT footprint, I used a through hole part because it reduces the VPP swings better than my SMT cap.
   * start with the smallest parts, solder the resistors and small capacitors.
@@ -198,7 +198,7 @@ Troubleshooting:
   * ensure the VPP is set correctly on the MT3608 module. Ensure you've gone through all the calibration steps (commands: 's' then 'b' and 'm') and calibration is correct. See the Setup section.
 
 - what is the Push switch used for? When do I use it?
-  * Normally, the button should be in the Off position (LED is not lit). Also when insering
+  * Normally, the button should be in the Off position (LED is not lit). Also when inserting
     the GAL chip or when removing the GAL chip from the ZIF socket the switch should be Off.
   * When using Afterburner's PC app with commands to Identify (i), Read or Verify (r, v) or 
     Write (w) the switch has to be On (LED is lit).
@@ -207,10 +207,10 @@ Troubleshooting:
 
 - afterburner reports it can not connect to /dev/ttyUSB0, permission denied
 
-  * ensure your user is member of the of the dialup group or alernatively run
+  * ensure your user is member of the of the dialup group or alternatively run
   afterburner  as superuser (use: sudo ./afterburner ...)
 
-  * ensure no other programm on your PC uses that serial port. Close putty, minicom or other
+  * ensure no other program on your PC uses that serial port. Close putty, minicom or other
   terminals you may be running.
 
 - afterburner fails to connect to /dev/ttyUSB0
@@ -226,7 +226,7 @@ Troubleshooting:
 
 - I forgot to solder the POT wire to the MT3608 module. The MT3608 is already soldered and I can't reach underneath the module to solder the wire.
 
-  * you can either desolder the module by using soldering wick (to remove all solder on the connection pins on the MT3608 module). Then use a low temperature melting solder (like Quick Chip or similar) on the connection joints to loosen up the module. Clean the residues of the low melting solder with soldering wick. Then solder the POT wire and solder the chip back on the PCB. The drawback of this method is that if you use excessive heat during desoldering you can damage the MT3608 module (I've done that). If the module is damaged, it will prouduce a magic smoke next time the board is turned on. If that happens, desolder the module, use a new module (don't forget to solder the POT wire) and solder it on the board.
+  * you can either desolder the module by using soldering wick (to remove all solder on the connection pins on the MT3608 module). Then use a low temperature melting solder (like Quick Chip or similar) on the connection joints to loosen up the module. Clean the residues of the low melting solder with soldering wick. Then solder the POT wire and solder the chip back on the PCB. The drawback of this method is that if you use excessive heat during desoldering you can damage the MT3608 module (I've done that). If the module is damaged, it will produce a magic smoke next time the board is turned on. If that happens, desolder the module, use a new module (don't forget to solder the POT wire) and solder it on the board.
 
   * Another option is to connect the POT wire directly to the MT3608 IC's Feedback (FB) pin 3. This is quite delicate as the IC pins are quite small. Before connecting the power, **ensure the pin 2 and pin 3 are not bridged!**
 
@@ -268,7 +268,7 @@ Troubleshooting:
   * ensure your serial device name is passed via '-d' option. For example -d COM5 on WinXX
 
 - I have the older Afterburner PCB design, can I use the new PC software and Arduino sketch?
-  * Yes, both programs are compatible with the old Aftterburner boards (1.X and 2.X).
+  * Yes, both programs are compatible with the old Afterburner boards (1.X and 2.X).
 
 - what are the .jed files and how to produce them
   
