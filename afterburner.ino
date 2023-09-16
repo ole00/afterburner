@@ -1253,7 +1253,7 @@ static void readGalFuseMap(const unsigned char* cfgArray, char useDelay, char do
   if (doDiscardBits) {
     discardBits(doDiscardBits);
   }
-  for(bit = 0; bit < 64; bit++) {
+  for(bit = 0; bit < galinfo[gal].uesbytes * 8; bit++) {
     if (receiveBit()) {
       addr = galinfo[gal].uesfuse;
       addr += bit;
@@ -1467,10 +1467,15 @@ static void readOrVerifyGal(char verify)
     case ATF22V10C:
       //read with delay 1 ms, discard 68 cfg bits on ATFxx
       bool isGAL = (gal == GAL20XV10 || gal == GAL22V10);
-      if (verify) {
-        i = verifyGalFuseMap(cfgV10, 1, isGAL ? 0 : 68);
+      if (gal == GAL20XV10) {
+        cfgArray = (unsigned char*) cfgXV10;
       } else {
-        readGalFuseMap(cfgV10, 1, isGAL ? 0 : 68);
+        cfgArray = (unsigned char*) cfgV10;
+      }
+      if (verify) {
+        i = verifyGalFuseMap(cfgArray, 1, isGAL ? 0 : 68);
+      } else {
+        readGalFuseMap(cfgArray, 1, isGAL ? 0 : 68);
       } 
       break;
   }
@@ -1554,7 +1559,7 @@ static void writeGalFuseMapV10(const unsigned char* cfgArray, char fillUesStart,
   if (fillUesStart) {
     sendBits(68, 1);
   }
-  for (bit = 0; bit < 64; bit++) {
+  for (bit = 0; bit < galinfo[gal].uesbytes * 8; bit++) {
     addr = galinfo[gal].uesfuse;
     addr += bit;
     sendBit(getFuseBit(addr));
@@ -1616,8 +1621,13 @@ static void writeGal()
     case GAL22V10:
     case ATF22V10B:
     case ATF22V10C:
-        bool isGAL = (gal == GAL20XV10 || gal == GAL22V10);
-        writeGalFuseMapV10(cfgV10, isGAL ? 0 : 1, isGAL ? 1 : 0);
+        bool isGAL = (gal == GAL22V10);
+        if (gal == GAL20XV10) {
+          cfgArray = (unsigned char*) cfgXV10;
+        } else {
+          cfgArray = (unsigned char*) cfgV10;
+        }
+        writeGalFuseMapV10(cfgArray, isGAL ? 0 : 1, (gal == ATF22V10C) ? 1 : 0);
         break; 
   }
   turnOff();
@@ -1886,7 +1896,7 @@ static void printJedec()
     Serial.print(F("L"));
     printFormatedNumberDec4(k);
     Serial.print(F(" "));
-
+    
     for(j = 0; j < 8 * galinfo[gal].uesbytes; j++) {
       if (getFuseBit(k++)) {
          Serial.print(F("1"));
