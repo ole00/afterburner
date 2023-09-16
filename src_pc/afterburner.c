@@ -207,7 +207,7 @@ static int8_t verifyArgs(char* type) {
         printf("Error: missing GAL type. Use -t <type> to specify.\n");
         return -1;
     } else if (0 != type) {
-        for (int i = 0; i < sizeof(galinfo) / sizeof(galinfo[0]); i++) {
+        for (int i = 1; i < sizeof(galinfo) / sizeof(galinfo[0]); i++) {
             if (strcmp(type, galinfo[i].name) == 0) {
                 gal = galinfo[i].type;
                 break;
