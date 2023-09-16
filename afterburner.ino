@@ -1658,6 +1658,8 @@ static char checkGalTypeViaPes(void)
        for (type = (sizeof(galinfo) / sizeof(galinfo[0])) - 1; type; type--) {
            if (pes[2] == galinfo[type].id0 || pes[2] == galinfo[type].id1) break;
        }
+    } else if (pes[3] == SGSTHOMSON && pes[2] == 0x00) {
+      type = GAL16V8;
     }
 
     return type;
