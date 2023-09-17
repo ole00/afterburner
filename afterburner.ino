@@ -36,8 +36,8 @@
 
 #define VERSION "0.5.3"
 
-#define DEBUG_PES 1
-#define DEBUG_VERIFY 1
+//#define DEBUG_PES
+//#define DEBUG_VERIFY
 
 //ARDUINO UNO pin mapping
 //    GAL PIN NAME | ARDUINO UNO PIN NUMBER
@@ -401,6 +401,12 @@ static void setPinMux(uint8_t pm) {
     pinMode(PIN_ZIF9, INPUT_PULLUP); //DOUT
     // ensure ZIF10 is Grounded via transistor
     digitalWrite(PIN_ZIF_GND_CTRL, pm == OUTPUT ? HIGH: LOW);
+
+    //pull down unused pins
+    pinMode(PIN_ZIF15, pm);
+    pinMode(PIN_ZIF16, pm);
+    digitalWrite(PIN_ZIF15, LOW);
+    digitalWrite(PIN_ZIF16, LOW);
     break;
   
   case GAL20V8:
@@ -850,8 +856,8 @@ static void setSDIN(char on) {
       }
       setShiftReg(lastShiftRegVal);
     } else {
-      const uint8_t pin = (b == CFG_BASE_16) ? PIN_ZIF9 : PIN_ZIF11;
-      digitalWrite(pin, on ? 1:0);
+    const uint8_t pin = (b == CFG_BASE_16) ? PIN_ZIF9 : PIN_ZIF11;
+    digitalWrite(pin, on ? 1:0);
     }
   } else {
     digitalWrite(PIN_SDIN, on ? 1:0);
@@ -869,8 +875,8 @@ static void setSCLK(char on){
       }
       setShiftReg(lastShiftRegVal);
     } else {
-      uint8_t pin = (b == CFG_BASE_16) ? PIN_ZIF8 : PIN_ZIF10;
-      digitalWrite(pin, on ? 1:0);
+    uint8_t pin = (b == CFG_BASE_16) ? PIN_ZIF8 : PIN_ZIF10;
+    digitalWrite(pin, on ? 1:0);
     }
   } else {
     digitalWrite(PIN_SCLK, on ? 1:0);
