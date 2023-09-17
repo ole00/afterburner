@@ -204,7 +204,7 @@ const unsigned char cfgV8AB[] PROGMEM =
       4,5,6,7,
 };
 
-// common CFG fuse address map for cfg17V10
+// common CFG fuse address map for cfg18V10
 // starting address: 3456
 // total size 20
 static const unsigned char cfg18V10[] =
@@ -1788,6 +1788,7 @@ static void readOrVerifyGal(char verify)
         } else {
           readGalFuseMap(cfg18V10, 0, 0);
         }
+        break;
 
     case GAL20XV10:
         if (verify) {
@@ -1796,7 +1797,7 @@ static void readOrVerifyGal(char verify)
           readGalFuseMap(cfgXV10, 0, 0);
         }
         break;
-
+        
     case GAL22V10:
     case ATF22V10B:
     case ATF22V10C:
