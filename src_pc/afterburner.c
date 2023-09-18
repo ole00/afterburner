@@ -57,6 +57,7 @@ typedef enum {
     UNKNOWN,
     GAL16V8,
     GAL20V8,
+    GAL20XV10,
     GAL22V10,
     ATF16V8B,
     ATF22V10B,
@@ -87,6 +88,7 @@ galinfo[] = {
     {UNKNOWN,   0x00, 0x00, "unknown",     0, 0, 0,  0, 0,   0, 0, 0, 0, 0, 8, 0, 0},
     {GAL16V8,   0x00, 0x1A, "GAL16V8",  2194, 20, 32, 64, 32, 2056, 8, 63, 54, 58, 8, 60, 82},
     {GAL20V8,   0x20, 0x3A, "GAL20V8",  2706, 24, 40, 64, 40, 2568, 8, 63, 59, 58, 8, 60, 82},
+    {GAL20XV10, 0x65, 0x66, "GAL20XV10", 1671, 24, 40,  40, 44, 1631, 5, 61, 60, 58,  5, 16, 31},
     {GAL22V10,  0x48, 0x49, "GAL22V10", 5892, 24, 44, 132, 44, 5828, 8, 61, 60, 58, 10, 16, 20},
     {ATF16V8B,  0x00, 0x00, "ATF16V8B", 2194, 20, 32, 64, 32, 2056, 8, 63, 54, 58, 8, 60, 82},
     {ATF22V10B, 0x00, 0x00, "ATF22V10B", 5892, 24, 44, 132, 44, 5828, 8, 61, 60, 58, 10, 16, 20},
@@ -127,6 +129,14 @@ char flagEraseAll = 0;
 static int waitForSerialPrompt(char* buf, int bufSize, int maxDelay);
 static char sendGenericCommand(const char* command, const char* errorText, int maxDelay, char printResult);
 
+static void printGalTypes() {
+    for (int i = 1; i < sizeof(galinfo) / sizeof(galinfo[0]); i++) {
+        if (i > 1) {
+            printf(" ");
+        }
+        printf("%s", galinfo[i].name);
+    }
+}
 
 static void printHelp() {
     printf("Afterburner " VERSION "  a GAL programming tool for Arduino based programmer\n");
@@ -144,7 +154,9 @@ static void printHelp() {
     printf("   m : measure variable VPP on new board designs. Ensure the GAL is NOT inserted.\n");   
         printf("options:\n");
     printf("  -v : verbose mode\n");
-    printf("  -t <gal_type> : the GAL type. use GAL16V8 GAL20V8 GAL22V10 ATF16V8B ATF22V10B ATF22V10C\n");
+    printf("  -t <gal_type> : the GAL type. use ");
+    printGalTypes();
+    printf("\n");
     printf("  -f <file> : JEDEC fuse map file\n");
     printf("  -d <serial_device> : name of the serial device. Default is: %s\n", DEFAULT_SERIAL_DEVICE_NAME);
     printf("                       serial params are: 38400, 8N1\n");
@@ -168,7 +180,6 @@ static void printHelp() {
     printf("        Lattice GAL16V8D, GAL20V8B, GAL22V10D: 12V \n");
     printf("        Atmel   ATF16V8B, AFT16V8C, ATF22V10C: 10V \n");
 }
-
 
 static int8_t verifyArgs(char* type) {
     if (!opRead && !opWrite && !opErase && !opInfo && !opVerify && !opTestVPP && !opCalibrateVPP && !opMeasureVPP && !opWritePes) {
@@ -196,27 +207,17 @@ static int8_t verifyArgs(char* type) {
         printf("Error: missing GAL type. Use -t <type> to specify.\n");
         return -1;
     } else if (0 != type) {
-        if (strcmp("GAL16V8", type) == 0) {
-            gal = GAL16V8;
-        }
-        if (strcmp("GAL20V8", type) == 0) {
-            gal = GAL20V8;
-        }
-        if (strcmp("GAL22V10", type) == 0) {
-            gal = GAL22V10;
-        }
-        if (strcmp("ATF16V8B", type) == 0) {
-            gal = ATF16V8B;
-        }
-        if (strcmp("ATF22V10B", type) == 0) {
-            gal = ATF22V10B;
-        }
-        if (strcmp("ATF22V10C", type) == 0) {
-            gal = ATF22V10C;
+        for (int i = 1; i < sizeof(galinfo) / sizeof(galinfo[0]); i++) {
+            if (strcmp(type, galinfo[i].name) == 0) {
+                gal = galinfo[i].type;
+                break;
+            }
         }
 
         if (UNKNOWN == gal) {
-            printf("Error: unknow GAL type. Types: GAL16V8 GAL20V8 GAL22V10 ATF16V8B ATF22V10B ATF22V10C\n");
+            printf("Error: unknown GAL type. Types: ");
+            printGalTypes();
+            printf("\n");
             return -1;
         }
     }
