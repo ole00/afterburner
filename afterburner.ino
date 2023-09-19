@@ -1558,7 +1558,7 @@ static unsigned short verifyGalFuseMap(const unsigned char* cfgArray, char useDe
   if (doDiscardBits) {
     discardBits(doDiscardBits);
   }
-  for(bit = 0; bit < 64; bit++) {
+  for(bit = 0; bit < galinfo[gal].uesbytes * 8; bit++) {
     addr = galinfo[gal].uesfuse;
     addr += bit;
     mapBit = getFuseBit(addr);
