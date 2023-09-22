@@ -147,6 +147,8 @@ typedef enum {
   GAL20V8,
   GAL20XV10,
   GAL22V10,
+  GAL6001,
+  GAL6002,
   ATF16V8B,
   ATF22V10B,
   ATF22V10C,
@@ -163,6 +165,7 @@ typedef enum {
 #define CFG_BASE_20   2560
 #define CFG_BASE_20XV 1600
 #define CFG_BASE_22   5808
+#define CFG_BASE_600  8154
 
 #define CFG_STROBE_ROW 0
 #define CFG_SET_ROW 1
@@ -222,6 +225,42 @@ static const unsigned char cfgV10[]=
       1,0,3,2,5,4,7,6,9,8,11,10,13,12,15,14,17,16,19,18,
 };
 
+// common CFG fuse address map for cfg6001
+// starting address: 8154
+// total size 68
+static const unsigned char cfg6001[]=
+{
+  67, 66,
+  25, 29, 33, 37, 41, 45, 49, 53, 57, 61,
+  60, 56, 52, 48, 44, 40, 36, 32, 28, 24,
+  62, 63, 58, 59, 54, 55, 50, 51, 46, 47,
+  42, 43, 38, 39, 34, 35, 30, 31, 26, 27,
+  2, 5, 8, 11, 14, 17, 20, 23,
+  0, 3, 6, 9, 12, 15, 18, 21,
+  22, 19, 16, 13, 10, 7, 4, 1,
+  64, 65
+};
+
+// common CFG fuse address map for cfg6002
+// starting address: 8154
+// total size 104
+static const unsigned char cfg6002[]=
+{
+  103, 102,
+  25, 29, 33, 37, 41, 45, 49, 53, 57, 61,
+  60, 56, 52, 48, 44, 40, 36, 32, 28, 24,
+  62, 63, 58, 59, 54, 55, 50, 51, 46, 47,
+  42, 43, 38, 39, 34, 35, 30, 31, 26, 27,
+  101, 100, 99, 98, 97, 96, 95, 94, 93,
+  92, 91, 90, 89, 88, 87, 86, 85, 84,
+  66, 67, 68, 69, 70, 71, 72, 73, 74,
+  75, 76, 77, 78, 79, 80, 81, 82, 83,
+  2, 5, 8, 11, 14, 17, 20, 23,
+  0, 3, 6, 9, 12, 15, 18, 21,
+  22, 19, 16, 13, 10, 7, 4, 1,
+  64, 65
+};
+
 //   UES     user electronic signature
 //   PES     programmer electronic signature (ATF = text string, others = Vendor/Vpp/timing)
 //   cfg     configuration bits for OLMCs
@@ -259,16 +298,16 @@ galinfo[]=
     {GAL20V8,   0x20, 0x3A,  2706, 24, 40,  64, 40, 2568, 8, 63, 62, 58,  8, 60, CFG_BASE_20  , cfgV8AB, sizeof(cfgV8AB) , CFG_STROBE_ROW},
     {GAL20XV10, 0x65, 0x66,  1671, 24, 40,  40, 44, 1631, 5, 61, 60, 58,  5, 16, CFG_BASE_20XV, cfgXV10, sizeof(cfgXV10) , CFG_SET_ROW   },
     {GAL22V10,  0x48, 0x49,  5892, 24, 44, 132, 44, 5828, 8, 61, 62, 58, 10, 16, CFG_BASE_22  , cfgV10,  sizeof(cfgV10)  , CFG_SET_ROW   },
+    {GAL6001,   0x40, 0x41,  8294, 24, 78,  75, 97, 8222, 9, 63, 62, 96,  8,  8, CFG_BASE_600 , cfg6001, sizeof(cfg6001) , CFG_SET_ROW   },
+    {GAL6002,   0x44, 0x44,  8330, 24, 78,  75, 97, 8258, 9, 63, 62, 96,  8,  8, CFG_BASE_600 , cfg6002, sizeof(cfg6002) , CFG_SET_ROW   },
     {ATF16V8B,  0x00, 0x00,  2194, 20, 32,  64, 32, 2056, 8, 63, 62, 58,  8, 60, CFG_BASE_16  , cfgV8AB, sizeof(cfgV8AB) , CFG_STROBE_ROW},
     {ATF22V10B, 0x00, 0x00,  5892, 24, 44, 132, 44, 5828, 8, 61, 62, 58, 10, 16, CFG_BASE_22  , cfgV10,  sizeof(cfgV10)  , CFG_SET_ROW   },
     {ATF22V10C, 0x00, 0x00,  5892, 24, 44, 132, 44, 5828, 8, 61, 62, 58, 10, 16, CFG_BASE_22  , cfgV10,  sizeof(cfgV10)  , CFG_SET_ROW   },
 };
 
-// MAXFUSES calculated as the biggest required space to hold the fuse bitmap + UES bitmap + CFG bitmap
-// MAXFUSES = ((132 * 44 bits) / 8)  + uesbytes + ((20 + 1) / 8)      // +1 is the power-down extra fuse
-//               726 + 8 + 3
-#define MAXFUSES 737
-
+// MAXFUSES calculated as the biggest required space to hold the fuse bitmap
+// MAXFUSES = GAL6002 8330 bits = 8330/8 = 1041.25 bytes rounded up to 1042 bytes
+#define MAXFUSES 1042
 
 GALTYPE gal __attribute__ ((section (".noinit"))); //the gal device index pointing to galinfo, value is preserved between resets
 
@@ -376,8 +415,27 @@ static void setPinMux(uint8_t pm) {
     digitalWrite(PIN_ZIF15, LOW);
     digitalWrite(PIN_ZIF16, LOW);
     digitalWrite(PIN_ZIF22, LOW);
+    digitalWrite(PIN_ZIF23, LOW);
+    break;
+  
+  case GAL6001:
+  case GAL6002:
+    pinMode(PIN_ZIF10, pm);
+    pinMode(PIN_ZIF11, pm);
+    pinMode(PIN_ZIF13, pm);
+    pinMode(PIN_ZIF14, INPUT_PULLUP); //DOUT
+    pinMode(PIN_ZIF15, pm);
+    pinMode(PIN_ZIF16, pm);       
+    // ensure ZIF10 GND pull is disabled
+    digitalWrite(PIN_ZIF_GND_CTRL, LOW);
+
+    //pull down unused pins
+    digitalWrite(PIN_ZIF3, LOW);
+    digitalWrite(PIN_ZIF15, LOW);
+    digitalWrite(PIN_ZIF16, LOW);
     digitalWrite(PIN_ZIF22, LOW);
     break;
+
   }
 }
 
@@ -785,7 +843,7 @@ static void setRow(char row)
       if (row & 0x10) srval |= PIN_ZIF6; //RA4
       if (row & 0x20) srval |= PIN_ZIF7; //RA5
     } else 
-    if (b == CFG_BASE_22 || b == CFG_BASE_20XV) {
+    if (b == CFG_BASE_22 || b == CFG_BASE_20XV || b == CFG_BASE_600) {
       if (row & 0x1) srval  |= PIN_ZIF4; //RA0
       if (row & 0x2) srval  |= PIN_ZIF5; //RA1
       if (row & 0x4) srval  |= PIN_ZIF6; //RA2
@@ -818,7 +876,7 @@ static char getSDOUT(void)
     const unsigned short b = galinfo[gal].cfgbase;
     uint8_t pin = PIN_ZIF16;
     
-    if (b == CFG_BASE_22 || b == CFG_BASE_20XV) {
+    if (b == CFG_BASE_22 || b == CFG_BASE_20XV || b == CFG_BASE_600) {
       pin = PIN_ZIF14;
     } else
     if (b == CFG_BASE_20) {
@@ -973,6 +1031,18 @@ static void strobeRow(char row, char setBit = BIT_NONE)
       setSTB(0);
       setSTB(1);           // pulse /STB
       setSDIN(0);          // SDIN low
+      break;
+    case GAL6001:
+    case GAL6002:
+      setRow(0);
+      sendBits(95, 0);
+      sendBit(1);
+      sendAddress(7, row);
+      sendBits(16, 0);
+      setSTB(0);
+      setSTB(1);           // pulse /STB
+      setSDIN(0);          // SDIN low
+      break;
    }
 }
 
@@ -994,6 +1064,10 @@ static void readPes(void) {
     setPV(1); //Required for ATF16V8C
   }
 
+  if (gal == GAL6001 || gal == GAL6002) {
+    discardBits(20);
+  }
+  
   for(byteIndex = 0; byteIndex < galinfo[gal].pesbytes; byteIndex++) {
     unsigned char value = 0;
     
@@ -1177,6 +1251,8 @@ void printPes(char type) {
     case GAL20V8: Serial.print(F("GAL20V8 ")); break;
     case GAL20XV10: Serial.print(F("GAL20XV10 ")); break;
     case GAL22V10: Serial.print(F("GAL22V10 ")); break;
+    case GAL6001: Serial.print(F("GAL6001 ")); break;
+    case GAL6002: Serial.print(F("GAL6002 ")); break;
     case ATF16V8B: Serial.print(0 == (flagBits & FLAG_BIT_ATF16V8C) ? F("ATF16V8B "): F("ATF16V8C ")); break;
     case ATF22V10B: Serial.print(F("ATF22V10B ")); break;
     case ATF22V10C: Serial.print(F("ATF22V10C ")); break;
@@ -1803,6 +1879,8 @@ static void printGalName() {
     case GAL20V8: Serial.println(F("GAL20V8")); break;
     case GAL20XV10: Serial.println(F("GAL20XV10")); break;
     case GAL22V10: Serial.println(F("GAL22V10")); break;
+    case GAL6001: Serial.println(F("GAL6001")); break;
+    case GAL6002: Serial.println(F("GAL6002")); break;
     case ATF16V8B:
         if (flagBits & FLAG_BIT_ATF16V8C) {
             Serial.println(F("ATF16V8C"));          
