@@ -316,7 +316,7 @@ static uint8_t vpp = 0;
 
 char echoEnabled;
 unsigned char pes[12];
-char line[64];
+char line[128];
 short lineIndex;
 char endOfLine;
 char mapUploaded;
@@ -1286,6 +1286,12 @@ static char getFuseBit(unsigned short bitPos) {
   return (fusemap[bitPos >> 3] & (1 << (bitPos & 7))) ? 1 : 0;
 }
 
+static void setFuseBitVal(unsigned short bitPos, char val) {
+  if (val) {
+    setFuseBit(bitPos);
+  }
+}
+
 // generic fuse-map reading, fuse-map bits are stored in fusemap array
 static void readGalFuseMap(const unsigned char* cfgArray, char useDelay, char doDiscardBits) {
   unsigned short cfgAddr = galinfo[gal].cfgbase;
@@ -1374,6 +1380,47 @@ static void readGalFuseMap(const unsigned char* cfgArray, char useDelay, char do
     }
     setFlagBit(FLAG_BIT_APD, receiveBit());
   }
+}
+
+static void readGalFuseMap600(const unsigned char* cfgArray) {
+  unsigned short row, bit;
+  unsigned short addr;
+
+  for (row = 0; row < 78; row++)
+  {
+      strobeRow(row);
+      discardBits(20);
+      for (bit = 0; bit < 11; bit++)
+          setFuseBitVal(7296 + 78 * bit + row, receiveBit());
+      for (bit = 0; bit < 64; bit++)
+          setFuseBitVal(114 * bit + row, receiveBit());
+      discardBits(24);
+  }
+  for (row = 0; row < 64; row++)
+  {
+      sendBits(31, 0);
+      for (bit = 0; bit < 64; bit++)
+          sendBit(bit != row);
+      sendBits(24, 0);
+      setSDIN(0);
+      strobe(2);
+      for (bit = 0; bit < 20; bit++)
+          setFuseBitVal(78 + 114 * row + bit, receiveBit());
+      discardBits(83);
+      for (bit = 0; bit < 16; bit++)
+          setFuseBitVal(98 + 114 * row + bit, receiveBit());
+  }
+  // UES
+  strobeRow(galinfo[gal].uesrow);
+  discardBits(20);
+  addr = galinfo[gal].uesfuse;
+  for (bit = 0; bit < 72; bit++)
+      setFuseBitVal(addr + bit, receiveBit());
+  // CFG
+  setRow(galinfo[gal].cfgrow);
+  strobe(2);
+  for (bit = 0; bit < galinfo[gal].cfgbits; bit++)
+      setFuseBitVal(cfgArray[bit], receiveBit());
 }
 
 // generic fuse-map verification, fuse map bits are compared against read bits
@@ -1534,6 +1581,17 @@ static void readOrVerifyGal(char verify)
           i = verifyGalFuseMap(cfgV8AB, 0, 0);
         } else {
           readGalFuseMap(cfgV8AB, 0, 0);
+        }
+        break;
+      
+    case GAL6001:
+    case GAL6002:
+        cfgArray = (gal == GAL6001) ? (unsigned char*) cfg6001 : (unsigned char*) cfg6002;
+        //read without delay, no discard
+        if (verify) {
+          i = verifyGalFuseMap(cfgArray, 0, 0);
+        } else {
+          readGalFuseMap600(cfgArray);
         }
         break;
       
@@ -1907,25 +1965,72 @@ static void printJedec()
     Serial.print(F("*QF")); Serial.print(galinfo[gal].fuses + apdFuse, DEC);
     Serial.println(F("*QV0*F0*G0*X0*"));
     
-    for( i = k = 0; i < galinfo[gal].bits; i++) {
-        unused = 1;
-        n = 0;
-        line[n++] = 'L';
-        n = addFormatedNumberDec4(k, n);
-        line[n++] = ' ';
-        for(j= 0; j < galinfo[gal].rows; j++, k++) {
-           if (getFuseBit(k)) {
-              unused = 0;
-              line[n++] = '1';
-           } else {
-              line[n++] = '0';
-           }
-        }
-        line[n++] = '*';
-        line[n++] = 0;
-        if (!unused) {
-          Serial.println(line);
-        }
+    if (gal == GAL6001 || gal == GAL6002) {
+      for (i = k = 0; i < 64; i++)
+      {
+          n = 0;
+          unused = 1;
+          line[n++] = 'L';
+          n = addFormatedNumberDec4(k, n);
+          line[n++] = ' ';
+          for (j = 0; j < 114; j++, k++)
+          {
+              if (getFuseBit(k)) {
+                  unused = 0;
+                  line[n++] = '1';
+              } else {
+                  line[n++] = '0';
+              }
+          }
+          line[n++] = '*';
+          line[n++] = 0;
+          if (!unused) {
+            Serial.println(line);
+          }
+      }
+      for (i = 0; i < 11; i++)
+      {
+          unused = 1;
+          n = 0;
+          line[n++] = 'L';
+          n = addFormatedNumberDec4(k, n);
+          line[n++] = ' ';
+          for (j = 0; j < 78; j++, k++)
+          {
+              if (getFuseBit(k)) {
+                  unused = 0;
+                  line[n++] = '1';
+              } else {
+                  line[n++] = '0';
+              }
+          }
+          line[n++] = '*';
+          line[n++] = 0;
+          if (!unused) {
+            Serial.println(line);
+          }
+      }
+    } else {
+      for( i = k = 0; i < galinfo[gal].bits; i++) {
+          unused = 1;
+          n = 0;
+          line[n++] = 'L';
+          n = addFormatedNumberDec4(k, n);
+          line[n++] = ' ';
+          for(j= 0; j < galinfo[gal].rows; j++, k++) {
+            if (getFuseBit(k)) {
+                unused = 0;
+                line[n++] = '1';
+            } else {
+                line[n++] = '0';
+            }
+          }
+          line[n++] = '*';
+          line[n++] = 0;
+          if (!unused) {
+            Serial.println(line);
+          }
+      }
     }
 
     if( k < galinfo[gal].uesfuse) {
@@ -2023,7 +2128,6 @@ static void printJedec()
     Serial.println();
     Serial.println(F("*"));
 }
-
 
 // helper print function to save RAM space
 static void printNoFusesError() {
