@@ -1952,6 +1952,35 @@ static void printGalName() {
     }
 }
 
+static unsigned printJedecBlock(unsigned short k, unsigned short bits, unsigned short rows) {
+  unsigned short i, j, n;
+  unsigned char unused;
+
+  for (i = 0; i < bits; i++)
+  {
+      n = 0;
+      unused = 1;
+      line[n++] = 'L';
+      n = addFormatedNumberDec4(k, n);
+      line[n++] = ' ';
+      for (j = 0; j < rows; j++, k++)
+      {
+          if (getFuseBit(k)) {
+              unused = 0;
+              line[n++] = '1';
+          } else {
+              line[n++] = '0';
+          }
+      }
+      line[n++] = '*';
+      line[n++] = 0;
+      if (!unused) {
+        Serial.println(line);
+      }
+  }
+  return k;
+}
+
 // prints the contents of fuse-map array in the form of JEDEC text file
 static void printJedec()
 {
@@ -1965,72 +1994,12 @@ static void printJedec()
     Serial.print(F("*QF")); Serial.print(galinfo[gal].fuses + apdFuse, DEC);
     Serial.println(F("*QV0*F0*G0*X0*"));
     
+    k = 0;
     if (gal == GAL6001 || gal == GAL6002) {
-      for (i = k = 0; i < 64; i++)
-      {
-          n = 0;
-          unused = 1;
-          line[n++] = 'L';
-          n = addFormatedNumberDec4(k, n);
-          line[n++] = ' ';
-          for (j = 0; j < 114; j++, k++)
-          {
-              if (getFuseBit(k)) {
-                  unused = 0;
-                  line[n++] = '1';
-              } else {
-                  line[n++] = '0';
-              }
-          }
-          line[n++] = '*';
-          line[n++] = 0;
-          if (!unused) {
-            Serial.println(line);
-          }
-      }
-      for (i = 0; i < 11; i++)
-      {
-          unused = 1;
-          n = 0;
-          line[n++] = 'L';
-          n = addFormatedNumberDec4(k, n);
-          line[n++] = ' ';
-          for (j = 0; j < 78; j++, k++)
-          {
-              if (getFuseBit(k)) {
-                  unused = 0;
-                  line[n++] = '1';
-              } else {
-                  line[n++] = '0';
-              }
-          }
-          line[n++] = '*';
-          line[n++] = 0;
-          if (!unused) {
-            Serial.println(line);
-          }
-      }
+      k = printJedecBlock(k, 64, 114);
+      k = printJedecBlock(k, 11, 78);
     } else {
-      for( i = k = 0; i < galinfo[gal].bits; i++) {
-          unused = 1;
-          n = 0;
-          line[n++] = 'L';
-          n = addFormatedNumberDec4(k, n);
-          line[n++] = ' ';
-          for(j= 0; j < galinfo[gal].rows; j++, k++) {
-            if (getFuseBit(k)) {
-                unused = 0;
-                line[n++] = '1';
-            } else {
-                line[n++] = '0';
-            }
-          }
-          line[n++] = '*';
-          line[n++] = 0;
-          if (!unused) {
-            Serial.println(line);
-          }
-      }
+      k = printJedecBlock(k, galinfo[gal].bits, galinfo[gal].rows);
     }
 
     if( k < galinfo[gal].uesfuse) {
