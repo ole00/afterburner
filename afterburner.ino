@@ -1039,9 +1039,7 @@ static void strobeRow(char row, char setBit = BIT_NONE)
       sendBit(1);
       sendAddress(7, row);
       sendBits(16, 0);
-      setSTB(0);
-      setSTB(1);           // pulse /STB
-      setSDIN(0);          // SDIN low
+      strobe(2);           // pulse /STB for 2ms
       break;
    }
 }
@@ -1419,8 +1417,9 @@ static void readGalFuseMap600(const unsigned char* cfgArray) {
   // CFG
   setRow(galinfo[gal].cfgrow);
   strobe(2);
+  addr = galinfo[gal].cfgbase;
   for (bit = 0; bit < galinfo[gal].cfgbits; bit++)
-      setFuseBitVal(cfgArray[bit], receiveBit());
+      setFuseBitVal(addr + cfgArray[bit], receiveBit());
 }
 
 // generic fuse-map verification, fuse map bits are compared against read bits
@@ -1543,6 +1542,107 @@ static unsigned short verifyGalFuseMap(const unsigned char* cfgArray, char useDe
 }
 
 
+static unsigned short verifyGalFuseMap600(const unsigned char* cfgArray) {
+  unsigned short row, bit;
+  unsigned short addr;
+  char fuseBit;   // fuse bit received from GAL
+  char mapBit;    // fuse bit stored in RAM
+  unsigned short errors = 0;
+
+  for (row = 0; row < 78; row++)
+  {
+      strobeRow(row);
+      discardBits(20);
+      for (bit = 0; bit < 11; bit++) {
+          mapBit = getFuseBit(7296 + 78 * bit + row);
+          fuseBit = receiveBit();
+          if (mapBit != fuseBit) {
+#ifdef DEBUG_VERIFY
+            Serial.print(F("f a="));
+            Serial.println(7296 + 78 * bit + row, DEC);
+#endif
+            errors++;
+          }
+      }
+      for (bit = 0; bit < 64; bit++) {
+          mapBit = getFuseBit(114 * bit + row);
+          fuseBit = receiveBit();
+          if (mapBit != fuseBit) {
+#ifdef DEBUG_VERIFY
+            Serial.print(F("f a="));
+            Serial.println(114 * bit + row, DEC);
+#endif
+            errors++;
+          }
+      }
+      discardBits(24);
+  }
+  for (row = 0; row < 64; row++)
+  {
+      sendBits(31, 0);
+      for (bit = 0; bit < 64; bit++)
+          sendBit(bit != row);
+      sendBits(24, 0);
+      setSDIN(0);
+      strobe(2);
+      for (bit = 0; bit < 20; bit++) {
+          mapBit = getFuseBit(78 + 114 * row + bit);
+          fuseBit = receiveBit();
+          if (mapBit != fuseBit) {
+#ifdef DEBUG_VERIFY
+            Serial.print(F("f a="));
+            Serial.println(78 + 114 * row + bit, DEC);
+#endif
+            errors++;
+          }
+      }
+      discardBits(83);
+      for (bit = 0; bit < 16; bit++) {
+          mapBit = getFuseBit(98 + 114 * row + bit);
+          fuseBit = receiveBit();
+          if (mapBit != fuseBit) {
+#ifdef DEBUG_VERIFY
+            Serial.print(F("f a="));
+            Serial.println(98 + 114 * row + bit, DEC);
+#endif
+            errors++;
+          }
+      }
+  }
+  // UES
+  strobeRow(galinfo[gal].uesrow);
+  discardBits(20);
+  addr = galinfo[gal].uesfuse;
+  for (bit = 0; bit < 72; bit++) {
+      mapBit = getFuseBit(addr + bit);
+      fuseBit = receiveBit();
+      if (mapBit != fuseBit) {
+#ifdef DEBUG_VERIFY
+        Serial.print(F("f a="));
+        Serial.println(addr + bit, DEC);
+#endif
+        errors++;
+      }
+  }
+  // CFG
+  setRow(galinfo[gal].cfgrow);
+  strobe(2);
+  addr = galinfo[gal].cfgbase;
+  for (bit = 0; bit < galinfo[gal].cfgbits; bit++) {
+      mapBit = getFuseBit(addr + cfgArray[bit]);
+      fuseBit = receiveBit();
+      if (mapBit != fuseBit) {
+#ifdef DEBUG_VERIFY
+        Serial.print(F("f a="));
+        Serial.println(addr + cfgArray[bit], DEC);
+#endif
+        errors++;
+      }
+  }
+  
+  return errors;
+}
+
 // main fuse-map reading and verification function
 // READING: reads fuse rows, UES, CFG from GAL and stores into fusemap bit array RAM.
 // VERIFY:  reads fuse rows, UES, CFG from GAL and compares with fusemap bit array in RAM.
@@ -1589,7 +1689,7 @@ static void readOrVerifyGal(char verify)
         cfgArray = (gal == GAL6001) ? (unsigned char*) cfg6001 : (unsigned char*) cfg6002;
         //read without delay, no discard
         if (verify) {
-          i = verifyGalFuseMap(cfgArray, 0, 0);
+          i = verifyGalFuseMap600(cfgArray);
         } else {
           readGalFuseMap600(cfgArray);
         }
