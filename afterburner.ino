@@ -1168,6 +1168,11 @@ void parsePes(char type) {
         case GAL16V8:
         case GAL20V8:
           erasetime=100;
+          goto more;
+        case GAL6001:
+        case GAL6002:
+          erasetime=50;
+        more:
           switch(algo) {
             case 0:
                 vpp = 63; // 15.75V
@@ -1828,6 +1833,60 @@ static void writeGalFuseMapV10(const unsigned char* cfgArray, char fillUesStart,
   }
 }
 
+// fuse-map writing function for 600x GAL chips
+static void writeGalFuseMap600(const unsigned char* cfgArray) {
+    unsigned short cfgAddr = galinfo[gal].cfgbase;
+    unsigned char row, bit;
+    unsigned short addr;
+
+    setRow(0);
+    for (row = 0; row < 78; row++)
+    {
+        sendBits(20, 0);
+        for (bit = 0; bit < 11; bit++)
+            sendBit(getFuseBit(7296 + 78 * bit + row));
+        for (bit = 0; bit < 64; bit++)
+            sendBit(getFuseBit(114 * bit + row));
+        sendBit(1);
+        sendAddress(7, row);
+        sendBits(16, 0);
+        setSDIN(0);
+        strobe(progtime);
+    }
+    for (row = 0; row < 64; row++)
+    {
+        for (bit = 0; bit < 20; bit++)
+            sendBit(getFuseBit(78 + 114 * row + bit));
+        sendBits(11, 0);
+        for (bit = 0; bit < 64; bit++)
+            sendBit(bit != row);
+        sendBits(8, 0);
+        for (bit = 0; bit < 16; bit++)
+            sendBit(getFuseBit(98 + 114 * row + bit));
+        setSDIN(0);
+        strobe(progtime);
+    }
+    // UES
+    sendBits(20, 0);
+    addr = galinfo[gal].uesfuse;
+    for (bit = 0; bit < 72; bit++)
+        sendBit(getFuseBit(addr + bit));
+    sendBits(3, 0);
+    sendBit(1);
+    sendAddress(7, galinfo[gal].uesrow);
+    sendBits(16, 0);
+    setSDIN(0);
+    strobe(progtime);
+    // CFG
+    setRow(galinfo[gal].cfgrow);
+    for (bit = 0; bit < galinfo[gal].cfgbits; bit++)
+    {
+        sendBit(getFuseBit(cfgAddr + cfgArray[bit]));
+    }
+    setSDIN(0);
+    strobe(progtime);
+}
+
 // main fuse-map writing function
 static void writeGal()
 {
@@ -1849,6 +1908,14 @@ static void writeGal()
       
     case ATF16V8B:
         writeGalFuseMapV8(cfgV8AB); 
+        break;
+
+    case GAL6001:
+        writeGalFuseMap600(cfg6001);
+        break;
+    
+    case GAL6002:
+        writeGalFuseMap600(cfg6002);
         break;
 
     case GAL20XV10:
