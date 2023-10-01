@@ -778,6 +778,9 @@ static char upload() {
     //fuse map
     buf[0] = 0;
     fuseSet = 0;
+    
+    printf("Uploading fuse map...\n");
+    printf("\e[?25l");
     for (i = 0; i < totalFuses;) {
         unsigned char f = 0;
         if (i % 32 == 0) {
@@ -805,8 +808,13 @@ static char upload() {
 
         sprintf(line, "%02X", f);
         strcat(buf, line);
- 
+
+        printf("%4d/%4d |", i + 1, totalFuses);
+        int done = ((i + 1) * 40) / totalFuses;
+        printf("%.*s%*s|\r", done, "########################################", 40 - done, "");
     }
+    printf("%4d/%4d |########################################|\n", totalFuses, totalFuses);
+    printf("\e[?25h");
 
     // send last unfinished fuse line
     if (i % 32 && fuseSet) {
