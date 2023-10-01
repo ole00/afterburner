@@ -1851,7 +1851,9 @@ static void writeGalFuseMap600(const unsigned char* cfgArray) {
         sendAddress(7, row);
         sendBits(16, 0);
         setSDIN(0);
+        setPV(1);
         strobe(progtime);
+        setPV(0);
     }
     for (row = 0; row < 64; row++)
     {
@@ -1864,7 +1866,9 @@ static void writeGalFuseMap600(const unsigned char* cfgArray) {
         for (bit = 0; bit < 16; bit++)
             sendBit(getFuseBit(98 + 114 * row + bit));
         setSDIN(0);
+        setPV(1);
         strobe(progtime);
+        setPV(0);
     }
     // UES
     sendBits(20, 0);
@@ -1876,7 +1880,9 @@ static void writeGalFuseMap600(const unsigned char* cfgArray) {
     sendAddress(7, galinfo[gal].uesrow);
     sendBits(16, 0);
     setSDIN(0);
+    setPV(1);
     strobe(progtime);
+    setPV(0);
     // CFG
     setRow(galinfo[gal].cfgrow);
     for (bit = 0; bit < galinfo[gal].cfgbits; bit++)
@@ -1884,7 +1890,9 @@ static void writeGalFuseMap600(const unsigned char* cfgArray) {
         sendBit(getFuseBit(cfgAddr + cfgArray[bit]));
     }
     setSDIN(0);
+    setPV(1);
     strobe(progtime);
+    setPV(0);
 }
 
 // main fuse-map writing function
