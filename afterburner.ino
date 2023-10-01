@@ -1093,12 +1093,32 @@ static void writePes(void) {
 
   setPV(1);
 
-  setRow(galinfo[gal].pesrow);
-  for (rbit = 0; rbit < 64; rbit++) {
-    b = pes[rbit >> 3];
-    p = b & (1 << (rbit & 0b111));
-    sendBit(p);
+  switch(gal) {
+    GAL6001:
+    GAL6002:
+      setRow(0);
+      sendBits(20, 0);
+      for (rbit = 0; rbit < 64; rbit++) {
+        b = pes[rbit >> 3];
+        p = b & (1 << (rbit & 0b111));
+        sendBit(p);
+      }
+      sendBits(11, 0);
+      sendBit(1);
+      sendAddress(7, galinfo[gal].pesrow);
+      sendBits(16, 0);
+      setSDIN(0);
+      break;
+    default:
+      setRow(galinfo[gal].pesrow);
+      for (rbit = 0; rbit < 64; rbit++) {
+        b = pes[rbit >> 3];
+        p = b & (1 << (rbit & 0b111));
+        sendBit(p);
+      }
+      break;
   }
+
   strobe(progtime);
 
   turnOff();
