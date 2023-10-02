@@ -45,7 +45,7 @@ To compile: gcc -g3 -O0 afterburner afterburner.c
 
 #include "serial_port.h"
 
-#define VERSION "v.0.5.1"
+#define VERSION "v.0.5.3"
 
 
 #define MAX_LINE 1024
@@ -134,7 +134,8 @@ static int waitForSerialPrompt(char* buf, int bufSize, int maxDelay);
 static char sendGenericCommand(const char* command, const char* errorText, int maxDelay, char printResult);
 
 static void printGalTypes() {
-    for (int i = 1; i < sizeof(galinfo) / sizeof(galinfo[0]); i++) {
+    int i;
+    for (i = 1; i < sizeof(galinfo) / sizeof(galinfo[0]); i++) {
         if (i > 1) {
             printf(" ");
         }
@@ -211,7 +212,8 @@ static int8_t verifyArgs(char* type) {
         printf("Error: missing GAL type. Use -t <type> to specify.\n");
         return -1;
     } else if (0 != type) {
-        for (int i = 1; i < sizeof(galinfo) / sizeof(galinfo[0]); i++) {
+        int i;
+        for (i = 1; i < sizeof(galinfo) / sizeof(galinfo[0]); i++) {
             if (strcmp(type, galinfo[i].name) == 0) {
                 gal = galinfo[i].type;
                 break;
