@@ -176,7 +176,7 @@ typedef enum {
 // common CFG fuse address map for cfg16V8 and cfg20V8
 // the only difference is the starting address: 2048 for cfg16V8 and 2560 for cfg20V8
 // total size: 82
-static const unsigned char cfgV8[]=
+const unsigned char cfgV8[] PROGMEM =
 {
       80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,
       0,1,2,3,
@@ -190,7 +190,7 @@ static const unsigned char cfgV8[]=
 // common CFG fuse address map for cfg16V8AB and cfg20V8AB
 // the only difference is the starting address: 2048 for cfg16V8AB and 2560 for cfg20V8AB
 // total size: 82
-static const unsigned char cfgV8AB[]=
+const unsigned char cfgV8AB[] PROGMEM =
 {
       0,1,2,3,
       145,
@@ -204,7 +204,7 @@ static const unsigned char cfgV8AB[]=
 // common CFG fuse address map for cfg20XV10
 // starting address: 1600
 // total size 31
-static const unsigned char cfgXV10[]=
+const unsigned char cfgXV10[] PROGMEM =
 {
   30,
   28, 29,
@@ -220,7 +220,7 @@ static const unsigned char cfgXV10[]=
 // common CFG fuse address map for cfg22V10
 // starting address: 5808
 // total size 20
-static const unsigned char cfgV10[]=
+static const unsigned char cfgV10[] PROGMEM =
 {
       1,0,3,2,5,4,7,6,9,8,11,10,13,12,15,14,17,16,19,18,
 };
@@ -228,7 +228,7 @@ static const unsigned char cfgV10[]=
 // common CFG fuse address map for cfg6001
 // starting address: 8154
 // total size 68
-static const unsigned char cfg6001[]=
+static const unsigned char cfg6001[] PROGMEM =
 {
   67, 66,
   25, 29, 33, 37, 41, 45, 49, 53, 57, 61,
@@ -244,7 +244,7 @@ static const unsigned char cfg6001[]=
 // common CFG fuse address map for cfg6002
 // starting address: 8154
 // total size 104
-static const unsigned char cfg6002[]=
+static const unsigned char cfg6002[] PROGMEM =
 {
   103, 102,
   25, 29, 33, 37, 41, 45, 49, 53, 57, 61,
@@ -551,7 +551,7 @@ char handleTerminalCommands() {
         Serial.print(c);
       }
     }
-    if (lineIndex >= 62) {
+    if (lineIndex >= sizeof(line)- 2) {
       lineIndex = 0;
       readGarbage();
       Serial.println();
@@ -1385,7 +1385,8 @@ static void readGalFuseMap(const unsigned char* cfgArray, char useDelay, char do
   }
   for(bit = 0; bit < galinfo[gal].cfgbits; bit++) {
     if (receiveBit()) {
-      setFuseBit(cfgAddr + cfgArray[bit]);
+      unsigned char cfgOffset = pgm_read_byte(&cfgArray[bit]); //read array byte flom flash
+      setFuseBit(cfgAddr + cfgOffset);
     }
   }
 
@@ -1443,8 +1444,10 @@ static void readGalFuseMap600(const unsigned char* cfgArray) {
   setRow(galinfo[gal].cfgrow);
   strobe(2);
   addr = galinfo[gal].cfgbase;
-  for (bit = 0; bit < galinfo[gal].cfgbits; bit++)
-      setFuseBitVal(addr + cfgArray[bit], receiveBit());
+  for (bit = 0; bit < galinfo[gal].cfgbits; bit++) {
+      unsigned char cfgOffset = pgm_read_byte(&cfgArray[bit]); //read array byte flom flash
+      setFuseBitVal(addr + cfgOffset, receiveBit());
+  }
 }
 
 // generic fuse-map verification, fuse map bits are compared against read bits
@@ -1529,7 +1532,8 @@ static unsigned short verifyGalFuseMap(const unsigned char* cfgArray, char useDe
     strobe(1);
   }
   for(bit = 0; bit < galinfo[gal].cfgbits; bit++) {
-    mapBit = getFuseBit(cfgAddr + cfgArray[bit]); 
+    unsigned char cfgOffset = pgm_read_byte(&cfgArray[bit]); //read array byte flom flash
+    mapBit = getFuseBit(cfgAddr + cfgOffset); 
     fuseBit = receiveBit();
     if (mapBit != fuseBit) {
 #ifdef DEBUG_VERIFY
@@ -1654,12 +1658,13 @@ static unsigned short verifyGalFuseMap600(const unsigned char* cfgArray) {
   strobe(2);
   addr = galinfo[gal].cfgbase;
   for (bit = 0; bit < galinfo[gal].cfgbits; bit++) {
-      mapBit = getFuseBit(addr + cfgArray[bit]);
+      unsigned char cfgOffset = pgm_read_byte(&cfgArray[bit]); //read array byte flom flash
+      mapBit = getFuseBit(addr + cfgOffset);
       fuseBit = receiveBit();
       if (mapBit != fuseBit) {
 #ifdef DEBUG_VERIFY
         Serial.print(F("f a="));
-        Serial.println(addr + cfgArray[bit], DEC);
+        Serial.println(addr + cfgVal, DEC);
 #endif
         errors++;
       }
@@ -1780,7 +1785,8 @@ static void writeGalFuseMapV8(const unsigned char* cfgArray) {
   rbitMax = galinfo[gal].cfgbits;
   setRow(galinfo[gal].cfgrow);
   for(rbit = 0; rbit < rbitMax; rbit++) {
-    sendBit(getFuseBit(cfgAddr + cfgArray[rbit]), rbit == rbitMax - 1 ? skipLastClk : 0);
+    unsigned char cfgOffset = pgm_read_byte(&cfgArray[rbit]); //read array byte flom flash
+    sendBit(getFuseBit(cfgAddr + cfgOffset), rbit == rbitMax - 1 ? skipLastClk : 0);
   }
   strobe(progtime);
   setPV(0);
@@ -1834,10 +1840,12 @@ static void writeGalFuseMapV10(const unsigned char* cfgArray, char fillUesStart,
   // write CFG
   setRow(galinfo[gal].cfgrow);
   for(bit = 0; bit < galinfo[gal].cfgbits - useSdin; bit++) {
-    sendBit(getFuseBit(cfgAddr + cfgArray[bit]));
+    unsigned char cfgOffset = pgm_read_byte(&cfgArray[bit]); //read array byte flom flash
+    sendBit(getFuseBit(cfgAddr + cfgOffset));
   }
   if (useSdin) {
-    setSDIN(getFuseBit(cfgAddr + cfgArray[19]));
+    unsigned char cfgOffset = pgm_read_byte(&cfgArray[19]); //read array byte flom flash
+    setSDIN(getFuseBit(cfgAddr + cfgOffset));
   }
   setPV(1);
   strobe(progtime);
@@ -1907,7 +1915,8 @@ static void writeGalFuseMap600(const unsigned char* cfgArray) {
     setRow(galinfo[gal].cfgrow);
     for (bit = 0; bit < galinfo[gal].cfgbits; bit++)
     {
-        sendBit(getFuseBit(cfgAddr + cfgArray[bit]));
+        unsigned char cfgOffset = pgm_read_byte(&cfgArray[bit]); //read array byte flom flash
+        sendBit(getFuseBit(cfgAddr + cfgOffset));
     }
     setSDIN(0);
     setPV(1);
