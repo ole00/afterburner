@@ -1124,25 +1124,15 @@ static void writePes(void) {
   turnOff();
 }
 
+static const unsigned char PROGMEM duration[] = {
+  1, 2, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200
+};
 
 static unsigned char getDuration(unsigned char index) {
-  switch (index) {
-    case 0: return 1;
-    case 1: return 2;
-    case 2: return 5;
-    case 3: return 10;
-    case 4: return 20;
-    case 5: return 30;
-    case 6: return 40;
-    case 7: return 50;
-    case 8: return 60;
-    case 9: return 70;
-    case 10: return 80;
-    case 11: return 90;
-    case 12: return 100;
-    case 13: return 200;
-    default: return 0;
+  if (index > 13) {
+    return 0;
   }
+  return pgm_read_byte(&duration[index]);
 }
 
 static void setGalDefaults(void) {
