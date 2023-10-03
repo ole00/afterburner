@@ -316,7 +316,7 @@ static uint8_t vpp = 0;
 
 char echoEnabled;
 unsigned char pes[12];
-char line[128];
+char line[32];
 short lineIndex;
 char endOfLine;
 char mapUploaded;
@@ -555,7 +555,7 @@ char handleTerminalCommands() {
       lineIndex = 0;
       readGarbage();
       Serial.println();
-      Serial.println("Error: line too long.");
+      Serial.println(F("Error: line too long."));
     } else {
       lineIndex++;
     }
@@ -2147,30 +2147,34 @@ static void printGalName() {
 }
 
 static unsigned printJedecBlock(unsigned short k, unsigned short bits, unsigned short rows) {
-  unsigned short i, j, n;
+  unsigned short i, j;
   unsigned char unused;
 
   for (i = 0; i < bits; i++)
   {
-      n = 0;
       unused = 1;
-      line[n++] = 'L';
-      n = addFormatedNumberDec4(k, n);
-      line[n++] = ' ';
+      for (j = 0; j < rows; j++)
+      {
+        unused &= !getFuseBit(k + j);
+      }
+      if (unused) {
+        k += rows;
+        continue;
+      }
+
+      Serial.print('L');
+      printFormatedNumberDec4(k);
+      Serial.print(' ');
       for (j = 0; j < rows; j++, k++)
       {
           if (getFuseBit(k)) {
               unused = 0;
-              line[n++] = '1';
+              Serial.print('1');
           } else {
-              line[n++] = '0';
+              Serial.print('0');
           }
       }
-      line[n++] = '*';
-      line[n++] = 0;
-      if (!unused) {
-        Serial.println(line);
-      }
+      Serial.println('*');
   }
   return k;
 }
@@ -2197,28 +2201,21 @@ static void printJedec()
     }
 
     if( k < galinfo[gal].uesfuse) {
-        unused = 1;
-        n = 0;
-        line[n++] = 'L';
-        n = addFormatedNumberDec4(k, n);
-        line[n++] = ' ';
+        Serial.print('L');
+        printFormatedNumberDec4(k);
+        Serial.print(' ');
         
         while(k < galinfo[gal].uesfuse) {
            if (getFuseBit(k)) {
               unused = 0;
-              line[n++] = '1';
+              Serial.print('1');
            } else {
-              line[n++] = '0';
+              Serial.print('0');
            }
            k++;
         }
-        line[n++] = '*';
-        line[n++] = 0;
-        if (!unused) {
-          Serial.println(line);
-        }
+        Serial.println('*');
     }
-    line[0] = 0;
 
 
     // UES in byte form
