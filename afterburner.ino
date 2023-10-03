@@ -316,7 +316,7 @@ static uint8_t vpp = 0;
 
 char echoEnabled;
 unsigned char pes[12];
-char line[40];
+char line[32];
 short lineIndex;
 char endOfLine;
 char mapUploaded;
@@ -2211,28 +2211,21 @@ static void printJedec()
     }
 
     if( k < galinfo[gal].uesfuse) {
-        unused = 1;
-        n = 0;
-        line[n++] = 'L';
-        n = addFormatedNumberDec4(k, n);
-        line[n++] = ' ';
+        Serial.print('L');
+        printFormatedNumberDec4(k);
+        Serial.print(' ');
         
         while(k < galinfo[gal].uesfuse) {
            if (getFuseBit(k)) {
               unused = 0;
-              line[n++] = '1';
+              Serial.print('1');
            } else {
-              line[n++] = '0';
+              Serial.print('0');
            }
            k++;
         }
-        line[n++] = '*';
-        line[n++] = 0;
-        if (!unused) {
-          Serial.println(line);
-        }
+        Serial.println('*');
     }
-    line[0] = 0;
 
 
     // UES in byte form
