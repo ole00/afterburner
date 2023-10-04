@@ -176,7 +176,7 @@ typedef enum {
 // common CFG fuse address map for cfg16V8 and cfg20V8
 // the only difference is the starting address: 2048 for cfg16V8 and 2560 for cfg20V8
 // total size: 82
-const unsigned char cfgV8[] PROGMEM =
+static const unsigned char cfgV8[] PROGMEM =
 {
       80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,
       0,1,2,3,
@@ -190,7 +190,7 @@ const unsigned char cfgV8[] PROGMEM =
 // common CFG fuse address map for cfg16V8AB and cfg20V8AB
 // the only difference is the starting address: 2048 for cfg16V8AB and 2560 for cfg20V8AB
 // total size: 82
-const unsigned char cfgV8AB[] PROGMEM =
+static const unsigned char cfgV8AB[] PROGMEM =
 {
       0,1,2,3,
       145,
@@ -204,7 +204,7 @@ const unsigned char cfgV8AB[] PROGMEM =
 // common CFG fuse address map for cfg20XV10
 // starting address: 1600
 // total size 31
-const unsigned char cfgXV10[] PROGMEM =
+static const unsigned char cfgXV10[] PROGMEM =
 {
   30,
   28, 29,
@@ -266,7 +266,7 @@ static const unsigned char cfg6002[] PROGMEM =
 //   cfg     configuration bits for OLMCs
 
 // GAL info 
-static struct
+const static struct
 {
     GALTYPE type;
     unsigned char id0,id1;          /* variant 1, variant 2 (eg. 16V8=0x00, 16V8A+=0x1A)*/
@@ -286,7 +286,7 @@ static struct
     const unsigned char *cfg;       /* pointer to config bit numbers      */
     unsigned char cfgbits;          /* number of config bits              */
     unsigned char cfgmethod;        /* strobe or set row for reading config */
-}
+} PROGMEM
 galinfo[]=
 {
 //                           + fuses         + bits       +uesbytes   +pesrow          +cfgbase
@@ -696,7 +696,8 @@ void parseUploadLine() {
     case 'c': {
       unsigned short val = parse4hex(3);
       unsigned char apdFuse = (flagBits & FLAG_BIT_APD) ? 1 : 0;
-      unsigned short cs = checkSum(galinfo[gal].fuses + apdFuse);
+      unsigned short fuses = pgm_read_word(&galinfo[gal].fuses);
+      unsigned short cs = checkSum(fuses + apdFuse);
       if (cs == val) {
         Serial.println(F("OK checksum matches"));
         // Conditioning jed files might not have any fuse set, so as long as
@@ -784,7 +785,7 @@ static void setVPP(char on) {
 
 static void setSTB(char on) {
   if (varVppExists) {
-    const unsigned short b = galinfo[gal].cfgbase;
+    const unsigned short b = pgm_read_word(&galinfo[gal].cfgbase);
     const uint8_t pin = (b == CFG_BASE_16) ? PIN_ZIF15 : PIN_ZIF13;
     digitalWrite(pin, on ? 1:0);
   } else {
@@ -794,7 +795,7 @@ static void setSTB(char on) {
 
 static void setPV(char on) {
   if (varVppExists) {
-    const unsigned short b = galinfo[gal].cfgbase;
+    const unsigned short b = pgm_read_word(&galinfo[gal].cfgbase);
     uint8_t pin = PIN_ZIF23;
 
     if (b == CFG_BASE_22 || b == CFG_BASE_20XV) {
@@ -811,7 +812,7 @@ static void setPV(char on) {
 
 static void setSDIN(char on) {
   if (varVppExists) {
-    const unsigned short b = galinfo[gal].cfgbase;
+    const unsigned short b = pgm_read_word(&galinfo[gal].cfgbase);
     const uint8_t pin = (b == CFG_BASE_16) ? PIN_ZIF9 : PIN_ZIF11;
     digitalWrite(pin, on ? 1:0);
   } else {
@@ -821,7 +822,7 @@ static void setSDIN(char on) {
 
 static void setSCLK(char on){
   if (varVppExists) {
-    const unsigned short b = galinfo[gal].cfgbase;
+    const unsigned short b = pgm_read_word(&galinfo[gal].cfgbase);
     uint8_t pin = (b == CFG_BASE_16) ? PIN_ZIF8 : PIN_ZIF10;
     digitalWrite(pin, on ? 1:0);
   } else {
@@ -834,7 +835,7 @@ static void setRow(char row)
 {
   if (varVppExists) {
     uint8_t srval = 0;
-    const unsigned short b = galinfo[gal].cfgbase;
+    const unsigned short b = pgm_read_word(&galinfo[gal].cfgbase);
     if (b == CFG_BASE_16) {
       digitalWrite(PIN_ZIF22, (row & 0x1)); //RA0
       digitalWrite(PIN_ZIF3 , (row & 0x2)); //RA1
@@ -873,7 +874,7 @@ static void setRow(char row)
 static char getSDOUT(void)
 {
   if (varVppExists) {
-    const unsigned short b = galinfo[gal].cfgbase;
+    const unsigned short b = pgm_read_word(&galinfo[gal].cfgbase);
     uint8_t pin = PIN_ZIF16;
     
     if (b == CFG_BASE_22 || b == CFG_BASE_20XV || b == CFG_BASE_600) {
@@ -1048,6 +1049,7 @@ static void strobeRow(char row, char setBit = BIT_NONE)
 static void readPes(void) {
   unsigned short bitmask;
   short byteIndex;
+  char pesBytes;
 
 #ifdef DEBUG_PES 
   Serial.print(F("testing gal "));
@@ -1056,7 +1058,7 @@ static void readPes(void) {
 #endif
   turnOn(READPES);
 
-  strobeRow(galinfo[gal].pesrow);
+  strobeRow(pgm_read_byte(&galinfo[gal].pesrow));
 
   if (gal == ATF16V8B) {
     setPV(1); //Required for ATF16V8C
@@ -1065,8 +1067,9 @@ static void readPes(void) {
   if (gal == GAL6001 || gal == GAL6002) {
     discardBits(20);
   }
-  
-  for(byteIndex = 0; byteIndex < galinfo[gal].pesbytes; byteIndex++) {
+
+  pesBytes = pgm_read_byte(&galinfo[gal].pesbytes);
+  for(byteIndex = 0; byteIndex < pesBytes; byteIndex++) {
     unsigned char value = 0;
     
     for (bitmask = 0x1; bitmask <= 0x80; bitmask <<= 1) {
@@ -1105,12 +1108,12 @@ static void writePes(void) {
       }
       sendBits(11, 0);
       sendBit(1);
-      sendAddress(7, galinfo[gal].pesrow);
+      sendAddress(7, pgm_read_byte(&galinfo[gal].pesrow));
       sendBits(16, 0);
       setSDIN(0);
       break;
     default:
-      setRow(galinfo[gal].pesrow);
+      setRow(pgm_read_byte(&galinfo[gal].pesrow));
       for (rbit = 0; rbit < 64; rbit++) {
         b = pes[rbit >> 3];
         p = b & (1 << (rbit & 0b111));
@@ -1307,24 +1310,28 @@ static void setFuseBitVal(unsigned short bitPos, char val) {
 
 // generic fuse-map reading, fuse-map bits are stored in fusemap array
 static void readGalFuseMap(const unsigned char* cfgArray, char useDelay, char doDiscardBits) {
-  unsigned short cfgAddr = galinfo[gal].cfgbase;
+  unsigned short cfgAddr = pgm_read_word(&galinfo[gal].cfgbase);
   unsigned short row, bit;
   unsigned short addr;
+  char rows, uesBytes;
+  unsigned char bits, cfgBits;
 
   if (flagBits & FLAG_BIT_ATF16V8C) {
       setPV(0);
   }
 
-  for(row = 0; row < galinfo[gal].rows; row++) {
+  rows = pgm_read_byte(&galinfo[gal].rows);
+  bits = pgm_read_byte(&galinfo[gal].bits);
+  for(row = 0; row < rows; row++) {
     strobeRow(row); //set address of the row
     if (flagBits & FLAG_BIT_ATF16V8C) {
         setSDIN(0);
         setPV(1);
     }
-    for(bit = 0; bit < galinfo[gal].bits; bit++) {
+    for(bit = 0; bit < bits; bit++) {
       // check the received bit is 1 and if so then set the fuse map
       if (receiveBit()) {
-        addr = galinfo[gal].rows;
+        addr = rows;
         addr *= bit;
         addr += row;
         setFuseBit(addr);
@@ -1339,7 +1346,7 @@ static void readGalFuseMap(const unsigned char* cfgArray, char useDelay, char do
   }
 
   // read UES
-  strobeRow(galinfo[gal].uesrow);
+  strobeRow(pgm_read_byte(&galinfo[gal].uesrow));
   if (flagBits & FLAG_BIT_ATF16V8C) {
       setSDIN(0);
       setPV(1);
@@ -1348,9 +1355,11 @@ static void readGalFuseMap(const unsigned char* cfgArray, char useDelay, char do
   if (doDiscardBits) {
     discardBits(doDiscardBits);
   }
-  for(bit = 0; bit < galinfo[gal].uesbytes * 8; bit++) {
+
+  uesBytes = pgm_read_byte(&galinfo[gal].uesbytes);
+  for(bit = 0; bit < uesBytes * 8; bit++) {
     if (receiveBit()) {
-      addr = galinfo[gal].uesfuse;
+      addr = pgm_read_word(&galinfo[gal].uesfuse);
       addr += bit;
       setFuseBit(addr);
     }
@@ -1363,17 +1372,18 @@ static void readGalFuseMap(const unsigned char* cfgArray, char useDelay, char do
   }
 
   // read CFG
-  if (galinfo[gal].cfgmethod == CFG_STROBE_ROW) {
-    strobeRow(galinfo[gal].cfgrow);
+  if (pgm_read_byte(&galinfo[gal].cfgmethod) == CFG_STROBE_ROW) {
+    strobeRow(pgm_read_byte(&galinfo[gal].cfgrow));
     if (flagBits & FLAG_BIT_ATF16V8C) {
       setSDIN(0);
       setPV(1);
     }
   } else {
-    setRow(galinfo[gal].cfgrow);
+    setRow(pgm_read_byte(&galinfo[gal].cfgrow));
     strobe(1);
   }
-  for(bit = 0; bit < galinfo[gal].cfgbits; bit++) {
+  cfgBits = pgm_read_byte(&galinfo[gal].cfgbits);
+  for(bit = 0; bit < cfgBits; bit++) {
     if (receiveBit()) {
       unsigned char cfgOffset = pgm_read_byte(&cfgArray[bit]); //read array byte flom flash
       setFuseBit(cfgAddr + cfgOffset);
@@ -1399,6 +1409,7 @@ static void readGalFuseMap(const unsigned char* cfgArray, char useDelay, char do
 static void readGalFuseMap600(const unsigned char* cfgArray) {
   unsigned short row, bit;
   unsigned short addr;
+  unsigned char cfgBits;
 
   for (row = 0; row < 78; row++)
   {
@@ -1425,16 +1436,17 @@ static void readGalFuseMap600(const unsigned char* cfgArray) {
           setFuseBitVal(98 + 114 * row + bit, receiveBit());
   }
   // UES
-  strobeRow(galinfo[gal].uesrow);
+  strobeRow(pgm_read_byte(&galinfo[gal].uesrow));
   discardBits(20);
-  addr = galinfo[gal].uesfuse;
+  addr = pgm_read_word(&galinfo[gal].uesfuse);
   for (bit = 0; bit < 72; bit++)
       setFuseBitVal(addr + bit, receiveBit());
   // CFG
-  setRow(galinfo[gal].cfgrow);
+  setRow(pgm_read_byte(&galinfo[gal].cfgrow));
   strobe(2);
-  addr = galinfo[gal].cfgbase;
-  for (bit = 0; bit < galinfo[gal].cfgbits; bit++) {
+  addr = pgm_read_word(&galinfo[gal].cfgbase);
+  cfgBits = pgm_read_byte(&galinfo[gal].cfgbits);
+  for (bit = 0; bit < cfgBits; bit++) {
       unsigned char cfgOffset = pgm_read_byte(&cfgArray[bit]); //read array byte flom flash
       setFuseBitVal(addr + cfgOffset, receiveBit());
   }
@@ -1442,26 +1454,29 @@ static void readGalFuseMap600(const unsigned char* cfgArray) {
 
 // generic fuse-map verification, fuse map bits are compared against read bits
 static unsigned short verifyGalFuseMap(const unsigned char* cfgArray, char useDelay, char doDiscardBits) {
-  unsigned short cfgAddr = galinfo[gal].cfgbase;
+  unsigned short cfgAddr = pgm_read_word(&galinfo[gal].cfgbase);
   unsigned short row, bit;
   unsigned short addr;
   char fuseBit;   // fuse bit received from GAL
   char mapBit;    // fuse bit stored in RAM
   unsigned short errors = 0;
-
+  char rows, bits, cfgBits;
+  
   if (flagBits & FLAG_BIT_ATF16V8C) {
       setPV(0);
   }
 
+  rows = pgm_read_byte(&galinfo[gal].rows);
+  bits = pgm_read_byte(&galinfo[gal].bits);
   // read fuse rows
-  for(row = 0; row < galinfo[gal].rows; row++) {
+  for(row = 0; row < rows; row++) {
     strobeRow(row);
     if (flagBits & FLAG_BIT_ATF16V8C) {
         setSDIN(0);
         setPV(1);
     }
-    for(bit = 0; bit < galinfo[gal].bits; bit++) {
-      addr = galinfo[gal].rows;
+    for(bit = 0; bit < bits; bit++) {
+      addr = rows;
       addr *= bit;
       addr += row;
       mapBit = getFuseBit(addr);
@@ -1469,7 +1484,7 @@ static unsigned short verifyGalFuseMap(const unsigned char* cfgArray, char useDe
       if (mapBit != fuseBit) {
 #ifdef DEBUG_VERIFY
         Serial.print(F("f a="));
-        Serial.println((row * galinfo[gal].bits) + bit, DEC);
+        Serial.println((row * bits) + bit, DEC);
 #endif
         errors++;
       }
@@ -1483,7 +1498,7 @@ static unsigned short verifyGalFuseMap(const unsigned char* cfgArray, char useDe
   }
 
    // read UES
-  strobeRow(galinfo[gal].uesrow);
+  strobeRow(pgm_read_byte(&galinfo[gal].uesrow));
   if (flagBits & FLAG_BIT_ATF16V8C) {
       setSDIN(0);
       setPV(1);
@@ -1492,7 +1507,7 @@ static unsigned short verifyGalFuseMap(const unsigned char* cfgArray, char useDe
     discardBits(doDiscardBits);
   }
   for(bit = 0; bit < 64; bit++) {
-    addr = galinfo[gal].uesfuse;
+    addr = pgm_read_word(&galinfo[gal].uesfuse);
     addr += bit;
     mapBit = getFuseBit(addr);
     fuseBit = receiveBit();
@@ -1511,17 +1526,18 @@ static unsigned short verifyGalFuseMap(const unsigned char* cfgArray, char useDe
       setPV(0);
   }
   // read CFG
-  if (galinfo[gal].cfgmethod == CFG_STROBE_ROW) {
-    strobeRow(galinfo[gal].cfgrow);
+  if (pgm_read_byte(&galinfo[gal].cfgmethod) == CFG_STROBE_ROW) {
+    strobeRow(pgm_read_byte(&galinfo[gal].cfgrow));
     if (flagBits & FLAG_BIT_ATF16V8C) {
       setSDIN(0);
       setPV(1);
     }  
   } else {
-    setRow(galinfo[gal].cfgrow);
+    setRow(pgm_read_byte(&galinfo[gal].cfgrow));
     strobe(1);
   }
-  for(bit = 0; bit < galinfo[gal].cfgbits; bit++) {
+  cfgBits = pgm_read_byte(&galinfo[gal].cfgbits);
+  for(bit = 0; bit < cfgBits; bit++) {
     unsigned char cfgOffset = pgm_read_byte(&cfgArray[bit]); //read array byte flom flash
     mapBit = getFuseBit(cfgAddr + cfgOffset); 
     fuseBit = receiveBit();
@@ -1567,6 +1583,7 @@ static unsigned short verifyGalFuseMap600(const unsigned char* cfgArray) {
   char fuseBit;   // fuse bit received from GAL
   char mapBit;    // fuse bit stored in RAM
   unsigned short errors = 0;
+  unsigned char cfgBits;
 
   for (row = 0; row < 78; row++)
   {
@@ -1629,9 +1646,9 @@ static unsigned short verifyGalFuseMap600(const unsigned char* cfgArray) {
       }
   }
   // UES
-  strobeRow(galinfo[gal].uesrow);
+  strobeRow(pgm_read_byte(&galinfo[gal].uesrow));
   discardBits(20);
-  addr = galinfo[gal].uesfuse;
+  addr = pgm_read_word(&galinfo[gal].uesfuse);
   for (bit = 0; bit < 72; bit++) {
       mapBit = getFuseBit(addr + bit);
       fuseBit = receiveBit();
@@ -1644,10 +1661,11 @@ static unsigned short verifyGalFuseMap600(const unsigned char* cfgArray) {
       }
   }
   // CFG
-  setRow(galinfo[gal].cfgrow);
+  setRow(pgm_read_byte(&galinfo[gal].cfgrow));
   strobe(2);
-  addr = galinfo[gal].cfgbase;
-  for (bit = 0; bit < galinfo[gal].cfgbits; bit++) {
+  addr = pgm_read_word(&galinfo[gal].cfgbase);
+  cfgBits = pgm_read_byte(&galinfo[gal].cfgbits);
+  for (bit = 0; bit < cfgBits; bit++) {
       unsigned char cfgOffset = pgm_read_byte(&cfgArray[bit]); //read array byte flom flash
       mapBit = getFuseBit(addr + cfgOffset);
       fuseBit = receiveBit();
@@ -1743,18 +1761,20 @@ static void readOrVerifyGal(char verify)
 
 // fuse-map writing function for V8 GAL chips
 static void writeGalFuseMapV8(const unsigned char* cfgArray) {
-  unsigned short cfgAddr = galinfo[gal].cfgbase;
+  unsigned short cfgAddr = pgm_read_word(&galinfo[gal].cfgbase);
   unsigned char row, rbit;
   unsigned short addr;
-  unsigned char rbitMax = galinfo[gal].bits;
+  unsigned char rbitMax = pgm_read_byte(&galinfo[gal].bits);
   const unsigned char skipLastClk = (flagBits & FLAG_BIT_ATF16V8C) ? 1 : 0;
+  char rows;
 
   setPV(1);
   // write fuse rows
-  for (row = 0; row < galinfo[gal].rows; row++) {
+  rows = pgm_read_byte(&galinfo[gal].rows);
+  for (row = 0; row < rows; row++) {
     setRow(row);
     for(rbit = 0; rbit < rbitMax; rbit++) {
-      addr = galinfo[gal].rows;
+      addr = rows;
       addr *= rbit;
       addr += row;
       sendBit(getFuseBit(addr), rbit == rbitMax - 1 ? skipLastClk : 0);
@@ -1763,17 +1783,17 @@ static void writeGalFuseMapV8(const unsigned char* cfgArray) {
   }
 
   // write UES
-  setRow(galinfo[gal].uesrow);
+  setRow(pgm_read_byte(&galinfo[gal].uesrow));
   for (rbit = 0; rbit < 64; rbit++) {
-    addr = galinfo[gal].uesfuse;
+    addr = pgm_read_word(&galinfo[gal].uesfuse);
     addr += rbit;
     sendBit(getFuseBit(addr), rbit == 63 ? skipLastClk : 0);
   }
   strobe(progtime);
 
   // write CFG (all ICs use setRow)
-  rbitMax = galinfo[gal].cfgbits;
-  setRow(galinfo[gal].cfgrow);
+  rbitMax = pgm_read_byte(&galinfo[gal].cfgbits);
+  setRow(pgm_read_byte(&galinfo[gal].cfgrow));
   for(rbit = 0; rbit < rbitMax; rbit++) {
     unsigned char cfgOffset = pgm_read_byte(&cfgArray[rbit]); //read array byte flom flash
     sendBit(getFuseBit(cfgAddr + cfgOffset), rbit == rbitMax - 1 ? skipLastClk : 0);
@@ -1791,15 +1811,18 @@ static void writeGalFuseMapV8(const unsigned char* cfgArray) {
 
 // fuse-map writing function for V10 GAL chips
 static void writeGalFuseMapV10(const unsigned char* cfgArray, char fillUesStart, char useSdin) {
-  unsigned short cfgAddr = galinfo[gal].cfgbase;
-  unsigned char row, bit;
+  unsigned short cfgAddr = pgm_read_word(&galinfo[gal].cfgbase);
+  unsigned char row, bit, uesBytes, bits, cfgBits;
   unsigned short addr;
+  char rows;
 
   setRow(0); //RA0-5 low
   // write fuse rows
-  for (row = 0; row < galinfo[gal].rows; row++) {
-    for (bit = 0; bit < galinfo[gal].bits; bit++) {
-      addr = galinfo[gal].rows;
+  rows = pgm_read_byte(&galinfo[gal].rows);
+  bits = pgm_read_byte(&galinfo[gal].bits);
+  for (row = 0; row < rows; row++) {
+    for (bit = 0; bit < bits; bit++) {
+      addr = rows;
       addr *= bit;
       addr += row;
       sendBit(getFuseBit(addr));
@@ -1814,22 +1837,24 @@ static void writeGalFuseMapV10(const unsigned char* cfgArray, char fillUesStart,
   if (fillUesStart) {
     sendBits(68, 1);
   }
-  for (bit = 0; bit < galinfo[gal].uesbytes * 8; bit++) {
-    addr = galinfo[gal].uesfuse;
+  uesBytes = pgm_read_byte(&galinfo[gal].uesbytes);
+  for (bit = 0; bit < uesBytes * 8; bit++) {
+    addr = pgm_read_word(&galinfo[gal].uesfuse);
     addr += bit;
     sendBit(getFuseBit(addr));
   }
   if (!fillUesStart) {
     sendBits(68, 1);
   }
-  sendAddress(6, galinfo[gal].uesrow);
+  sendAddress(6, pgm_read_byte(&galinfo[gal].uesrow));
   setPV(1);
   strobe(progtime);
   setPV(0);
   
   // write CFG
-  setRow(galinfo[gal].cfgrow);
-  for(bit = 0; bit < galinfo[gal].cfgbits - useSdin; bit++) {
+  setRow(pgm_read_byte(&galinfo[gal].cfgrow));
+  cfgBits = pgm_read_byte(&galinfo[gal].cfgbits);
+  for(bit = 0; bit < cfgBits - useSdin; bit++) {
     unsigned char cfgOffset = pgm_read_byte(&cfgArray[bit]); //read array byte flom flash
     sendBit(getFuseBit(cfgAddr + cfgOffset));
   }
@@ -1853,8 +1878,8 @@ static void writeGalFuseMapV10(const unsigned char* cfgArray, char fillUesStart,
 
 // fuse-map writing function for 600x GAL chips
 static void writeGalFuseMap600(const unsigned char* cfgArray) {
-    unsigned short cfgAddr = galinfo[gal].cfgbase;
-    unsigned char row, bit;
+    unsigned short cfgAddr = pgm_read_word(&galinfo[gal].cfgbase);
+    unsigned char row, bit, cfgBits;
     unsigned short addr;
 
     setRow(0);
@@ -1890,20 +1915,21 @@ static void writeGalFuseMap600(const unsigned char* cfgArray) {
     }
     // UES
     sendBits(20, 0);
-    addr = galinfo[gal].uesfuse;
+    addr = pgm_read_word(&galinfo[gal].uesfuse);
     for (bit = 0; bit < 72; bit++)
         sendBit(getFuseBit(addr + bit));
     sendBits(3, 0);
     sendBit(1);
-    sendAddress(7, galinfo[gal].uesrow);
+    sendAddress(7, pgm_read_byte(&galinfo[gal].uesrow));
     sendBits(16, 0);
     setSDIN(0);
     setPV(1);
     strobe(progtime);
     setPV(0);
     // CFG
-    setRow(galinfo[gal].cfgrow);
-    for (bit = 0; bit < galinfo[gal].cfgbits; bit++)
+    setRow(pgm_read_byte(&galinfo[gal].cfgrow));
+    cfgBits = pgm_read_byte(&galinfo[gal].cfgbits);
+    for (bit = 0; bit < cfgBits; bit++)
     {
         unsigned char cfgOffset = pgm_read_byte(&cfgArray[bit]); //read array byte flom flash
         sendBit(getFuseBit(cfgAddr + cfgOffset));
@@ -1967,7 +1993,7 @@ static void eraseGAL(char eraseAll)
     turnOn(ERASEGAL);
     
     setPV(1);
-    setRow(eraseAll ? galinfo[gal].eraseallrow : galinfo[gal].eraserow);
+    setRow(eraseAll ? pgm_read_byte(&galinfo[gal].eraseallrow) : pgm_read_byte(&galinfo[gal].eraserow));
     if (gal == GAL16V8 || gal == ATF16V8B || gal==GAL20V8) {
         sendBit(1);
     }
@@ -2018,7 +2044,9 @@ static char checkGalTypeViaPes(void)
     }
     else if (pes[2] != 0x00 && pes[2] != 0xFF) {
        for (type = (sizeof(galinfo) / sizeof(galinfo[0])) - 1; type; type--) {
-           if (pes[2] == galinfo[type].id0 || pes[2] == galinfo[type].id1) break;
+            unsigned char id0 = pgm_read_byte(&galinfo[type].id0);
+            unsigned char id1 = pgm_read_byte(&galinfo[type].id1);
+           if (pes[2] == id0 || pes[2] == id1) break;
        }
     } else if (pes[3] == SGSTHOMSON && pes[2] == 0x00) {
        type = GAL16V8;
@@ -2184,12 +2212,13 @@ static void printJedec()
 {
     unsigned short i, j, k, n;
     unsigned char unused, start;
+    char uesBytes, pesBytes, bits, rows;
     uint8_t apdFuse = (flagBits & FLAG_BIT_APD) ? 1 : 0;
 
     Serial.print(F("JEDEC file for "));
     printGalName();
-    Serial.print(F("*QP")); Serial.print(galinfo[gal].pins, DEC);
-    Serial.print(F("*QF")); Serial.print(galinfo[gal].fuses + apdFuse, DEC);
+    Serial.print(F("*QP")); Serial.print(pgm_read_byte(&galinfo[gal].pins), DEC);
+    Serial.print(F("*QF")); Serial.print(pgm_read_word(&galinfo[gal].fuses) + apdFuse, DEC);
     Serial.println(F("*QV0*F0*G0*X0*"));
     
     k = 0;
@@ -2197,15 +2226,17 @@ static void printJedec()
       k = printJedecBlock(k, 64, 114);
       k = printJedecBlock(k, 11, 78);
     } else {
-      k = printJedecBlock(k, galinfo[gal].bits, galinfo[gal].rows);
+      bits = pgm_read_byte(&galinfo[gal].bits);
+      rows = pgm_read_byte(&galinfo[gal].rows);
+      k = printJedecBlock(k, bits, rows);
     }
 
-    if( k < galinfo[gal].uesfuse) {
+    if( k < pgm_read_word(&galinfo[gal].uesfuse)) {
         Serial.print('L');
         printFormatedNumberDec4(k);
         Serial.print(' ');
         
-        while(k < galinfo[gal].uesfuse) {
+        while(k < pgm_read_word(&galinfo[gal].uesfuse)) {
            if (getFuseBit(k)) {
               unused = 0;
               Serial.print('1');
@@ -2220,7 +2251,8 @@ static void printJedec()
 
     // UES in byte form
     Serial.print(F("N UES"));
-    for (j = 0;j < galinfo[gal].uesbytes; j++) {
+    uesBytes = pgm_read_byte(&galinfo[gal].uesbytes);
+    for (j = 0;j < uesBytes; j++) {
         n = 0;
         for (i = 0; i < 8; i++) {
             if (getFuseBit(k + 8 * j + i)) {
@@ -2242,7 +2274,7 @@ static void printJedec()
     printFormatedNumberDec4(k);
     Serial.print(F(" "));
     
-    for(j = 0; j < 8 * galinfo[gal].uesbytes; j++) {
+    for(j = 0; j < 8 * uesBytes; j++) {
       if (getFuseBit(k++)) {
          Serial.print(F("1"));
       } else {
@@ -2252,12 +2284,12 @@ static void printJedec()
     Serial.println(F("*"));
 
     // CFG bits
-    if (k < galinfo[gal].fuses) {
+    if (k < pgm_read_word(&galinfo[gal].fuses)) {
       Serial.print(F("L"));
       printFormatedNumberDec4(k);
       Serial.print(F(" "));
 
-      while( k < galinfo[gal].fuses) {
+      while( k < pgm_read_word(&galinfo[gal].fuses)) {
         if (getFuseBit(k++)) {
            Serial.print(F("1"));
         } else {
@@ -2278,13 +2310,14 @@ static void printJedec()
     }
 
     Serial.print(F("N PES"));
-    for(i = 0; i < galinfo[gal].pesbytes; i++) {
+    pesBytes = pgm_read_word(&galinfo[gal].pesbytes);
+    for(i = 0; i < pesBytes; i++) {
         Serial.print(F(" "));
         printFormatedNumberHex2(pes[i]);  
     }
     Serial.println(F("*"));
     Serial.print(F("C"));
-    printFormatedNumberHex4(checkSum(galinfo[gal].fuses + apdFuse));
+    printFormatedNumberHex4(checkSum(pgm_read_word(&galinfo[gal].fuses) + apdFuse));
     Serial.println();
     Serial.println(F("*"));
 }
