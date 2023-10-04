@@ -2189,7 +2189,10 @@ static unsigned printJedecBlock(unsigned short k, unsigned short bits, unsigned 
         k += rows;
         continue;
       }
-
+      Serial.print(i, DEC);
+      Serial.print(' ');
+      Serial.print(bits, DEC);
+      Serial.print(' ');
       Serial.print('L');
       printFormatedNumberDec4(k);
       Serial.print(' ');
@@ -2212,7 +2215,8 @@ static void printJedec()
 {
     unsigned short i, j, k, n;
     unsigned char unused, start;
-    char uesBytes, pesBytes, bits, rows;
+    unsigned char uesBytes, pesBytes, bits, rows;
+    unsigned short uesfuse;
     uint8_t apdFuse = (flagBits & FLAG_BIT_APD) ? 1 : 0;
 
     Serial.print(F("JEDEC file for "));
@@ -2231,12 +2235,13 @@ static void printJedec()
       k = printJedecBlock(k, bits, rows);
     }
 
-    if( k < pgm_read_word(&galinfo[gal].uesfuse)) {
+    uesfuse = pgm_read_word(&galinfo[gal].uesfuse);
+    if( k < uesfuse) {
         Serial.print('L');
         printFormatedNumberDec4(k);
         Serial.print(' ');
         
-        while(k < pgm_read_word(&galinfo[gal].uesfuse)) {
+        while(k < uesfuse) {
            if (getFuseBit(k)) {
               unused = 0;
               Serial.print('1');
