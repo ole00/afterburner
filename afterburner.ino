@@ -179,7 +179,7 @@ typedef enum {
 // common CFG fuse address map for cfg16V8 and cfg20V8
 // the only difference is the starting address: 2048 for cfg16V8 and 2560 for cfg20V8
 // total size: 82
-const unsigned char cfgV8[] PROGMEM =
+static const unsigned char cfgV8[] PROGMEM =
 {
       80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,
       0,1,2,3,
@@ -193,7 +193,7 @@ const unsigned char cfgV8[] PROGMEM =
 // common CFG fuse address map for cfg16V8AB and cfg20V8AB
 // the only difference is the starting address: 2048 for cfg16V8AB and 2560 for cfg20V8AB
 // total size: 82
-const unsigned char cfgV8AB[] PROGMEM =
+static const unsigned char cfgV8AB[] PROGMEM =
 {
       0,1,2,3,
       145,
@@ -207,7 +207,7 @@ const unsigned char cfgV8AB[] PROGMEM =
 // common CFG fuse address map for cfg18V10
 // starting address: 3456
 // total size 20
-static const unsigned char cfg18V10[] =
+static const unsigned char cfg18V10[] PROGMEM =
 {
       1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14, 17, 16, 19, 18
 };
@@ -215,7 +215,7 @@ static const unsigned char cfg18V10[] =
 // common CFG fuse address map for cfg20XV10
 // starting address: 1600
 // total size 31
-const unsigned char cfgXV10[] PROGMEM =
+static const unsigned char cfgXV10[] PROGMEM =
 {
   30,
   28, 29,
