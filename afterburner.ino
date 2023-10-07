@@ -1094,8 +1094,8 @@ static void writePes(void) {
   setPV(1);
 
   switch(gal) {
-    GAL6001:
-    GAL6002:
+    case GAL6001:
+    case GAL6002:
       setRow(0);
       sendBits(20, 0);
       for (rbit = 0; rbit < 64; rbit++) {
