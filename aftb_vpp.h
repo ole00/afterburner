@@ -40,6 +40,17 @@
 
 #define VPP_VERBOSE 0
 
+#ifdef EXTERNAL
+#define ANALOG_REF_EXTERNAL EXTERNAL
+#else
+#define ANALOG_REF_EXTERNAL AR_EXTERNAL
+#endif
+
+//UNO R4 Minima or Wifi (Aref internally pulled down by 130kOhm, AVR Uno R3 pulled down by 32kOhm)
+#ifdef _RENESAS_RA_
+#define AREF_IS_3V2
+#endif
+
 //pot wiper indices for the voltages 
 uint8_t vppWiper[MAX_WIPER] = {0};
 
@@ -135,16 +146,39 @@ static void varVppSet(uint8_t value) {
     varVppSetVppIndex(vppWiper[value]);
 }
 
+// UNO R4/Minima - Renesas IC (significant ADC gain errors measured)
+#ifdef AREF_IS_3V2
+#define SAMPLE_CNT 16
+#define SAMPLE_DIVIDER 8
+#define SAMPLE_MULTIPLIER 25
+// SAMPLE_SHIFT moves the ADC gain error up/down
+#define SAMPLE_SHIFT -45;
+
+//AVR based Arduinos (no ADC gain errors measured)
+#else
 #define SAMPLE_CNT 14
+#define SAMPLE_DIVIDER 8
+#define SAMPLE_MULTIPLIER 1
+#define SAMPLE_OFFSET 5
+#endif
+
 static int16_t varVppMeasureVpp(int8_t printValue) {
     int8_t i = 0;
     uint16_t r1 = 0;
+    int16_t r2; //correction for ADC gain error
 
     while (i++ < SAMPLE_CNT) {
         r1 += analogRead(VPP);
     }
-    r1+= 5;
-    r1 /= 8;
+    r2 = (r1 / (SAMPLE_DIVIDER * SAMPLE_MULTIPLIER));
+#ifdef SAMPLE_OFFSET
+    r1+= SAMPLE_OFFSET;
+#endif    
+    r1 /= SAMPLE_DIVIDER;
+#ifdef SAMPLE_SHIFT
+    r2 += SAMPLE_SHIFT;
+    r1 += r2;
+#endif    
     r1 += calOffset;
     if (printValue) {
         uint8_t a = r1%100;
@@ -153,7 +187,14 @@ static int16_t varVppMeasureVpp(int8_t printValue) {
         if (a < 10) {
             Serial.print(F("0"));          
         }
+#if 1
         Serial.println(a);
+#else
+        //debug - display the voltage skew value in r2
+        Serial.print(a);
+        Serial.println(F(", "));
+        Serial.println(r2);
+#endif        
     }
     return r1;
 }
@@ -258,9 +299,10 @@ static void varVppStoreWiperCalib() {
     }
 }
 
+
 //return 1 on success (variable VPP functionality present), 0 on failure (VPP not detected on board)
 static int8_t varVppInit(void) {
-    analogReference(EXTERNAL); //use 3V3 external reference
+    analogReference(ANALOG_REF_EXTERNAL); //use 3V3 external reference
 
     wiperStat = 0; //wiper disabled
     mcp4131_init();
