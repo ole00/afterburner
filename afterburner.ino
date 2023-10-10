@@ -1094,8 +1094,8 @@ static void writePes(void) {
   setPV(1);
 
   switch(gal) {
-    GAL6001:
-    GAL6002:
+    case GAL6001:
+    case GAL6002:
       setRow(0);
       sendBits(20, 0);
       for (rbit = 0; rbit < 64; rbit++) {
@@ -2232,46 +2232,46 @@ static void printJedec()
                 }
             }
         }
-        Serial.print(F(" "));
+        Serial.print(' ');
         printFormatedNumberHex2(n);  
     }
-    Serial.println(F("*"));
+    Serial.println('*');
 
     // UES in bit form
-    Serial.print(F("L"));
+    Serial.print('L');
     printFormatedNumberDec4(k);
-    Serial.print(F(" "));
+    Serial.print(' ');
     
     for(j = 0; j < 8 * galinfo[gal].uesbytes; j++) {
       if (getFuseBit(k++)) {
-         Serial.print(F("1"));
+         Serial.print('1');
       } else {
-         Serial.print(F("0"));
+         Serial.print('0');
       }
     }
-    Serial.println(F("*"));
+    Serial.println('*');
 
     // CFG bits
     if (k < galinfo[gal].fuses) {
-      Serial.print(F("L"));
+      Serial.print('L');
       printFormatedNumberDec4(k);
-      Serial.print(F(" "));
+      Serial.print(' ');
 
       while( k < galinfo[gal].fuses) {
         if (getFuseBit(k++)) {
-           Serial.print(F("1"));
+           Serial.print('1');
         } else {
-           Serial.print(F("0"));
+           Serial.print('0');
         }
       }
       //ATF16V8C
       if (apdFuse) {
-        Serial.print(F("1"));
+        Serial.print('1');
         setFuseBit(k); // set for correct check-sum calculation
       }
-      Serial.println(F("*"));
+      Serial.println('*');
     } else if (apdFuse) { //ATF22V10C
-      Serial.print(F("L"));
+      Serial.print('L');
       printFormatedNumberDec4(k);
       Serial.println(F(" 1*"));
       setFuseBit(k); // set for correct check-sum calculation
@@ -2279,14 +2279,14 @@ static void printJedec()
 
     Serial.print(F("N PES"));
     for(i = 0; i < galinfo[gal].pesbytes; i++) {
-        Serial.print(F(" "));
+        Serial.print(' ');
         printFormatedNumberHex2(pes[i]);  
     }
-    Serial.println(F("*"));
-    Serial.print(F("C"));
+    Serial.println('*');
+    Serial.print('C');
     printFormatedNumberHex4(checkSum(galinfo[gal].fuses + apdFuse));
     Serial.println();
-    Serial.println(F("*"));
+    Serial.println('*');
 }
 
 // helper print function to save RAM space
