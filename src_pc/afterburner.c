@@ -609,8 +609,8 @@ static void closeSerial(void) {
 
 static int checkPromptExists(char* buf, int bufSize) {
     int i;
-    for (i = 0; i < bufSize && buf[i] != 0; i++) {
-        if (buf[i] == '>') {
+    for (i = 0; i < bufSize - 2 && buf[i] != 0; i++) {
+        if (buf[i] == '>' && buf[i+1] == '\r' && buf[i+2] == '\n') {
             return i;
         }
     }
