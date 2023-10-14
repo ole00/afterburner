@@ -295,5 +295,13 @@ Other GAL related links:
 - JDEC file standard 3A: https://k1.spdns.de/Develop/Projects/GalAsm/info/JEDEC%20File%20Standard%203A.txt
   
 - GAL Asm : https://github.com/dwery/galasm
+
+- GAL Asm online compiler: https://rhgndf.github.io/galasm-web/
+
+- PLD and GAL info: https://github.com/peterzieba/5Vpld
+
+- Fusemap info:
+    * https://blog.frankdecaire.com/2017/01/22/generic-array-logic-devices/
+    * https://blog.frankdecaire.com/2017/02/25/programming-the-gal22v10/
  
-- CUPL Reference: http://ee.sharif.edu/~logic_circuits_t/readings/CUPL_Reference.pdf
+- CUPL Reference: https://web.archive.org/web/20220126145737/https://ee.sharif.edu/~logic_circuits_t/readings/CUPL_Reference.pdf
