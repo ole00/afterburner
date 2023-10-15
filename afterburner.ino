@@ -1154,7 +1154,7 @@ void parsePes(char type) {
     type = gal; 
   }
 
-#if DEBUG_PES
+#ifdef DEBUG_PES
   Serial.print(F("Parse pes. gal="));
   Serial.println(type, DEC);
 #endif
@@ -1654,7 +1654,7 @@ static unsigned short verifyGalFuseMap600(const unsigned char* cfgArray) {
       if (mapBit != fuseBit) {
 #ifdef DEBUG_VERIFY
         Serial.print(F("f a="));
-        Serial.println(addr + cfgVal, DEC);
+        Serial.println(addr + cfgOffset, DEC);
 #endif
         errors++;
       }
