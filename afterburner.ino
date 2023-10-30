@@ -36,7 +36,7 @@
 
 #define VERSION "0.5.3"
 
-//#define DEBUG_PES
+#define DEBUG_PES
 //#define DEBUG_VERIFY
 
 //ARDUINO UNO pin mapping
@@ -306,7 +306,7 @@ galinfo[]=
 //   |          |     |      |     |   |     |  |   |     |  |   |    |   |   |        |        |       |                |
     {UNKNOWN,   0x00, 0x00,     0,  0,  0,   0,  0,    0, 0,  0,  0,  0,  8,  0,       0,        NULL,      0         , 0},
     {GAL16V8,   0x00, 0x1A,  2194, 20, 32,  64, 32, 2056, 8, 63, 62, 58,  8, 60, CFG_BASE_16  , cfgV8AB,  sizeof(cfgV8AB) , CFG_STROBE_ROW},
-    {GAL18V10,  0x50, 0x51,  3540, 20, 36,  96, 36, 3476, 8, 61, 60, 58, 10, 16, CFG_BASE_18  , cfg18V10, sizeof(cfg18V10), CFG_SET_ROW   },
+    {GAL18V10,  0x50, 0x51,  3540, 20, 36,  96, 44, 3476, 8, 61, 60, 58, 10, 16, CFG_BASE_18  , cfg18V10, sizeof(cfg18V10), CFG_SET_ROW   },
     {GAL20V8,   0x20, 0x3A,  2706, 24, 40,  64, 40, 2568, 8, 63, 62, 58,  8, 60, CFG_BASE_20  , cfgV8AB,  sizeof(cfgV8AB) , CFG_STROBE_ROW},
     {GAL20XV10, 0x65, 0x66,  1671, 24, 40,  40, 44, 1631, 5, 61, 60, 58,  5, 16, CFG_BASE_20XV, cfgXV10,  sizeof(cfgXV10) , CFG_SET_ROW   },
     {GAL22V10,  0x48, 0x49,  5892, 24, 44, 132, 44, 5828, 8, 61, 62, 58, 10, 16, CFG_BASE_22  , cfgV10,   sizeof(cfgV10)  , CFG_SET_ROW   },
@@ -1870,6 +1870,7 @@ static void writeGalFuseMapV10(const unsigned char* cfgArray, char fillUesStart,
   unsigned short cfgAddr = galinfo[gal].cfgbase;
   unsigned char row, bit;
   unsigned short addr;
+  unsigned short uesFill = galinfo[gal].bits - galinfo[gal].uesbytes * 8;
 
   setRow(0); //RA0-5 low
   // write fuse rows
@@ -1888,7 +1889,7 @@ static void writeGalFuseMapV10(const unsigned char* cfgArray, char fillUesStart,
 
   // write UES
   if (fillUesStart) {
-    sendBits(68, 1);
+    sendBits(uesFill, 1);
   }
   for (bit = 0; bit < galinfo[gal].uesbytes * 8; bit++) {
     addr = galinfo[gal].uesfuse;
@@ -1896,7 +1897,7 @@ static void writeGalFuseMapV10(const unsigned char* cfgArray, char fillUesStart,
     sendBit(getFuseBit(addr));
   }
   if (!fillUesStart) {
-    sendBits(68, 1);
+    sendBits(uesFill, 1);
   }
   sendAddress(6, galinfo[gal].uesrow);
   setPV(1);
