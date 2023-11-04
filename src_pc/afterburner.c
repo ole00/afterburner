@@ -1106,7 +1106,7 @@ static char operationEraseGal(void) {
     sendLine(buf, MAX_LINE, 300);
 
     //set GAL type
-    sprintf(buf, "#t %i\r", (int) gal);
+    sprintf(buf, "#t %c\r", '0' + (int) gal);
     sendLine(buf, MAX_LINE, 300);
 
     //Exit upload mode (ensure the return texts are discarded by waiting 100 ms)
@@ -1137,7 +1137,7 @@ static char operationReadFuses(void) {
     sendLine(buf, MAX_LINE, 100);
 
     //set GAL type
-    sprintf(buf, "#t %i\r", (int) gal);
+    sprintf(buf, "#t %c\r", '0' + (int) gal);
     sendLine(buf, MAX_LINE, 100);
 
     //Exit upload mode (ensure the texts are discarded by waiting 100 ms)
