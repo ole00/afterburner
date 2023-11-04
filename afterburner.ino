@@ -36,7 +36,7 @@
 
 #define VERSION "0.5.3"
 
-#define DEBUG_PES
+//#define DEBUG_PES
 //#define DEBUG_VERIFY
 
 //ARDUINO UNO pin mapping
