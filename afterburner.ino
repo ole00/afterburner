@@ -2605,7 +2605,8 @@ void loop() {
             setGalDefaults();
           }
         } else {
-          Serial.println(F("ER Unknown gal type"));
+          Serial.print(F("ER Unknown gal type "));
+          Serial.println(type, DEC);
         }
       } break;
       case COMMAND_ENABLE_CHECK_TYPE: {
