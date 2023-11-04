@@ -36,7 +36,7 @@
 
 #define VERSION "0.5.3"
 
-//#define DEBUG_PES
+#define DEBUG_PES
 //#define DEBUG_VERIFY
 
 //ARDUINO UNO pin mapping
@@ -72,6 +72,7 @@
 #define PIN_ZIF14         11
 #define PIN_ZIF15         10
 #define PIN_ZIF16         9
+#define PIN_ZIF20         0b100000
 #define PIN_ZIF21         0b10000
 #define PIN_ZIF22         4
 #define PIN_ZIF23         3
@@ -144,6 +145,7 @@
 typedef enum {
   UNKNOWN,
   GAL16V8,
+  GAL18V10,
   GAL20V8,
   GAL20XV10,
   GAL22V10,
@@ -162,6 +164,7 @@ typedef enum {
 // config bit numbers
 
 #define CFG_BASE_16   2048
+#define CFG_BASE_18   3456
 #define CFG_BASE_20   2560
 #define CFG_BASE_20XV 1600
 #define CFG_BASE_22   5808
@@ -176,7 +179,7 @@ typedef enum {
 // common CFG fuse address map for cfg16V8 and cfg20V8
 // the only difference is the starting address: 2048 for cfg16V8 and 2560 for cfg20V8
 // total size: 82
-const unsigned char cfgV8[] PROGMEM =
+static const unsigned char cfgV8[] PROGMEM =
 {
       80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,
       0,1,2,3,
@@ -190,7 +193,7 @@ const unsigned char cfgV8[] PROGMEM =
 // common CFG fuse address map for cfg16V8AB and cfg20V8AB
 // the only difference is the starting address: 2048 for cfg16V8AB and 2560 for cfg20V8AB
 // total size: 82
-const unsigned char cfgV8AB[] PROGMEM =
+static const unsigned char cfgV8AB[] PROGMEM =
 {
       0,1,2,3,
       145,
@@ -201,10 +204,18 @@ const unsigned char cfgV8AB[] PROGMEM =
       4,5,6,7,
 };
 
+// common CFG fuse address map for cfg18V10
+// starting address: 3456
+// total size 20
+static const unsigned char cfg18V10[] PROGMEM =
+{
+      1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14, 17, 16, 19, 18
+};
+
 // common CFG fuse address map for cfg20XV10
 // starting address: 1600
 // total size 31
-const unsigned char cfgXV10[] PROGMEM =
+static const unsigned char cfgXV10[] PROGMEM =
 {
   30,
   28, 29,
@@ -294,15 +305,16 @@ galinfo[]=
 //   +-- type   + id0 + id1  |     |   +rows |  |   +uesfuse |   +eraseallrow +cfgrow  |        |       + cfgbits        +cfgmethod
 //   |          |     |      |     |   |     |  |   |     |  |   |    |   |   |        |        |       |                |
     {UNKNOWN,   0x00, 0x00,     0,  0,  0,   0,  0,    0, 0,  0,  0,  0,  8,  0,       0,        NULL,      0         , 0},
-    {GAL16V8,   0x00, 0x1A,  2194, 20, 32,  64, 32, 2056, 8, 63, 62, 58,  8, 60, CFG_BASE_16  , cfgV8AB, sizeof(cfgV8AB) , CFG_STROBE_ROW},
-    {GAL20V8,   0x20, 0x3A,  2706, 24, 40,  64, 40, 2568, 8, 63, 62, 58,  8, 60, CFG_BASE_20  , cfgV8AB, sizeof(cfgV8AB) , CFG_STROBE_ROW},
-    {GAL20XV10, 0x65, 0x66,  1671, 24, 40,  40, 44, 1631, 5, 61, 60, 58,  5, 16, CFG_BASE_20XV, cfgXV10, sizeof(cfgXV10) , CFG_SET_ROW   },
-    {GAL22V10,  0x48, 0x49,  5892, 24, 44, 132, 44, 5828, 8, 61, 62, 58, 10, 16, CFG_BASE_22  , cfgV10,  sizeof(cfgV10)  , CFG_SET_ROW   },
-    {GAL6001,   0x40, 0x41,  8294, 24, 78,  75, 97, 8222, 9, 63, 62, 96,  8,  8, CFG_BASE_600 , cfg6001, sizeof(cfg6001) , CFG_SET_ROW   },
-    {GAL6002,   0x44, 0x44,  8330, 24, 78,  75, 97, 8258, 9, 63, 62, 96,  8,  8, CFG_BASE_600 , cfg6002, sizeof(cfg6002) , CFG_SET_ROW   },
-    {ATF16V8B,  0x00, 0x00,  2194, 20, 32,  64, 32, 2056, 8, 63, 62, 58,  8, 60, CFG_BASE_16  , cfgV8AB, sizeof(cfgV8AB) , CFG_STROBE_ROW},
-    {ATF22V10B, 0x00, 0x00,  5892, 24, 44, 132, 44, 5828, 8, 61, 62, 58, 10, 16, CFG_BASE_22  , cfgV10,  sizeof(cfgV10)  , CFG_SET_ROW   },
-    {ATF22V10C, 0x00, 0x00,  5892, 24, 44, 132, 44, 5828, 8, 61, 62, 58, 10, 16, CFG_BASE_22  , cfgV10,  sizeof(cfgV10)  , CFG_SET_ROW   },
+    {GAL16V8,   0x00, 0x1A,  2194, 20, 32,  64, 32, 2056, 8, 63, 62, 58,  8, 60, CFG_BASE_16  , cfgV8AB,  sizeof(cfgV8AB) , CFG_STROBE_ROW},
+    {GAL18V10,  0x50, 0x51,  3540, 20, 36,  96, 44, 3476, 8, 61, 60, 58, 10, 16, CFG_BASE_18  , cfg18V10, sizeof(cfg18V10), CFG_SET_ROW   },
+    {GAL20V8,   0x20, 0x3A,  2706, 24, 40,  64, 40, 2568, 8, 63, 62, 58,  8, 60, CFG_BASE_20  , cfgV8AB,  sizeof(cfgV8AB) , CFG_STROBE_ROW},
+    {GAL20XV10, 0x65, 0x66,  1671, 24, 40,  40, 44, 1631, 5, 61, 60, 58,  5, 16, CFG_BASE_20XV, cfgXV10,  sizeof(cfgXV10) , CFG_SET_ROW   },
+    {GAL22V10,  0x48, 0x49,  5892, 24, 44, 132, 44, 5828, 8, 61, 62, 58, 10, 16, CFG_BASE_22  , cfgV10,   sizeof(cfgV10)  , CFG_SET_ROW   },
+    {GAL6001,   0x40, 0x41,  8294, 24, 78,  75, 97, 8222, 9, 63, 62, 96,  8,  8, CFG_BASE_600 , cfg6001,  sizeof(cfg6001) , CFG_SET_ROW   },
+    {GAL6002,   0x44, 0x44,  8330, 24, 78,  75, 97, 8258, 9, 63, 62, 96,  8,  8, CFG_BASE_600 , cfg6002,  sizeof(cfg6002) , CFG_SET_ROW   },
+    {ATF16V8B,  0x00, 0x00,  2194, 20, 32,  64, 32, 2056, 8, 63, 62, 58,  8, 60, CFG_BASE_16  , cfgV8AB,  sizeof(cfgV8AB) , CFG_STROBE_ROW},
+    {ATF22V10B, 0x00, 0x00,  5892, 24, 44, 132, 44, 5828, 8, 61, 62, 58, 10, 16, CFG_BASE_22  , cfgV10,   sizeof(cfgV10)  , CFG_SET_ROW   },
+    {ATF22V10C, 0x00, 0x00,  5892, 24, 44, 132, 44, 5828, 8, 61, 62, 58, 10, 16, CFG_BASE_22  , cfgV10,   sizeof(cfgV10)  , CFG_SET_ROW   },
 };
 
 // MAXFUSES calculated as the biggest required space to hold the fuse bitmap
@@ -325,6 +337,7 @@ char uploadError;
 unsigned char fusemap[MAXFUSES];
 unsigned char flagBits;
 char varVppExists;
+uint8_t lastShiftRegVal = 0;
 
 static void setFuseBit(unsigned short bitPos);
 static unsigned short checkSum(unsigned short n);
@@ -380,6 +393,22 @@ static void setPinMux(uint8_t pm) {
     digitalWrite(PIN_ZIF_GND_CTRL, pm == OUTPUT ? HIGH: LOW);
     break;        
 
+  case GAL18V10:
+    pinMode(PIN_ZIF10, INPUT); //GND via MOSFET
+    pinMode(PIN_ZIF11, INPUT);
+    pinMode(PIN_ZIF13, INPUT);
+    pinMode(PIN_ZIF14, INPUT);
+    pinMode(PIN_ZIF9, INPUT_PULLUP); //DOUT
+    // ensure ZIF10 is Grounded via transistor
+    digitalWrite(PIN_ZIF_GND_CTRL, pm == OUTPUT ? HIGH: LOW);
+
+    //pull down unused pins
+    pinMode(PIN_ZIF15, pm);
+    pinMode(PIN_ZIF16, pm);
+    digitalWrite(PIN_ZIF15, LOW);
+    digitalWrite(PIN_ZIF16, LOW);
+    break;
+  
   case GAL20V8:
     pinMode(PIN_ZIF10, pm);
     pinMode(PIN_ZIF11, pm);
@@ -468,6 +497,7 @@ static void setupGpios(uint8_t pm) {
                         digitalWrite(PIN_SHR_CLK, 1)
                         
 static void setShiftReg(uint8_t val) {
+  lastShiftRegVal = val;
   //assume CS is high
 
   //ensure CLK is high (might be set low by other SPI devices)
@@ -785,7 +815,13 @@ static void setVPP(char on) {
 static void setSTB(char on) {
   if (varVppExists) {
     const unsigned short b = galinfo[gal].cfgbase;
-    const uint8_t pin = (b == CFG_BASE_16) ? PIN_ZIF15 : PIN_ZIF13;
+    uint8_t pin = PIN_ZIF13;
+    if (b == CFG_BASE_16) {
+      pin = PIN_ZIF15;
+    } else
+    if (b == CFG_BASE_18) {
+      pin = PIN_ZIF8;
+    }
     digitalWrite(pin, on ? 1:0);
   } else {
     digitalWrite(PIN_STROBE, on ? 1:0);
@@ -812,8 +848,17 @@ static void setPV(char on) {
 static void setSDIN(char on) {
   if (varVppExists) {
     const unsigned short b = galinfo[gal].cfgbase;
+    if (b == CFG_BASE_18) {
+      if (on) {
+        lastShiftRegVal |= PIN_ZIF7;
+      } else {
+        lastShiftRegVal &= ~PIN_ZIF7;
+      }
+      setShiftReg(lastShiftRegVal);
+    } else {
     const uint8_t pin = (b == CFG_BASE_16) ? PIN_ZIF9 : PIN_ZIF11;
     digitalWrite(pin, on ? 1:0);
+    }
   } else {
     digitalWrite(PIN_SDIN, on ? 1:0);
   }
@@ -822,8 +867,17 @@ static void setSDIN(char on) {
 static void setSCLK(char on){
   if (varVppExists) {
     const unsigned short b = galinfo[gal].cfgbase;
+    if (b == CFG_BASE_18) {
+      if (on) {
+        lastShiftRegVal |= PIN_ZIF6;
+      } else {
+        lastShiftRegVal &= ~PIN_ZIF6;
+      }
+      setShiftReg(lastShiftRegVal);
+    } else {
     uint8_t pin = (b == CFG_BASE_16) ? PIN_ZIF8 : PIN_ZIF10;
     digitalWrite(pin, on ? 1:0);
+    }
   } else {
     digitalWrite(PIN_SCLK, on ? 1:0);
   }
@@ -843,6 +897,14 @@ static void setRow(char row)
       if (row & 0x10) srval |= PIN_ZIF6; //RA4
       if (row & 0x20) srval |= PIN_ZIF7; //RA5
     } else 
+    if (b == CFG_BASE_18) {
+      digitalWrite(PIN_ZIF22, (row & 0x1)); //RA0
+      if (row & 0x2) srval  |= PIN_ZIF21; //RA1
+      if (row & 0x4) srval  |= PIN_ZIF20; //RA2
+      digitalWrite(PIN_ZIF3 , (row & 0x8)); //RA3
+      if (row & 0x10) srval  |= PIN_ZIF4; //RA4
+      if (row & 0x20) srval  |= PIN_ZIF5; //RA5
+    } else
     if (b == CFG_BASE_22 || b == CFG_BASE_20XV || b == CFG_BASE_600) {
       if (row & 0x1) srval  |= PIN_ZIF4; //RA0
       if (row & 0x2) srval  |= PIN_ZIF5; //RA1
@@ -881,6 +943,9 @@ static char getSDOUT(void)
     } else
     if (b == CFG_BASE_20) {
       pin = PIN_ZIF15;
+    } else
+    if (b == CFG_BASE_18) {
+      pin = PIN_ZIF9;
     }
     return digitalRead(pin) != 0;
   } else {
@@ -1022,6 +1087,7 @@ static void strobeRow(char row, char setBit = BIT_NONE)
       }
       strobe(2);           // pulse /STB for 2ms
       break;
+    case GAL18V10:
     case GAL20XV10:
     case GAL22V10:
     case ATF22V10B:
@@ -1261,6 +1327,7 @@ void printPes(char type) {
   // GAL type
   switch (type) {
     case GAL16V8: Serial.print(F("GAL16V8 ")); break;
+    case GAL18V10: Serial.print(F("GAL18V10 ")); break;
     case GAL20V8: Serial.print(F("GAL20V8 ")); break;
     case GAL20XV10: Serial.print(F("GAL20XV10 ")); break;
     case GAL22V10: Serial.print(F("GAL22V10 ")); break;
@@ -1491,7 +1558,7 @@ static unsigned short verifyGalFuseMap(const unsigned char* cfgArray, char useDe
   if (doDiscardBits) {
     discardBits(doDiscardBits);
   }
-  for(bit = 0; bit < 64; bit++) {
+  for(bit = 0; bit < galinfo[gal].uesbytes * 8; bit++) {
     addr = galinfo[gal].uesfuse;
     addr += bit;
     mapBit = getFuseBit(addr);
@@ -1715,21 +1782,30 @@ static void readOrVerifyGal(char verify)
         }
         break;
       
+    case GAL18V10:
+        if (verify) {
+            i = verifyGalFuseMap(cfg18V10, 0, 0);
+        } else {
+          readGalFuseMap(cfg18V10, 0, 0);
+        }
+        break;
+
     case GAL20XV10:
+        if (verify) {
+            i = verifyGalFuseMap(cfgXV10, 0, 0);
+        } else {
+          readGalFuseMap(cfgXV10, 0, 0);
+        }
+        break;
+        
     case GAL22V10:
     case ATF22V10B:
     case ATF22V10C:
       //read with delay 1 ms, discard 68 cfg bits on ATFxx
-      bool isGAL = (gal == GAL20XV10 || gal == GAL22V10);
-      if (gal == GAL20XV10) {
-        cfgArray = (unsigned char*) cfgXV10;
-      } else {
-        cfgArray = (unsigned char*) cfgV10;
-      }
       if (verify) {
-        i = verifyGalFuseMap(cfgArray, 1, isGAL ? 0 : 68);
+        i = verifyGalFuseMap(cfgV10, 1, (gal == GAL22V10) ? 0 : 68);
       } else {
-        readGalFuseMap(cfgArray, 1, isGAL ? 0 : 68);
+        readGalFuseMap(cfgV10, 1, (gal == GAL22V10) ? 0 : 68);
       } 
       break;
   }
@@ -1794,6 +1870,7 @@ static void writeGalFuseMapV10(const unsigned char* cfgArray, char fillUesStart,
   unsigned short cfgAddr = galinfo[gal].cfgbase;
   unsigned char row, bit;
   unsigned short addr;
+  unsigned short uesFill = galinfo[gal].bits - galinfo[gal].uesbytes * 8;
 
   setRow(0); //RA0-5 low
   // write fuse rows
@@ -1812,7 +1889,7 @@ static void writeGalFuseMapV10(const unsigned char* cfgArray, char fillUesStart,
 
   // write UES
   if (fillUesStart) {
-    sendBits(68, 1);
+    sendBits(uesFill, 1);
   }
   for (bit = 0; bit < galinfo[gal].uesbytes * 8; bit++) {
     addr = galinfo[gal].uesfuse;
@@ -1820,7 +1897,7 @@ static void writeGalFuseMapV10(const unsigned char* cfgArray, char fillUesStart,
     sendBit(getFuseBit(addr));
   }
   if (!fillUesStart) {
-    sendBits(68, 1);
+    sendBits(uesFill, 1);
   }
   sendAddress(6, galinfo[gal].uesrow);
   setPV(1);
@@ -1945,17 +2022,18 @@ static void writeGal()
         writeGalFuseMap600(cfg6002);
         break;
 
+    case GAL18V10:
+        writeGalFuseMapV10(cfg18V10, 0, 0);
+        break;
+    
     case GAL20XV10:
+        writeGalFuseMapV10(cfgXV10, 1, 0);
+        break;
+        
     case GAL22V10:
     case ATF22V10B:
     case ATF22V10C:
-        bool isGAL = (gal == GAL22V10);
-        if (gal == GAL20XV10) {
-          cfgArray = (unsigned char*) cfgXV10;
-        } else {
-          cfgArray = (unsigned char*) cfgV10;
-        }
-        writeGalFuseMapV10(cfgArray, isGAL ? 0 : 1, (gal == ATF22V10C) ? 1 : 0);
+        writeGalFuseMapV10(cfgV10, (gal == GAL22V10) ? 0 : 1, (gal == ATF22V10C) ? 1 : 0);
         break; 
   }
   turnOff();
@@ -2128,6 +2206,7 @@ static unsigned short checkSum(unsigned short n)
 static void printGalName() {
     switch (gal) {
     case GAL16V8: Serial.println(F("GAL16V8")); break;
+    case GAL18V10: Serial.println(F("GAL18V10")); break;
     case GAL20V8: Serial.println(F("GAL20V8")); break;
     case GAL20XV10: Serial.println(F("GAL20XV10")); break;
     case GAL22V10: Serial.println(F("GAL22V10")); break;
