@@ -777,7 +777,7 @@ static char upload() {
     sendLine(buf, MAX_LINE, 20);
 
     //device type
-    sprintf(buf, "#t %i %s\r", (int) gal, galinfo[gal].name);
+    sprintf(buf, "#t %c %s\r", '0' + (int) gal, galinfo[gal].name);
     sendLine(buf, MAX_LINE, 300);
 
     //fuse map
