@@ -306,7 +306,6 @@ galinfo[]=
 //   +-- type   + id0 + id1  |     |   +rows |  |   +uesfuse |   +eraseallrow +cfgrow  |        |       + cfgbits        +cfgmethod
 //   |          |     |      |     |   |     |  |   |     |  |   |    |   |   |        |        |       |                |
     {UNKNOWN,   0x00, 0x00,     0,  0,  0,   0,  0,    0, 0,  0,  0,  0,  8,  0,       0,        NULL,      0         , 0},
-, 0x00, 0x00,  5892, 24, 44, 132, 44, 5828, 8, 61, 62, 58, 10, 16, CFG_BASE_22  , cfgV10,  sizeof(cfgV10)  , CFG_SET_ROW   },
     {GAL16V8,   0x00, 0x1A,  2194, 20, 32,  64, 32, 2056, 8, 63, 62, 58,  8, 60, CFG_BASE_16  , cfgV8AB,  sizeof(cfgV8AB) , CFG_STROBE_ROW},
     {GAL18V10,  0x50, 0x51,  3540, 20, 36,  96, 44, 3476, 8, 61, 60, 58, 10, 16, CFG_BASE_18  , cfg18V10, sizeof(cfg18V10), CFG_SET_ROW   },
     {GAL20V8,   0x20, 0x3A,  2706, 24, 40,  64, 40, 2568, 8, 63, 62, 58,  8, 60, CFG_BASE_20  , cfgV8AB,  sizeof(cfgV8AB) , CFG_STROBE_ROW},
@@ -2082,7 +2081,6 @@ static void secureGAL(void)
 static char checkGalTypeViaPes(void)
 {
     char type = UNKNOWN;
-    static const char PROGMEM pesATF20V8B[] = "0B8V02F1";
 
 #ifdef DEBUG_PES
     char i;
@@ -2102,7 +2100,7 @@ static char checkGalTypeViaPes(void)
            type = ATF22V10C;
        }
     }
-    else if (strncmp_P((const char*)pes, pesATF20V8B, 8) == 0) {
+    else if (pes[6] == 'F' && pes[5] == '2' && pes[4]== '0' && pes[3] == 'V' && pes[2]=='8' && pes[1] == 'B') {
       type = ATF20V8B;
     }
     else if (pes[6] == 'F' && pes[5] == '1' && pes[4]== '6' && pes[3] == 'V' && pes[2]=='8') {
