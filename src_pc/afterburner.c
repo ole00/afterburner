@@ -631,7 +631,7 @@ static char* stripPrompt(char* buf) {
         len = i;
     }
 
-    //strp rear new line characters
+    //strip rear new line characters
     for (i = len - 1; i >= 0; i--) {
         if (buf[i] != '\r' && buf[i] != '\n') {
             break;
@@ -1032,7 +1032,10 @@ static char operationSetGalType(Galtype type) {
     if (openSerial() != 0) {
         return -1;
     }
-    sprintf(buf, "g%i\r", (int)type); 
+    if (verbose) {
+        printf("sending 'g' command type=%i\n", type);
+    }
+    sprintf(buf, "g%c\r", '0' + (int)type); 
     result = sendGenericCommand(buf, "setGalType failed ?", 4000, 0);
     closeSerial();
     return result;    
@@ -1067,7 +1070,7 @@ static char operationWritePes(void) {
     sendLine(buf, MAX_LINE, 300);
 
     //set GAL type
-    sprintf(buf, "#t %i\r", (int) gal);
+    sprintf(buf, "#t %c\r", '0' + (int) gal);
     sendLine(buf, MAX_LINE, 300);
 
     //set new PES
