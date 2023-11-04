@@ -56,6 +56,7 @@ To compile: gcc -g3 -O0 afterburner afterburner.c
 typedef enum {
     UNKNOWN,
     GAL16V8,
+    GAL18V10,
     GAL20V8,
     GAL20XV10,
     GAL22V10,
@@ -90,6 +91,7 @@ static struct {
 galinfo[] = {
     {UNKNOWN,   0x00, 0x00, "unknown",     0, 0, 0,  0, 0,   0, 0, 0, 0, 0, 8, 0, 0},
     {GAL16V8,   0x00, 0x1A, "GAL16V8",  2194, 20, 32, 64, 32, 2056, 8, 63, 54, 58, 8, 60, 82},
+    {GAL18V10,  0x50, 0x51, "GAL18V10", 3540, 20, 36, 96, 36, 3476, 8, 61, 60, 58, 10, 16, 20},
     {GAL20V8,   0x20, 0x3A, "GAL20V8",  2706, 24, 40, 64, 40, 2568, 8, 63, 59, 58, 8, 60, 82},
     {GAL20XV10, 0x65, 0x66, "GAL20XV10", 1671, 24, 40,  40, 44, 1631, 5, 61, 60, 58,  5, 16, 31},
     {GAL22V10,  0x48, 0x49, "GAL22V10", 5892, 24, 44, 132, 44, 5828, 8, 61, 60, 58, 10, 16, 20},
@@ -221,7 +223,6 @@ static int8_t verifyArgs(char* type) {
                 break;
             }
         }
-
         if (UNKNOWN == gal) {
             printf("Error: unknown GAL type. Types: ");
             printGalTypes();
@@ -632,7 +633,7 @@ static char* stripPrompt(char* buf) {
         len = i;
     }
 
-    //strp rear new line characters
+    //strip rear new line characters
     for (i = len - 1; i >= 0; i--) {
         if (buf[i] != '\r' && buf[i] != '\n') {
             break;
@@ -1033,7 +1034,10 @@ static char operationSetGalType(Galtype type) {
     if (openSerial() != 0) {
         return -1;
     }
-    sprintf(buf, "g%i\r", (int)type); 
+    if (verbose) {
+        printf("sending 'g' command type=%i\n", type);
+    }
+    sprintf(buf, "g%c\r", '0' + (int)type); 
     result = sendGenericCommand(buf, "setGalType failed ?", 4000, 0);
     closeSerial();
     return result;    
@@ -1068,7 +1072,7 @@ static char operationWritePes(void) {
     sendLine(buf, MAX_LINE, 300);
 
     //set GAL type
-    sprintf(buf, "#t %i\r", (int) gal);
+    sprintf(buf, "#t %c\r", '0' + (int) gal);
     sendLine(buf, MAX_LINE, 300);
 
     //set new PES
