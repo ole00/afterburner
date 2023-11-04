@@ -24,7 +24,7 @@ Supported GAL chips:
 
 * Atmel ATF16V8B, ATF16V8BQL, ATF16V8C, ATF22V10B, ATF22V10C, ATF22V10CQZ 
 * Lattice GAL16V8A, GAL16V8B, GAL16V8D
-* Lattice GAL18V10B
+* Lattice GAL18V10B (requires PCB v.3.1 or modified PCB v.3.0 - see Troubleshooting )
 * Lattice GAL22V10B, GAL22V10D
 * National GAL16V8
 * ST Microsystems GAL16V8
@@ -225,6 +225,12 @@ Troubleshooting:
   <pre>
   ls -alF /dev/ttyUSB*
   </pre>
+
+- I can't program GAL18V10
+  * You'll need PCB version 3.1. If you have PCB version 3.0 you can mod it.
+    See ![here](https://github.com/ole00/afterburner/pull/36) for more information about the mod.
+  * Some GAL18V10B from Aliexpress do not work with Afterburner (fakes? damaged?).
+    My GAL18V10B-15LP from Aliexpress do not work. However, GAL18V10B-**20LP** do work OK (also from Aliexpress).
 
 - I want to program ATF16V8C, but it is not listed as supported by the PC app.
   * use parameter '-t ATF16V8B'. Afterburner finds out it is a C version.
