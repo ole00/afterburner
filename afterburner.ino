@@ -152,6 +152,7 @@ typedef enum {
   GAL6001,
   GAL6002,
   ATF16V8B,
+  ATF20V8B,
   ATF22V10B,
   ATF22V10C,
   LAST_GAL_TYPE //dummy
@@ -305,6 +306,7 @@ galinfo[]=
 //   +-- type   + id0 + id1  |     |   +rows |  |   +uesfuse |   +eraseallrow +cfgrow  |        |       + cfgbits        +cfgmethod
 //   |          |     |      |     |   |     |  |   |     |  |   |    |   |   |        |        |       |                |
     {UNKNOWN,   0x00, 0x00,     0,  0,  0,   0,  0,    0, 0,  0,  0,  0,  8,  0,       0,        NULL,      0         , 0},
+, 0x00, 0x00,  5892, 24, 44, 132, 44, 5828, 8, 61, 62, 58, 10, 16, CFG_BASE_22  , cfgV10,  sizeof(cfgV10)  , CFG_SET_ROW   },
     {GAL16V8,   0x00, 0x1A,  2194, 20, 32,  64, 32, 2056, 8, 63, 62, 58,  8, 60, CFG_BASE_16  , cfgV8AB,  sizeof(cfgV8AB) , CFG_STROBE_ROW},
     {GAL18V10,  0x50, 0x51,  3540, 20, 36,  96, 44, 3476, 8, 61, 60, 58, 10, 16, CFG_BASE_18  , cfg18V10, sizeof(cfg18V10), CFG_SET_ROW   },
     {GAL20V8,   0x20, 0x3A,  2706, 24, 40,  64, 40, 2568, 8, 63, 62, 58,  8, 60, CFG_BASE_20  , cfgV8AB,  sizeof(cfgV8AB) , CFG_STROBE_ROW},
@@ -313,6 +315,7 @@ galinfo[]=
     {GAL6001,   0x40, 0x41,  8294, 24, 78,  75, 97, 8222, 9, 63, 62, 96,  8,  8, CFG_BASE_600 , cfg6001,  sizeof(cfg6001) , CFG_SET_ROW   },
     {GAL6002,   0x44, 0x44,  8330, 24, 78,  75, 97, 8258, 9, 63, 62, 96,  8,  8, CFG_BASE_600 , cfg6002,  sizeof(cfg6002) , CFG_SET_ROW   },
     {ATF16V8B,  0x00, 0x00,  2194, 20, 32,  64, 32, 2056, 8, 63, 62, 58,  8, 60, CFG_BASE_16  , cfgV8AB,  sizeof(cfgV8AB) , CFG_STROBE_ROW},
+    {ATF20V8B,  0x00, 0x00,  2706, 24, 40,  64, 40, 2568, 8, 63, 62, 58,  8, 60, CFG_BASE_20  , cfgV8AB,  sizeof(cfgV8AB) , CFG_STROBE_ROW},
     {ATF22V10B, 0x00, 0x00,  5892, 24, 44, 132, 44, 5828, 8, 61, 62, 58, 10, 16, CFG_BASE_22  , cfgV10,   sizeof(cfgV10)  , CFG_SET_ROW   },
     {ATF22V10C, 0x00, 0x00,  5892, 24, 44, 132, 44, 5828, 8, 61, 62, 58, 10, 16, CFG_BASE_22  , cfgV10,   sizeof(cfgV10)  , CFG_SET_ROW   },
 };
@@ -410,6 +413,7 @@ static void setPinMux(uint8_t pm) {
     break;
   
   case GAL20V8:
+  case ATF20V8B:
     pinMode(PIN_ZIF10, pm);
     pinMode(PIN_ZIF11, pm);
     pinMode(PIN_ZIF13, pm);
@@ -775,7 +779,7 @@ static void setVPP(char on) {
 
         // when PES is read the VPP is not determined via PES
         if (on == READPES) {
-            if (gal == ATF16V8B || gal == ATF22V10B || gal == ATF22V10B) {
+            if (gal == ATF16V8B || gal == ATF20V8B || gal == ATF22V10B || gal == ATF22V10B) {
                 v = VPP_10V0; 
             } else {
                 v = VPP_11V5;
@@ -1028,6 +1032,10 @@ static void sendBit(char bitValue, char skipClkLow = 0)
 {
     setSDIN(bitValue);
     setSCLK(1);
+    // For some reason ATF20V8B needs a slower clock
+    if (gal == ATF20V8B) {
+      delay(1);
+    }
     if (!skipClkLow) {
         setSCLK(0);
     }
@@ -1080,6 +1088,7 @@ static void strobeRow(char row, char setBit = BIT_NONE)
   switch(gal) {
     case GAL16V8:
     case GAL20V8:
+    case ATF20V8B:
     case ATF16V8B:
       setRow(row);         // set RA0-5 to row number
       if (setBit) {
@@ -1150,7 +1159,7 @@ static void writePes(void) {
   uint8_t rbit;
   uint8_t b, p;
 
-  if (gal == ATF16V8B || gal == ATF22V10B || gal == ATF22V10C) {
+  if (gal == ATF16V8B || gal == ATF20V8B || gal == ATF22V10B || gal == ATF22V10C) {
     Serial.println(F("ER write PES not supported"));
     return;
   }
@@ -1202,7 +1211,7 @@ static unsigned char getDuration(unsigned char index) {
 }
 
 static void setGalDefaults(void) {
-    if (gal == ATF16V8B || gal == ATF22V10B || gal == ATF22V10C) {
+    if (gal == ATF16V8B || gal == ATF20V8B || gal == ATF22V10B || gal == ATF22V10C) {
         progtime = 20;
         erasetime = 100;
         vpp = 40; /* 10V */
@@ -1227,6 +1236,7 @@ void parsePes(char type) {
 
   switch (type) {
     case ATF16V8B:
+    case ATF20V8B:
     case ATF22V10B:
     case ATF22V10C:
         progtime = 20;
@@ -1334,6 +1344,7 @@ void printPes(char type) {
     case GAL6001: Serial.print(F("GAL6001 ")); break;
     case GAL6002: Serial.print(F("GAL6002 ")); break;
     case ATF16V8B: Serial.print(0 == (flagBits & FLAG_BIT_ATF16V8C) ? F("ATF16V8B "): F("ATF16V8C ")); break;
+    case ATF20V8B: Serial.print(F("ATF20V8B ")); break;
     case ATF22V10B: Serial.print(F("ATF22V10B ")); break;
     case ATF22V10C: Serial.print(F("ATF22V10C ")); break;
   }
@@ -1763,6 +1774,7 @@ static void readOrVerifyGal(char verify)
         break;
       
     case ATF16V8B:
+    case ATF20V8B:
         //read without delay, no discard
         if (verify) {
           i = verifyGalFuseMap(cfgV8AB, 0, 0);
@@ -1770,7 +1782,7 @@ static void readOrVerifyGal(char verify)
           readGalFuseMap(cfgV8AB, 0, 0);
         }
         break;
-      
+
     case GAL6001:
     case GAL6002:
         cfgArray = (gal == GAL6001) ? (unsigned char*) cfg6001 : (unsigned char*) cfg6002;
@@ -2011,6 +2023,7 @@ static void writeGal()
         break;
       
     case ATF16V8B:
+    case ATF20V8B:
         writeGalFuseMapV8(cfgV8AB); 
         break;
 
@@ -2069,6 +2082,7 @@ static void secureGAL(void)
 static char checkGalTypeViaPes(void)
 {
     char type = UNKNOWN;
+    static const char PROGMEM pesATF20V8B[] = "0B8V02F1";
 
 #ifdef DEBUG_PES
     char i;
@@ -2087,6 +2101,9 @@ static char checkGalTypeViaPes(void)
        } else {
            type = ATF22V10C;
        }
+    }
+    else if (strncmp_P((const char*)pes, pesATF20V8B, 8) == 0) {
+      type = ATF20V8B;
     }
     else if (pes[6] == 'F' && pes[5] == '1' && pes[4]== '6' && pes[3] == 'V' && pes[2]=='8') {
        type = ATF16V8B;
@@ -2219,6 +2236,7 @@ static void printGalName() {
             Serial.println(F("ATF16V8B"));
         }
         break;
+    case ATF20V8B: Serial.println(F("ATF20V8B")); break;
     case ATF22V10B: Serial.println(F("ATF22V10B")); break;
     case ATF22V10C: Serial.println(F("ATF22V10C")); break;
     default:  Serial.println(F("GAL")); break;
