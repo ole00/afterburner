@@ -852,12 +852,12 @@ static void setVPP(char on) {
 
 static void setSTB(char on) {
   if (varVppExists) {
-    const unsigned short b = galinfo[gal].cfgbase;
+    const PINOUT p = galinfo[gal].pinout;
     uint8_t pin = PIN_ZIF13;
-    if (b == CFG_BASE_16) {
+    if (p == PINOUT_16V8) {
       pin = PIN_ZIF15;
     } else
-    if (b == CFG_BASE_18) {
+    if (p == PINOUT_18V10) {
       pin = PIN_ZIF8;
     }
     digitalWrite(pin, on ? 1:0);
@@ -885,8 +885,8 @@ static void setPV(char on) {
 
 static void setSDIN(char on) {
   if (varVppExists) {
-    const unsigned short b = galinfo[gal].cfgbase;
-    if (b == CFG_BASE_18) {
+    const PINOUT p = galinfo[gal].pinout;
+    if (p == PINOUT_18V10) {
       if (on) {
         lastShiftRegVal |= PIN_ZIF7;
       } else {
@@ -894,7 +894,7 @@ static void setSDIN(char on) {
       }
       setShiftReg(lastShiftRegVal);
     } else {
-    const uint8_t pin = (b == CFG_BASE_16) ? PIN_ZIF9 : PIN_ZIF11;
+    const uint8_t pin = (p == PINOUT_16V8) ? PIN_ZIF9 : PIN_ZIF11;
     digitalWrite(pin, on ? 1:0);
     }
   } else {
@@ -904,8 +904,8 @@ static void setSDIN(char on) {
 
 static void setSCLK(char on){
   if (varVppExists) {
-    const unsigned short b = galinfo[gal].cfgbase;
-    if (b == CFG_BASE_18) {
+    const PINOUT p = galinfo[gal].pinout;
+    if (p == PINOUT_18V10) {
       if (on) {
         lastShiftRegVal |= PIN_ZIF6;
       } else {
@@ -913,7 +913,7 @@ static void setSCLK(char on){
       }
       setShiftReg(lastShiftRegVal);
     } else {
-    uint8_t pin = (b == CFG_BASE_16) ? PIN_ZIF8 : PIN_ZIF10;
+    uint8_t pin = (p == PINOUT_16V8) ? PIN_ZIF8 : PIN_ZIF10;
     digitalWrite(pin, on ? 1:0);
     }
   } else {
@@ -982,7 +982,7 @@ static char getSDOUT(void)
     if (p == PINOUT_20V8) {
       pin = PIN_ZIF15;
     } else
-    if (b == CFG_BASE_18) {
+    if (p == PINOUT_18V10) {
       pin = PIN_ZIF9;
     }
     return digitalRead(pin) != 0;
