@@ -30,10 +30,8 @@ Supported GAL chips:
 * ST Microsystems GAL16V8
 * Lattice GAL20V8B (no adapter needed)
 * Lattice GAL20XV10B
-* Lattice GAL6001B
-* Lattice GAL6002B
-* Lattice GAL26CV12B
-* Lattice GAL26V12C
+* Lattice GAL6001B, GAL6002B
+* Lattice GAL26CV12B, GAL26V12C (requires adapter - see gerbers, pcb and img directory)
 
 **This is a new Afterburner design with variable programming voltage control and with single ZIF socket for 20 and 24 pin GAL chips.**
 The PC software is backward compatible with the older Afterburner desgin/boards.
