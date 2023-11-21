@@ -47,7 +47,6 @@ To compile: gcc -g3 -O0 afterburner afterburner.c
 
 #define VERSION "v.0.5.3"
 
-
 #define MAX_LINE 1024
 
 #define MAXFUSES 10000
@@ -60,6 +59,8 @@ typedef enum {
     GAL20V8,
     GAL20XV10,
     GAL22V10,
+    GAL26CV12,
+    GAL26V12,
     GAL6001,
     GAL6002,
     ATF16V8B,
@@ -95,6 +96,8 @@ galinfo[] = {
     {GAL20V8,   0x20, 0x3A, "GAL20V8",  2706, 24, 40, 64, 40, 2568, 8, 63, 59, 58, 8, 60, 82},
     {GAL20XV10, 0x65, 0x66, "GAL20XV10", 1671, 24, 40,  40, 44, 1631, 5, 61, 60, 58,  5, 16, 31},
     {GAL22V10,  0x48, 0x49, "GAL22V10", 5892, 24, 44, 132, 44, 5828, 8, 61, 60, 58, 10, 16, 20},
+    {GAL26CV12, 0x58, 0x59, "GAL26CV12", 6432, 28, 52, 122, 52, 6368, 8, 61, 60, 58, 12, 16},
+    {GAL26V12,  0x5D, 0x5D, "GAL26V12",  7912, 28, 52, 150, 52, 7848, 8, 61, 60, 58, 12, 16},
     {GAL6001,   0x40, 0x41, "GAL6001", 8294, 24, 78, 75, 97, 8222, 9, 63, 62, 96, 8, 8, 68},
     {GAL6002,   0x44, 0x44, "GAL6002", 8330, 24, 78, 75, 97, 8258, 9, 63, 62, 96, 8, 8, 104},
     {ATF16V8B,  0x00, 0x00, "ATF16V8B", 2194, 20, 32, 64, 32, 2056, 8, 63, 54, 58, 8, 60, 82},
@@ -822,7 +825,7 @@ static char upload() {
     printf("\e[?25h");
 
     // send last unfinished fuse line
-    if (i % 32 && fuseSet) {
+    if (fuseSet) {
         strcat(buf, "\r");
 #ifdef DEBUG_UPLOAD
         printf("%s\n", buf);
