@@ -825,7 +825,7 @@ static char upload() {
     printf("\e[?25h");
 
     // send last unfinished fuse line
-    if ((i % 32 != 1) && fuseSet) {
+    if (fuseSet) {
         strcat(buf, "\r");
 #ifdef DEBUG_UPLOAD
         printf("%s\n", buf);
