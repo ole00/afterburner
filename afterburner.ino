@@ -333,14 +333,14 @@ static struct
 }
 galinfo[]=
 {
-//                           |     +pins     |  +uesrow   |  +eraserow|   +pesbytes    |        +cfg
-//   +-- type   + id0 + id1  |     |   +rows |  |   +uesfuse |   +eraseallrow +cfgrow  |        |       + cfgbits        +cfgmethod
-//   |          |     |      |     |   |     |  |   |     |  |   |    |   |   |        |        |       |                |
-    {UNKNOWN,   0x00, 0x00,     0,  0,  0,   0,  0,    0, 0,  0,  0,  0,  8,  0,       0,        NULL,      0         , 0},
-    {GAL16V8,   0x00, 0x1A,  2194, 20, 32,  64, 32, 2056, 8, 63, 62, 58,  8, 60, CFG_BASE_16  , cfgV8AB  , sizeof(cfgV8AB)  , CFG_STROBE_ROW, PINOUT_UNKNOWN},
-    {GAL18V10,  0x50, 0x51,  3540, 20, 36,  96, 44, 3476, 8, 61, 60, 58, 10, 16, CFG_BASE_18  , cfg18V10 , sizeof(cfg18V10) , CFG_SET_ROW   , PINOUT_16V8   },
-    {GAL20V8,   0x20, 0x3A,  2706, 24, 40,  64, 40, 2568, 8, 63, 62, 58,  8, 60, CFG_BASE_20  , cfgV8AB  , sizeof(cfgV8AB)  , CFG_STROBE_ROW, PINOUT_18V10  },
-    {GAL20XV10, 0x65, 0x66,  1671, 24, 40,  40, 44, 1631, 5, 61, 60, 58,  5, 16, CFG_BASE_20XV, cfgXV10  , sizeof(cfgXV10)  , CFG_SET_ROW   , PINOUT_20V8   },
+//                           |     +pins     |  +uesrow   |  +eraserow|   +pesbytes    |           +cfg
+//   +-- type   + id0 + id1  |     |   +rows |  |   +uesfuse |   +eraseallrow +cfgrow  |           |       + cfgbits          +cfgmethod      +pinout
+//   |          |     |      |     |   |     |  |   |     |  |   |    |   |   |        |           |       |                  |               |
+    {UNKNOWN,   0x00, 0x00,     0,  0,  0,   0,  0,    0, 0,  0,  0,  0,  8,  0,       0,        NULL    , 0                , 0             , PINOUT_UNKNOWN},
+    {GAL16V8,   0x00, 0x1A,  2194, 20, 32,  64, 32, 2056, 8, 63, 62, 58,  8, 60, CFG_BASE_16  , cfgV8AB  , sizeof(cfgV8AB)  , CFG_STROBE_ROW, PINOUT_16V8   },
+    {GAL18V10,  0x50, 0x51,  3540, 20, 36,  96, 44, 3476, 8, 61, 60, 58, 10, 16, CFG_BASE_18  , cfg18V10 , sizeof(cfg18V10) , CFG_SET_ROW   , PINOUT_18V10  },
+    {GAL20V8,   0x20, 0x3A,  2706, 24, 40,  64, 40, 2568, 8, 63, 62, 58,  8, 60, CFG_BASE_20  , cfgV8AB  , sizeof(cfgV8AB)  , CFG_STROBE_ROW, PINOUT_20V8   },
+    {GAL20XV10, 0x65, 0x66,  1671, 24, 40,  40, 44, 1631, 5, 61, 60, 58,  5, 16, CFG_BASE_20XV, cfgXV10  , sizeof(cfgXV10)  , CFG_SET_ROW   , PINOUT_22V10  },
     {GAL22V10,  0x48, 0x49,  5892, 24, 44, 132, 44, 5828, 8, 61, 62, 58, 10, 16, CFG_BASE_22  , cfgV10   , sizeof(cfgV10)   , CFG_SET_ROW   , PINOUT_22V10  },
     {GAL26CV12, 0x58, 0x59,  6432, 28, 52, 122, 52, 6368, 8, 61, 60, 58, 12, 16, CFG_BASE_26CV, cfg26CV12, sizeof(cfg26CV12), CFG_SET_ROW   , PINOUT_22V10  },
     {GAL26V12,  0x5D, 0x5D,  7912, 28, 52, 150, 52, 7848, 8, 61, 60, 58, 12, 16, CFG_BASE_26V , cfg26V12 , sizeof(cfg26V12) , CFG_SET_ROW   , PINOUT_22V10  },
