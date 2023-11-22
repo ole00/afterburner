@@ -598,16 +598,7 @@ void setup() {
 
 //copy galinfo item from the flash array into RAM backed struct
 static void copyGalInfo(void) {
-  uint8_t* src = (uint8_t*) &galInfoList[gal];
-  uint8_t* dst = (uint8_t*) &galinfo;
-  uint8_t total = sizeof(galinfo_t);
-  uint8_t i = 0;
-  while (i < total) {
-    *dst = pgm_read_byte(src);
-    dst++;
-    src++;
-    i++;
-  }
+  memcpy_P(&galinfo, &galInfoList[gal], sizeof(galinfo_t));
 }
 
 // read from serial line and discard the data
