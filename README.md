@@ -22,16 +22,16 @@ Arduino UNO, which does the programming of the GAL chip.
 
 Supported GAL chips:
 
-* Atmel ATF16V8B, ATF16V8BQL, ATF16V8C, ATF20V8B, ATF22V10B, ATF22V10C, ATF22V10CQZ 
-* Lattice GAL16V8A, GAL16V8B, GAL16V8D
-* Lattice GAL18V10B (requires PCB v.3.1 or modified PCB v.3.0 - see Troubleshooting )
-* Lattice GAL22V10B, GAL22V10D
-* National GAL16V8
-* ST Microsystems GAL16V8
-* Lattice GAL20V8B (no adapter needed)
-* Lattice GAL20XV10B
-* Lattice GAL6001B, GAL6002B
-* Lattice GAL26CV12B, GAL26V12C (requires adapter - see gerbers, pcb and img directory)
+|       | 16V8 | 18V10 | 20V8 | 20RA10 | 20XV10 | 22V10 | 6001 | 6002 | 26CV12 | 26V12 |
+| ---   | ---- | ----- | ---- | ------ | ------ | ----- | ---- | ---- | ------ | ----- |
+| Atmel | ATF16V8B, ATF16V8BQL, ATF16V8C | - | ATF20V8B | - | - | ATF22V10B, ATF22V10C, ATF22V10CQZ | - | - | - | - | - |
+| Lattice | GAL16V8A, GAL16V8B, GAL16V8D | GAL18V10, GAL18V10B[1] | GAL20V8B | GAL20RA10 | GAL20XV10B | GAL22V10B, GAL22V10D | GAL6001B | GAL6002B | GAL26CV12B[2] | GAL26V12C[2] |
+| National | GAL16V8 | - | GAL20V8 | - | - | - | - | - | - | - |
+| ST | GAL16V8 | - | - | - | - | - | - | - | - | - |
+
+[1]: requires PCB v.3.1 or modified PCB v.3.0 - see Troubleshooting
+[2]: requires adapter - see gerbers, pcb and img directory  
+[-]: - represents either this combination does not exist or hasn't been tested yet. Testers are welcome to report their findings.
 
 **This is a new Afterburner design with variable programming voltage control and with single ZIF socket for 20 and 24 pin GAL chips.**
 The PC software is backward compatible with the older Afterburner desgin/boards.
