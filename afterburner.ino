@@ -147,6 +147,7 @@ typedef enum {
   GAL16V8,
   GAL18V10,
   GAL20V8,
+  GAL20RA10,
   GAL20XV10,
   GAL22V10,
   GAL26CV12,
@@ -178,6 +179,7 @@ typedef enum {
 #define CFG_BASE_16   2048
 #define CFG_BASE_18   3456
 #define CFG_BASE_20   2560
+#define CFG_BASE_20RA 3200
 #define CFG_BASE_20XV 1600
 #define CFG_BASE_22   5808
 #define CFG_BASE_26CV 6344
@@ -224,6 +226,14 @@ static const unsigned char cfgV8AB[] PROGMEM =
 static const unsigned char cfg18V10[] PROGMEM =
 {
       1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14, 17, 16, 19, 18
+};
+
+// common CFG fuse address map for cfg20RA10
+// starting address: 3200
+// total size 10
+static const unsigned char cfgRA10[] PROGMEM =
+{
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9
 };
 
 // common CFG fuse address map for cfg20XV10
@@ -342,6 +352,7 @@ const static galinfo_t galInfoList[] PROGMEM =
     {GAL16V8,   0x00, 0x1A,  2194, 20, 32,  64, 32, 2056, 8, 63, 62, 58,  8, 60, CFG_BASE_16  , cfgV8AB  , sizeof(cfgV8AB)  , CFG_STROBE_ROW, PINOUT_16V8   },
     {GAL18V10,  0x50, 0x51,  3540, 20, 36,  96, 44, 3476, 8, 61, 60, 58, 10, 16, CFG_BASE_18  , cfg18V10 , sizeof(cfg18V10) , CFG_SET_ROW   , PINOUT_18V10  },
     {GAL20V8,   0x20, 0x3A,  2706, 24, 40,  64, 40, 2568, 8, 63, 62, 58,  8, 60, CFG_BASE_20  , cfgV8AB  , sizeof(cfgV8AB)  , CFG_STROBE_ROW, PINOUT_20V8   },
+    {GAL20RA10, 0x60, 0x61,  3274, 24, 40,  80, 40, 3210, 8, 61, 60, 58, 10, 16, CFG_BASE_20RA, cfgRA10  , sizeof(cfgRA10)  , CFG_SET_ROW   , PINOUT_22V10  },
     {GAL20XV10, 0x65, 0x66,  1671, 24, 40,  40, 44, 1631, 5, 61, 60, 58,  5, 16, CFG_BASE_20XV, cfgXV10  , sizeof(cfgXV10)  , CFG_SET_ROW   , PINOUT_22V10  },
     {GAL22V10,  0x48, 0x49,  5892, 24, 44, 132, 44, 5828, 8, 61, 62, 58, 10, 16, CFG_BASE_22  , cfgV10   , sizeof(cfgV10)   , CFG_SET_ROW   , PINOUT_22V10  },
     {GAL26CV12, 0x58, 0x59,  6432, 28, 52, 122, 52, 6368, 8, 61, 60, 58, 12, 16, CFG_BASE_26CV, cfg26CV12, sizeof(cfg26CV12), CFG_SET_ROW   , PINOUT_22V10  },
@@ -466,6 +477,7 @@ static void setPinMux(uint8_t pm) {
 
     break;
 
+  case GAL20RA10:
   case GAL20XV10:
   case GAL22V10:
   case GAL26CV12:
@@ -598,16 +610,7 @@ void setup() {
 
 //copy galinfo item from the flash array into RAM backed struct
 static void copyGalInfo(void) {
-  uint8_t* src = (uint8_t*) &galInfoList[gal];
-  uint8_t* dst = (uint8_t*) &galinfo;
-  uint8_t total = sizeof(galinfo_t);
-  uint8_t i = 0;
-  while (i < total) {
-    *dst = pgm_read_byte(src);
-    dst++;
-    src++;
-    i++;
-  }
+  memcpy_P(&galinfo, &galInfoList[gal], sizeof(galinfo_t));
 }
 
 // read from serial line and discard the data
@@ -1148,6 +1151,7 @@ static void strobeRow(char row, char setBit = BIT_NONE)
       strobe(2);           // pulse /STB for 2ms
       break;
     case GAL18V10:
+    case GAL20RA10:
     case GAL20XV10:
     case GAL22V10:
     case GAL26CV12:
@@ -1392,6 +1396,7 @@ void printPes(char type) {
     case GAL16V8: Serial.print(F("GAL16V8 ")); break;
     case GAL18V10: Serial.print(F("GAL18V10 ")); break;
     case GAL20V8: Serial.print(F("GAL20V8 ")); break;
+    case GAL20RA10: Serial.print(F("GAL20RA10 ")); break;
     case GAL20XV10: Serial.print(F("GAL20XV10 ")); break;
     case GAL22V10: Serial.print(F("GAL22V10 ")); break;
     case GAL26CV12: Serial.print(F("GAL26CV12 ")); break;
@@ -1830,11 +1835,17 @@ static void readOrVerifyGal(char verify)
       
     case ATF16V8B:
     case ATF20V8B:
+    case GAL18V10:
+    case GAL20RA10:
+    case GAL20XV10:
+    case GAL26V12:
+    case GAL26CV12:
+        cfgArray = (unsigned char*) galinfo.cfg;
         //read without delay, no discard
         if (verify) {
-          i = verifyGalFuseMap(cfgV8AB, 0, 0);
+          i = verifyGalFuseMap(cfgArray, 0, 0);
         } else {
-          readGalFuseMap(cfgV8AB, 0, 0);
+          readGalFuseMap(cfgArray, 0, 0);
         }
         break;
 
@@ -1846,41 +1857,6 @@ static void readOrVerifyGal(char verify)
           i = verifyGalFuseMap600(cfgArray);
         } else {
           readGalFuseMap600(cfgArray);
-        }
-        break;
-      
-    case GAL18V10:
-        if (verify) {
-            i = verifyGalFuseMap(cfg18V10, 0, 0);
-        } else {
-          readGalFuseMap(cfg18V10, 0, 0);
-        }
-        break;
-
-      
-    case GAL26CV12:
-        //read without delay, no discard
-        if (verify) {
-          i = verifyGalFuseMap(cfg26CV12, 0, 0);
-        } else {
-          readGalFuseMap(cfg26CV12, 0, 0);
-        }
-        break;
-    
-    case GAL26V12:
-        //read without delay, no discard
-        if (verify) {
-          i = verifyGalFuseMap(cfg26V12, 0, 0);
-        } else {
-          readGalFuseMap(cfg26V12, 0, 0);
-        }
-        break;
-
-    case GAL20XV10:
-        if (verify) {
-            i = verifyGalFuseMap(cfgXV10, 0, 0);
-        } else {
-          readGalFuseMap(cfgXV10, 0, 0);
         }
         break;
         
@@ -2102,27 +2078,18 @@ static void writeGal()
         break;
 
     case GAL6001:
-        writeGalFuseMap600(cfg6001);
-        break;
-    
     case GAL6002:
-        writeGalFuseMap600(cfg6002);
+        cfgArray = (unsigned char*) galinfo.cfg;
+        writeGalFuseMap600(cfgArray);
         break;
 
     case GAL18V10:
-        writeGalFuseMapV10(cfg18V10, 0, 0);
-        break;
-    
-    case GAL26CV12:
-        writeGalFuseMapV10(cfg26CV12, 0, 0);
-        break;
-    
-    case GAL26V12:
-        writeGalFuseMapV10(cfg26V12, 0, 0);
-        break;
-
+    case GAL20RA10:
     case GAL20XV10:
-        writeGalFuseMapV10(cfgXV10, 1, 0);
+    case GAL26CV12:
+    case GAL26V12:
+        cfgArray = (unsigned char*) galinfo.cfg;
+        writeGalFuseMapV10(cfgArray, 0, 0);
         break;
         
     case GAL22V10:
@@ -2308,6 +2275,7 @@ static void printGalName() {
     case GAL16V8: Serial.println(F("GAL16V8")); break;
     case GAL18V10: Serial.println(F("GAL18V10")); break;
     case GAL20V8: Serial.println(F("GAL20V8")); break;
+    case GAL20RA10: Serial.println(F("GAL20RA10")); break;
     case GAL20XV10: Serial.println(F("GAL20XV10")); break;
     case GAL22V10: Serial.println(F("GAL22V10")); break;
     case GAL26CV12: Serial.println(F("GAL26CV12")); break;
