@@ -22,14 +22,20 @@ Arduino UNO, which does the programming of the GAL chip.
 
 Supported GAL chips:
 
-|       | 16V8 | 18V10 | 20V8 | 20RA10 | 20XV10 | 22V10 | 6001 | 6002 | 26CV12 | 26V12 |
-| ---   | ---- | ----- | ---- | ------ | ------ | ----- | ---- | ---- | ------ | ----- |
-| Atmel | ATF16V8B, ATF16V8BQL, ATF16V8C | - | ATF20V8B | - | - | ATF22V10B, ATF22V10C, ATF22V10CQZ | - | - | - | - | - |
-| Lattice | GAL16V8A, GAL16V8B, GAL16V8D | GAL18V10, GAL18V10B[1] | GAL20V8B | GAL20RA10 | GAL20XV10B | GAL22V10B, GAL22V10D | GAL6001B | GAL6002B | GAL26CV12B[2] | GAL26V12C[2] |
-| National | GAL16V8 | - | GAL20V8 | - | - | - | - | - | - | - |
-| ST | GAL16V8 | - | - | - | - | - | - | - | - | - |
+| | Atmel | Lattice | National | ST |
+| --- | --- | --- | --- | --- |
+| 16V8 | ATF16V8B, ATF16V8BQL, ATF16V8C | GAL16V8A, GAL16V8B, GAL16V8D | GAL16V8 | GAL16V8 |
+| 18V10 | - | GAL18V10, GAL18V10B[1] | - | - |
+| 20V8 | ATF20V8B | GAL20V8B | GAL20V8 | - |
+| 20RA10 | - | GAL20RA10 | - | - |
+| 20XV10 | - | GAL20XV10B | - | - |
+| 22V10 | ATF22V10B, ATF22V10C, ATF22V10CQZ | GAL22V10B, GAL22V10D | - | - |
+| 6001 | - | GAL6001B | - | - |
+| 6002 | - | GAL6002B | - | - |
+| 26CV12 | - | GAL26CV12B[2] | - | - |
+| 26V12 | - | GAL26V12C[2] | - | - |
 
-[1]: requires PCB v.3.1 or modified PCB v.3.0 - see Troubleshooting
+[1]: requires PCB v.3.1 or modified PCB v.3.0 - see Troubleshooting  
 [2]: requires adapter - see gerbers, pcb and img directory  
 [-]: - represents either this combination does not exist or hasn't been tested yet. Testers are welcome to report their findings.
 
