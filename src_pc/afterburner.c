@@ -70,7 +70,8 @@ typedef enum {
     ATF16V8B,
     ATF20V8B,
     ATF22V10B,
-    ATF22V10C
+    ATF22V10C,
+    ATF750C,
 } Galtype;
 
 
@@ -109,6 +110,7 @@ galinfo[] = {
     {ATF20V8B,  0x00, 0x00, "ATF20V8B",  2706, 24, 40, 64, 40, 2568, 8, 63, 59, 58, 8, 60, 82},
     {ATF22V10B, 0x00, 0x00, "ATF22V10B", 5892, 24, 44, 132, 44, 5828, 8, 61, 60, 58, 10, 16, 20},
     {ATF22V10C, 0x00, 0x00, "ATF22V10C", 5892, 24, 44, 132, 44, 5828, 8, 61, 60, 58, 10, 16, 20},
+    {ATF750C,   0x00, 0x00, "ATF750C",  14499, 24, 84, 171, 84, 14435, 8, 61, 60, 127, 10, 16, 71},
 };
 
 char verbose = 0;
@@ -127,6 +129,7 @@ char varVppExists = 0;
 char printSerialWhileWaiting = 0;
 int calOffset = 0; //no calibration offset is applied
 char enableSecurity = 0;
+char bigRam = 0;
 
 char opRead = 0;
 char opWrite = 0;
@@ -510,11 +513,11 @@ static int parseFuseMap(char *ptr) {
             if (
                 (lastfuse == 0 ||
                  galinfo[i].fuses == lastfuse ||
-                 galinfo[i].uesfuse == lastfuse && galinfo[i].uesfuse + 8 * galinfo[i].uesbytes == galinfo[i].fuses)
+                 (galinfo[i].uesfuse == lastfuse && galinfo[i].uesfuse + 8 * galinfo[i].uesbytes == galinfo[i].fuses))
                 &&
                 (pins == 0 ||
                  galinfo[i].pins == pins ||
-                 galinfo[i].pins == 24 && pins == 28)
+                 (galinfo[i].pins == 24 && pins == 28))
             ) {
                 if (gal == 0) {
                     type = i;
@@ -556,6 +559,11 @@ static char readJedec(void) {
     return 0;
 }
 
+static char checkForString(char* buf, int start, const char* key) {
+    int labelPos = strstr(buf + start, key) -  buf;
+    return (labelPos > 0 && labelPos < 500) ? 1 : 0;
+}
+
 static int openSerial(void) {
     char buf[512] = {0};
     char devName[256] = {0};
@@ -589,14 +597,17 @@ static int openSerial(void) {
     //check we are communicating with Afterburner programmer
     labelPos = strstr(buf, "AFTerburner v.") -  buf;
 
+    bigRam = 0;
     if (labelPos >= 0 && labelPos < 500 && buf[total - 3] == '>') {
         // check for new board desgin: variable VPP
-        labelPos = strstr(buf + labelPos, " varVpp ") -  buf;
-        if (labelPos > 0 && labelPos < 500) {
-            if (verbose) {
-                printf("variable VPP board detected\n");
-            }
-            varVppExists = 1;
+        varVppExists = checkForString(buf, labelPos, " varVpp ");
+        if (verbose && varVppExists) {
+            printf("variable VPP board detected\n");
+        }
+        // check for Big Ram
+        bigRam = checkForString(buf, labelPos, " RAM-BIG");
+        if (verbose & bigRam) {
+            printf("MCU Big RAM detected\n");
         }
         //all OK
         return 0;
@@ -724,7 +735,10 @@ static int waitForSerialPrompt(char* buf, int bufSize, int maxDelay) {
             maxDelay -= 10;
 #else
             maxDelay -= 30;           
-#endif            
+#endif
+            if(maxDelay <= 0 && verbose) {
+                printf("waitForSerialPrompt timed out\n");
+            }
         }
     }
     return bufPos;

@@ -144,6 +144,7 @@
 #define SGSTHOMSON 0x20
 #define ATMEL16 'V'
 #define ATMEL22 '1'
+#define ATMEL750 'C'
 
 typedef enum {
   UNKNOWN,
@@ -161,6 +162,7 @@ typedef enum {
   ATF20V8B,
   ATF22V10B,
   ATF22V10C,
+  ATF750C,
   LAST_GAL_TYPE //dummy
 } GALTYPE;
 
@@ -188,12 +190,23 @@ typedef enum {
 #define CFG_BASE_26CV 6344
 #define CFG_BASE_26V  7800
 #define CFG_BASE_600  8154
+#define CFG_BASE_750 14364
 
 #define CFG_STROBE_ROW 0
 #define CFG_SET_ROW 1
+#define CFG_STROBE_ROW2 3
 
 // Atmel power-down row
 #define CFG_ROW_APD 59
+
+
+// Naive detection of the board's RAM size - for support of big Fuse map:
+// PIN_A11 - present on MEGA (8kB) or Leonardo (2.5kB SRAM)
+//  _RENESAS_RA_ - Uno R4 (32kB)
+#if defined(PIN_A11) || defined(_RENESAS_RA_)
+#define RAM_BIG
+#endif
+
 
 // common CFG fuse address map for cfg16V8 and cfg20V8
 // the only difference is the starting address: 2048 for cfg16V8 and 2560 for cfg20V8
@@ -317,6 +330,25 @@ static const unsigned char cfg6002[] PROGMEM =
   64, 65
 };
 
+// TODO: handle those:
+/*
+30,  // 75: Security?
+135, // 70: Powerdown
+136, // 71: PinKeeper
+137, // 72: reserved1
+138, // 73: reserved2
+139, // 74: reserved3
+*/
+static const uint8_t cfgV750[] PROGMEM = {
+   0,  3,  6,  9, 12, 15, 18, 21, 24, 27, // S0
+   1,  4,  7, 10, 13, 16, 19, 22, 25, 28, // S1
+   2,  5,  8, 11, 14, 17, 20, 23, 26, 29, // S2
+  31, 35, 39, 43, 47, 51, 55, 59, 63, 67, // S3
+  32, 36, 40, 44, 48, 52, 56, 60, 64, 68, // S4
+  33, 37, 41, 45, 49, 53, 57, 61, 65, 69, // S5
+  34, 38, 42, 46, 50, 54, 58, 62, 66, 70  // S6
+};
+
 //   UES     user electronic signature
 //   PES     programmer electronic signature (ATF = text string, others = Vendor/Vpp/timing)
 //   cfg     configuration bits for OLMCs
@@ -347,7 +379,7 @@ typedef struct
 
 const static galinfo_t galInfoList[] PROGMEM =
 {
-//                           +fuses          +bits        +uesbytes                    +cfgbase
+//                           +fuses          +bits        +uesbytes   +pesrow          +cfgbase
 //                           |     +pins     |  +uesrow   |  +eraserow|   +pesbytes    |           +cfg
 //   +-- type   + id0 + id1  |     |   +rows |  |   +uesfuse |   +eraseallrow +cfgrow  |           |       + cfgbits          +cfgmethod      +pinout
 //   |          |     |      |     |   |     |  |   |     |  |   |    |   |   |        |           |       |                  |               |
@@ -366,12 +398,21 @@ const static galinfo_t galInfoList[] PROGMEM =
     {ATF20V8B,  0x00, 0x00,  2706, 24, 40,  64, 40, 2568, 8, 63, 62, 58,  8, 60, CFG_BASE_20  , cfgV8AB  , sizeof(cfgV8AB)  , CFG_STROBE_ROW, PINOUT_20V8   },
     {ATF22V10B, 0x00, 0x00,  5892, 24, 44, 132, 44, 5828, 8, 61, 62, 58, 10, 16, CFG_BASE_22  , cfgV10   , sizeof(cfgV10)   , CFG_SET_ROW   , PINOUT_22V10  },
     {ATF22V10C, 0x00, 0x00,  5892, 24, 44, 132, 44, 5828, 8, 61, 62, 58, 10, 16, CFG_BASE_22  , cfgV10   , sizeof(cfgV10)   , CFG_SET_ROW   , PINOUT_22V10  },
+    {ATF750C,   0x00, 0x00, 14499, 24, 84, 171, 84,14435, 8, 61, 60,127, 10, 16, CFG_BASE_750 , cfgV750  , sizeof(cfgV750)  , CFG_STROBE_ROW2, PINOUT_22V10 }, // TODO: not all numbers are clear
 };
 galinfo_t galinfo __attribute__ ((section (".noinit"))); //preserve data between resets
 
+#ifdef RAM_BIG
+// for ATF750C
+// MAXFUSES = (((171 * 84 bits)  + uesbits + (10*3 + 1 + 10*4 + 5)) + 7) / 8
+//               (14504 + 7) / 8 = 1813
+#define MAXFUSES 1813
+#else
+// Boards with small RAM (< 2.5kB) do not support ATF750C
 // MAXFUSES calculated as the biggest required space to hold the fuse bitmap
 // MAXFUSES = GAL6002 8330 bits = 8330/8 = 1041.25 bytes rounded up to 1042 bytes
 #define MAXFUSES 1042
+#endif
 
 GALTYPE gal __attribute__ ((section (".noinit"))); //the gal device index pointing to galInfoList, value is preserved between resets
 
@@ -406,6 +447,10 @@ void printHelp(char full) {
   if (varVppExists) {
     Serial.println(F(" varVpp "));
   }
+#ifdef RAM_BIG
+    Serial.println(F(" RAM-BIG "));
+#endif
+
   if (!full) {
     Serial.println(F("type 'h' for help"));
     return;
@@ -487,6 +532,7 @@ static void setPinMux(uint8_t pm) {
   case GAL26V12:
   case ATF22V10B:
   case ATF22V10C:
+  case ATF750C:
     pinMode(PIN_ZIF10, pm);
     pinMode(PIN_ZIF11, pm);
     pinMode(PIN_ZIF13, pm);
@@ -836,11 +882,15 @@ static void setVPP(char on) {
 
         // when PES is read the VPP is not determined via PES
         if (on == READPES) {
-            if (gal == ATF16V8B || gal == ATF20V8B || gal == ATF22V10B || gal == ATF22V10C) {
+            if (gal == ATF16V8B || gal == ATF20V8B || gal == ATF22V10B || gal == ATF22V10C || gal == ATF750C) {
                 v = VPP_10V5; 
             } else {
                 v = VPP_11V5;
             }
+#if 0
+            Serial.print(F("VPP index="));
+            Serial.println(v);
+#endif
         } else {
             //safety check
             if (vpp < 36) {
@@ -850,12 +900,12 @@ static void setVPP(char on) {
                 vpp = 48; //12V
             }
             v = (vpp >> 1) - 18; // 18: 2 * 9V, resolution 0.5V (not 0.25V) hence 'vpp >> 1'
-#if 0            
+#if 0
             Serial.print(F("setVPP "));
             Serial.print(vpp);
             Serial.print(F(" index="));
             Serial.println(v);
-#endif            
+#endif
         }
         varVppSet(on ? v : VPP_5V0);
         delay(50); //settle the voltage
@@ -1119,6 +1169,13 @@ static void sendAddress(unsigned char n, unsigned char row)
       }
       setSDIN(row & 32);       // SDIN = row number bit 0
       break;
+  case ATF750C:
+      while (n-- > 1) {
+          sendBit(row & 1);    // clock in row number bits 0-5
+          row >>= 1;
+      }
+      setSDIN(row & 1);       // SDIN = row number bit 6
+      break;
   default:
       while (n-- > 0) {
           sendBit(row & 1);    // clock in row number bits 0-5
@@ -1142,6 +1199,7 @@ static void strobe(unsigned short msec)
 // setBit: 0 - do not set bit, 1- set bit value 0, 2 - set bit value 1
 static void strobeRow(char row, char setBit = BIT_NONE)
 {
+  unsigned char nBits = 6;
   switch(gal) {
     case GAL16V8:
     case GAL20V8:
@@ -1153,6 +1211,9 @@ static void strobeRow(char row, char setBit = BIT_NONE)
       }
       strobe(2);           // pulse /STB for 2ms
       break;
+    case ATF750C:
+      nBits = 7;
+      //fall through
     case GAL18V10:
     case GAL20RA10:
     case GAL20XV10:
@@ -1162,7 +1223,7 @@ static void strobeRow(char row, char setBit = BIT_NONE)
     case ATF22V10B:
     case ATF22V10C:
       setRow(0);           // set RA0-5 low
-      sendAddress(6,row);  // send row number (6 bits)
+      sendAddress(nBits, row);  // send row number (6 or 7 bits)
       setSTB(0);
       setSTB(1);           // pulse /STB
       setSDIN(0);          // SDIN low
@@ -1175,6 +1236,20 @@ static void strobeRow(char row, char setBit = BIT_NONE)
       sendAddress(7, row);
       sendBits(16, 0);
       strobe(2);           // pulse /STB for 2ms
+      break;
+   }
+}
+
+static void strobeConfigRow(char row)
+{
+  switch(gal) {
+    case ATF750C:
+      setRow(0);           // set RA0-5 low
+      setRow(galinfo.cfgrow);
+      sendAddress(7, row);  // send row number (6 bits)
+      setSDIN(1);          // SDIN high
+      setSTB(0);
+      setSTB(1);           // pulse /STB
       break;
    }
 }
@@ -1271,7 +1346,7 @@ static unsigned char getDuration(unsigned char index) {
 }
 
 static void setGalDefaults(void) {
-    if (gal == ATF16V8B || gal == ATF20V8B || gal == ATF22V10B || gal == ATF22V10C) {
+    if (gal == ATF16V8B || gal == ATF20V8B || gal == ATF22V10B || gal == ATF22V10C || gal == ATF750C) {
         progtime = 20;
         erasetime = 100;
         vpp = 42; /* 10.5V */
@@ -1299,6 +1374,7 @@ void parsePes(char type) {
     case ATF20V8B:
     case ATF22V10B:
     case ATF22V10C:
+    case ATF750C:
         progtime = 20;
         erasetime = 100;
         vpp = 48;    /* 12.0V */
@@ -1374,7 +1450,7 @@ void printPes(char type) {
   
   Serial.print(F("PES info: "));
   //voltage
-  if (pes[3] == ATMEL16 || pes[3] == ATMEL22) {
+  if (pes[3] == ATMEL16 || pes[3] == ATMEL22 || pes[3] == ATMEL750) {
      //Serial.print("  ");
   } else {
     if (pes[1] & 0x10) {
@@ -1389,6 +1465,7 @@ void printPes(char type) {
     case LATTICE:    Serial.print(F("Lattice ")); break;
     case NATIONAL:   Serial.print(F("National ")); break;
     case SGSTHOMSON: Serial.print(F("ST Microsystems ")); break;
+    case ATMEL750:
     case ATMEL16:
     case ATMEL22:    Serial.print(F("Atmel ")); break;
     default:         Serial.print(F("Unknown GAL, "));
@@ -1410,6 +1487,7 @@ void printPes(char type) {
     case ATF20V8B: Serial.print(F("ATF20V8B ")); break;
     case ATF22V10B: Serial.print(F("ATF22V10B ")); break;
     case ATF22V10C: Serial.print(F("ATF22V10C ")); break;
+    case ATF750C: Serial.print(F("ATF750C ")); break;
   }
 
   //programming info
@@ -1873,6 +1951,13 @@ static void readOrVerifyGal(char verify)
         readGalFuseMap(cfgV10, 1, (gal == GAL22V10) ? 0 : 68);
       } 
       break;
+    case ATF750C:
+      //read with delay 1 ms, discard 107 bits on ATF750C
+      if (verify) {
+        i = verifyGalFuseMap(galinfo.cfg, 1, galinfo.bits - 8 * galinfo.uesbytes - 1);
+      } else {
+        readGalFuseMap(galinfo.cfg, 1, galinfo.bits - 8 * galinfo.uesbytes - 1);
+      }
   }
   turnOff();
 
@@ -1993,6 +2078,98 @@ static void writeGalFuseMapV10(const unsigned char* cfgArray, char fillUesStart,
   }
 }
 
+// fuse-map writing function for ATF750C chips
+static void writeGalFuseMapV750(const unsigned char* cfgArray, char fillUesStart, char useSdin) {
+  unsigned short cfgAddr = galinfo.cfgbase;
+  unsigned char row, bit;
+  unsigned short addr;
+	
+  // write fuse rows
+  setRow(0); //RA0-5 low
+  delayMicroseconds(20);
+  for(row = 0; row < galinfo.rows; row++) {
+    for (bit = 0; bit < galinfo.bits; bit++) {
+      addr = (galinfo.bits * row) + bit;
+      sendBit(getFuseBit(addr));
+    }
+
+    sendAddress(7, row);
+    setPV(1);
+    delayMicroseconds(20);
+    strobe(progtime);
+    delayMicroseconds(100);
+    setPV(0);
+    delayMicroseconds(12);
+  }
+
+    // write UES
+    uint8_t fillBitsBegin = galinfo.bits - (8 * galinfo.uesbytes) - 1;
+
+    setRow(0); //RA0-5 low
+	  if (fillUesStart) {
+      sendBits(fillBitsBegin, 0);
+    }
+    else {
+      fillBitsBegin = 0;
+    }
+
+    for (bit = 0; bit < (8 * galinfo.uesbytes); bit++) {
+      addr = bit;
+      sendBit(getFuseBit(addr));
+    }
+
+    uint8_t fillBitsEnd = galinfo.bits - (8 * galinfo.uesbytes) - fillBitsBegin;
+    if (fillBitsEnd > 0) {
+      sendBits(fillBitsEnd, 0);
+    }
+
+    row = galinfo.uesrow;
+    sendAddress(7, row);
+    setPV(1);
+    strobe(progtime);
+    setPV(0);
+	  delay(progtime);
+
+    uint8_t cfgRowLen = 10; //ATF750C
+    uint8_t cfgStrobeRow = 96; //ATF750C
+    // write CFG
+    uint8_t cfgrowcount = (galinfo.cfgbits + (cfgRowLen - 1)) / cfgRowLen;
+    for(uint8_t i = 0; i < cfgrowcount; i++) {
+      setRow(0);
+      delayMicroseconds(10);
+      setRow(galinfo.cfgrow);
+
+      for(bit = 0; bit < cfgRowLen; bit++) {
+        uint8_t absBit = bit + (i * cfgRowLen);
+        //addr = galinfo.cfgbase - (galinfo[gal].bits * rangeStartRow) + cfgArray[absBit];
+        addr = galinfo.cfgbase  + pgm_read_byte(&cfgArray[absBit]);
+        uint8_t v = getFuseBit(addr);
+        sendBit(v);
+      }
+
+      sendAddress(7, i + cfgStrobeRow);
+      delayMicroseconds(10);
+      setPV(1);
+      delayMicroseconds(18);
+      strobe(progtime); // 20ms
+      delayMicroseconds(32);
+      setPV(0);
+      delayMicroseconds(12);
+      setRow(0);
+      delayMicroseconds(12);
+    }
+    if (useSdin) {
+      // disable power-down feature (JEDEC bit #5892)
+      setRow(0);
+      sendAddress(7, 125); //TODO - read the power down fuse bit state from the fuse map and set it only if needed
+      setPV(1);
+      strobe(progtime);
+      setPV(0);
+      delay(progtime);
+    }
+
+}
+
 // fuse-map writing function for 600x GAL chips
 static void writeGalFuseMap600(const unsigned char* cfgArray) {
     unsigned short cfgAddr = galinfo.cfgbase;
@@ -2099,7 +2276,9 @@ static void writeGal()
     case ATF22V10B:
     case ATF22V10C:
         writeGalFuseMapV10(cfgV10, (gal == GAL22V10) ? 0 : 1, (gal == ATF22V10C) ? 1 : 0);
-        break; 
+        break;
+    case ATF750C:
+        writeGalFuseMapV750(cfgV750, 1, 1);
   }
   turnOff();
 }
@@ -2161,6 +2340,10 @@ static char checkGalTypeViaPes(void)
        if (pes[1] == 'C' || pes[1] == 'Z') { // ATF16V8C, ATF16V8CZ
            setFlagBit(FLAG_BIT_ATF16V8C, 1);
        }
+    }
+    else if (pes[8] == 'F' && pes[7] == 'V' && pes[6] == '7' && pes[5] == '5' && pes[4] == '0' && pes[3] =='C') {
+      // complete string at beginning of row 127: "300C057VF100"
+      type = ATF750C;
     }
     else if (pes[2] != 0x00 && pes[2] != 0xFF) {
        for (type = (sizeof(galInfoList) / sizeof(galinfo_t)) - 1; type; type--) {
@@ -2377,7 +2560,7 @@ static void printJedec()
         n = 0;
         for (i = 0; i < 8; i++) {
             if (getFuseBit(k + 8 * j + i)) {
-                if (gal == ATF22V10C) {
+                if (gal == ATF22V10C || gal == ATF750C) {
                     n |= 1 << (7 - i);  // big-endian
                 }
                 else {
