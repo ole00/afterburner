@@ -411,8 +411,12 @@ galinfo_t galinfo __attribute__ ((section (".noinit"))); //preserve data between
 // Boards with small RAM (< 2.5kB) do not support ATF750C
 // MAXFUSES calculated as the biggest required space to hold the fuse bitmap
 // MAXFUSES = GAL6002 8330 bits = 8330/8 = 1041.25 bytes rounded up to 1042 bytes
-#define MAXFUSES 1042
+//#define MAXFUSES 1042
+//extra space added for sparse fusemap
+#define MAXFUSES 1280
+#define USE_SPARSE_FUSEMAP
 #endif
+
 
 GALTYPE gal __attribute__ ((section (".noinit"))); //the gal device index pointing to galInfoList, value is preserved between resets
 
@@ -439,6 +443,7 @@ static void turnOff(void);
 static void printFormatedNumberHex2(unsigned char num) ;
 
 #include "aftb_vpp.h"
+#include "aftb_sparse.h"
 
 // print some help on the serial console
 void printHelp(char full) {
@@ -653,13 +658,19 @@ void setup() {
     pinMode(PIN_SHR_CS, OUTPUT);
     digitalWrite(PIN_SHR_CS, 1); //unselect the POT's SPI bus
   }
-
   Serial.println(">");
 }
 
 //copy galinfo item from the flash array into RAM backed struct
 static void copyGalInfo(void) {
   memcpy_P(&galinfo, &galInfoList[gal], sizeof(galinfo_t));
+
+  // Note: Sparse fuse map is ignored on MCUs with big SRAM
+  if (gal == ATF750C) {
+    sparseInit(0);
+  } else {
+    sparseDisable();
+  }
 }
 
 // read from serial line and discard the data
@@ -1510,12 +1521,24 @@ void printPes(char type) {
 // sets a fuse bit on particular position
 // expects that the fusemap was cleared (set to zero) beforehand
 static void setFuseBit(unsigned short bitPos) {
-    fusemap[bitPos >> 3] |= (1 << (bitPos & 7));
+    uint16_t pos;
+    if (sparseFusemapStat) {
+      pos = sparseSetFuseBit(bitPos);
+    } else {
+      pos = bitPos >> 3; //divide the bit position by 8 to get the byte position
+    }
+    fusemap[pos] |= (1 << (bitPos & 7));
 }
 
 // gets a fuse bit from specific fuse position
 static char getFuseBit(unsigned short bitPos) {
-  return (fusemap[bitPos >> 3] & (1 << (bitPos & 7))) ? 1 : 0;
+  uint16_t pos;
+  if (sparseFusemapStat) {
+    pos = sparseGetFuseBit(bitPos);
+  } else {
+    pos = bitPos >> 3;
+  }
+  return (fusemap[pos] & (1 << (bitPos & 7))) ? 1 : 0;
 }
 
 static void setFuseBitVal(unsigned short bitPos, char val) {
@@ -1613,6 +1636,12 @@ static void readGalFuseMap(const unsigned char* cfgArray, char useDelay, char do
     }
     setFlagBit(FLAG_BIT_APD, receiveBit());
   }
+
+#if 0
+  if (sparseFusemapStat) {
+    sparsePrintStat();
+  }
+#endif
 }
 
 static void readGalFuseMap600(const unsigned char* cfgArray) {
@@ -1895,6 +1924,7 @@ static void readOrVerifyGal(char verify)
     for (i = 0; i < MAXFUSES; i++) {
       fusemap[i] = 0;
     }
+    sparseInit(1);
   }
 
   turnOn(READGAL);
@@ -2772,6 +2802,7 @@ void loop() {
         for (i = 0; i < MAXFUSES; i++) {
           fusemap[i] = 0;
         }
+        sparseInit(1);
         isUploading = 1;
         uploadError = 0;
       } break;
