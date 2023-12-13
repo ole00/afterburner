@@ -30,7 +30,7 @@ static uint16_t getFusePositionAndType(uint16_t bitPos) {
   uint16_t counter = 0;
   uint8_t i = 0;
   uint8_t type;
-  uint16_t fuseOffset = (bitPos & 0b1000) ? 1 : 0; //set odd / even byte of the fuse offset
+  uint16_t fuseOffset = (bitPos & 0b11000)  >> 3; //set odd / even byte of the fuse offset
 
   if (bitPos <= sparseCacheBitPos) {
     sparseCacheBitPos = 0;
@@ -38,7 +38,7 @@ static uint16_t getFusePositionAndType(uint16_t bitPos) {
     sparseCacheIndex = 0;
   } else {
     counter = sparseCacheBitPos;
-    fuseOffset += sparseCacheOffset & 0xFFE;
+    fuseOffset += sparseCacheOffset & 0xFFC;
     i = sparseCacheIndex;
     sparseCacheHit++;
   }
@@ -46,28 +46,28 @@ static uint16_t getFusePositionAndType(uint16_t bitPos) {
   //calculate fusemap offset
   while (1) {
     uint8_t rec = fuseType[i];
-    // speed optimised special case: all 8 bits are 0
+    // speed optimised special case: all 8 bits are 0 (4 * 32 bits)
     if (rec == 0) {
         counter += 128;
         if (counter > bitPos) {
-          return (fuseOffset << 1); // type is 0
+          return (fuseOffset << 2); // type is 0
         }
         sparseCacheBitPos = counter;
         sparseCacheOffset = fuseOffset;
         sparseCacheIndex = i + 1;
     } else {
       uint8_t j = 0;
-      //8 fuse types per byte
-      while (j < 8) {
-        counter += 16;
-        type = rec & 1;
+      //4 fuse types per byte
+      while (j < 4) {
+        counter += 32;
+        type = rec & 0b11;
         if (counter > bitPos) {
-          return (fuseOffset << 1) | type;
+          return (fuseOffset << 2) | type;
         }
-        if (type) {
-          fuseOffset += 2;
+        if (type == 1) { // type 0 & 3 - no byte stored in fusemap
+          fuseOffset += 4;
         }
-        rec >>= 1;
+        rec >>= 2;
         j++;
       }
     }
@@ -76,18 +76,20 @@ static uint16_t getFusePositionAndType(uint16_t bitPos) {
 }
 
 static void insertFuseGroup(uint16_t dataPos, uint16_t bitPos) {
-  int16_t i = bitPos >> 4; //group index
+  int16_t i = bitPos >> 5; //group index
   uint16_t totalFuseBytes = sparseFusemapStat & 0x7FF; // max is 2048 bytes
-  fuseType[i >> 3] |= (1 << (i & 7)); // set type 1 at the fuse group record
+  fuseType[i >> 2] |= (1 << ((i & 0b11) << 1)); // set type 1 at the fuse group record
 
-  //shift all data in the fuse map  starting at data pos by 2 bytes (16 bits)
+  //shift all data in the fuse map  starting at data pos by 4 bytes (32 bits)
   if (dataPos < totalFuseBytes) {
     for (i =  totalFuseBytes - 1; i >= dataPos; i--) {
-      fusemap[i + 2] = fusemap[i];
+      fusemap[i + 4] = fusemap[i];
     }
   }
-  sparseFusemapStat = totalFuseBytes + 2; // we can ignore the sparse bit
+  sparseFusemapStat = totalFuseBytes + 4; // we can ignore the sparse bit
   //clean the emptied fusemap data
+  fusemap[dataPos++] = 0;
+  fusemap[dataPos++] = 0;
   fusemap[dataPos++] = 0;
   fusemap[dataPos] = 0;
 }
@@ -95,20 +97,26 @@ static void insertFuseGroup(uint16_t dataPos, uint16_t bitPos) {
 static inline uint16_t sparseSetFuseBit(uint16_t bitPos) {
     uint8_t type;
     uint16_t pos = getFusePositionAndType(bitPos);
-    type = pos & 1;
-    pos >>= 1; //trim the type to get the byte position in fuse map
+    type = pos & 0b11;
+    pos >>= 2; //trim the type to get the byte position in fuse map
     if (type == 0) { //we need to write the bit into a group that has all bits 0 so far
-      insertFuseGroup(pos & 0x7FE, bitPos);
+      insertFuseGroup(pos & 0x7FC, bitPos);
     }
     return pos;
 }
 
 static inline uint16_t sparseGetFuseBit(uint16_t bitPos) {
+    uint8_t type;
     uint16_t pos = getFusePositionAndType(bitPos);
-    if (!(pos & 1)) { //type is 0 - the block contains all zero bits
-      return 0;
+
+    type = pos & 0b11;
+    if (!type) { //type is 0 - the block contains all zero bits
+      return 0xFF00;
     }
-    pos >>= 1; //trim the type to get byte position in fuse map
+    if (type == 3) {  // type is 3 - the block contains all 1 bits
+      return 0xFF01;
+    }
+    pos >>= 2; //trim the type to get byte position in fuse map
     return pos;
 }
 

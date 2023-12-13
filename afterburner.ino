@@ -1535,6 +1535,9 @@ static char getFuseBit(unsigned short bitPos) {
   uint16_t pos;
   if (sparseFusemapStat) {
     pos = sparseGetFuseBit(bitPos);
+    if (pos >= 0xFF00) {
+      return pos & 0x1;
+    }
   } else {
     pos = bitPos >> 3;
   }
