@@ -71,7 +71,7 @@ Setup:
 
 * Calibrate the variable voltage. This needs to be done only once, before you start using Afterburner for programming GAL chips.
 
-  * **Calibration step 1)** Turn the small potentiometer (R8) on the Afterburner to the middle position. This pot acts as compensation resistor for the digital pot.
+  * **Calibration step 1)** Turn the small potentiometer (R9) on the Afterburner to the middle position. This pot acts as compensation resistor for the digital pot.
 
   * **Calibration step 2)** Set the programming voltage (VPP) to 16.5V: Check the programming voltage (VPP) without the GAL chip being inserted / connected to Afterburner. Test the voltage on MT3608 module VOUT- and VOUT+ pins while running the following command:
   <pre>
@@ -85,7 +85,7 @@ Setup:
   ./afterburner b
   </pre>
   You will see several messages on the console. Check the one with '*Index for VPP 900 is'. This is the lowest supported VPP of 9V and the index should ideally be between 15 and 35.
-  If you see a different index value (lower or higher) move the Afterburner's compensation pot (R8) either a bit lower or higher (depending on the VPP 900 index value) and go back to Calibration step 2). Repeat the Calibration steps 2) and 3) until you find the good value on VPP 900 index. If everything goes OK the last VPP index (VPP 1650) should be 128.
+  If you see a different index value (lower or higher) move the Afterburner's compensation pot (R9) either a bit lower or higher (depending on the VPP 900 index value) and go back to Calibration step 2). Repeat the Calibration steps 2) and 3) until you find the good value on VPP 900 index. If everything goes OK the last VPP index (VPP 1650) should be 128.
 
   * **Calibration step 4)** Measure the actual VPP to verify the value read by Arduino is correct. Run the following command while measuring the VPP on your multimeter:
   <pre>
