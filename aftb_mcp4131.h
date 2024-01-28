@@ -92,7 +92,7 @@ static uint16_t  mcp4131_reg(uint8_t address, uint16_t value, uint8_t read_reg) 
     }
 
     if (mcp4151_detected && address == ADDR_WIPER && read_reg) {
-        value >>= 1; //divide the wiper value by 2
+        r >>= 1; //divide the wiper value by 2
     }
 
     //disable IC
