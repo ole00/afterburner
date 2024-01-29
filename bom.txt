@@ -1,6 +1,6 @@
-BOM for Afterburner 3.0
-=======================
-* (R1 - 5x) Resistor 4k7 (TH or SMT 0805) 0.25W, 5% or better tolerance  - 5x
+BOM for Afterburner PCB 3.1
+============================
+* (R1 - 4x) Resistor 4k7 (TH or SMT 0805) 0.25W, 5% or better tolerance  - 4x
 * (R8, R4) Resistor 10k (TH or SMT 0805) 1% or better tolerance - 2x
 * (R5) Resistor 100k (TH or SMT 0805) 1% or better tolerance - 1x
 * (R6) Resistor 20k (TH or SMT 0805) 1% or better tolerance - 1x
