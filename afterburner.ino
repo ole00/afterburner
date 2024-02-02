@@ -31,6 +31,9 @@
    * afterburner PC program to upload JED fuse map, erase, read etc.
    * simple programming circuit. See: https://github.com/ole00/afterburner
 
+   * 2024-02-02 Fixed: Command 'B9' (Calibration Offset = 0,25V) doesn't work
+                Note: Also requires elimination of a  in the PC program afterburner.c
+                Added: 10.0V measurement in measureVppValues(()
                                                                        */
 
 
@@ -2517,6 +2520,9 @@ static void measureVppValues(void) {
   Serial.print(F("VPP: 9.0V : "));
   measureVpp(VPP_9V0);
 
+  Serial.print(F("VPP: 10.0V : "));
+  measureVpp(VPP_10V0);
+
   Serial.print(F("VPP: 12.0V : "));
   measureVpp(VPP_12V0);
 
@@ -2700,8 +2706,8 @@ void loop() {
       // small differences in analog ref which is ~3.3 V derived from LDO.
       case COMMAND_CALIBRATION_OFFSET: {
         int8_t offset = line[1] - '0';
-        if (offset >=0 && offset < 9) {
-          //0:-0.2V 1:-1.5V  2: -0.1V 3: -0.05V 4: 0V  5: 0.05V  6: 0.1V 7: 0.15V 8: 0.20V 9:0.25V
+        if (offset >=0 && offset <= 9) {
+          //0:-0.2V 1:-0.15V  2: -0.1V 3: -0.05V 4: 0V  5: 0.05V  6: 0.1V 7: 0.15V 8: 0.20V 9:0.25V
           calOffset = (offset - 4) * 5;
           Serial.print(F("Using cal offset: "));
           Serial.println(calOffset);
