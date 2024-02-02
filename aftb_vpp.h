@@ -1,7 +1,10 @@
 /*
  * Variable voltage functions for Afterburner GAL project.
  * 
+ * 2024-02-02 Minor changes in varVppInit()
  */
+#ifndef __AFTB_VPP_H__
+#define __AFTB_VPP_H__
 
 #include <EEPROM.h>
 
@@ -303,12 +306,14 @@ static void varVppStoreWiperCalib() {
 //return 1 on success (variable VPP functionality present), 0 on failure (VPP not detected on board)
 static int8_t varVppInit(void) {
     analogReference(ANALOG_REF_EXTERNAL); //use 3V3 external reference
+    analogRead(VPP);            // Perform a dummy conversion referring to the datasheet
 
     wiperStat = 0; //wiper disabled
     mcp4131_init();
     if (mcp4131_detect()) {
 #if VPP_VERBOSE
-        Serial.println(F("POT found"));
+        Serial.print(mcp4151_detected ? F("MCP4151") : F("MCP4131"));
+        Serial.println(F(" POT found"));
 #endif
         return OK;
     } else {
@@ -356,4 +361,4 @@ static int8_t varVppCalibrate(void) {
     }
     return OK;
 }
-
+#endif
