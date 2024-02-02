@@ -52,8 +52,8 @@ To compile: gcc -g3 -O0 -o afterburner afterburner.c
 
 #define MAX_LINE 1024
 
-#define MAXFUSES 10000
-#define GALBUFSIZE 16384
+#define MAXFUSES 30000
+#define GALBUFSIZE 65536
 
 typedef enum {
     UNKNOWN,
