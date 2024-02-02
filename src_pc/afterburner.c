@@ -32,9 +32,12 @@ Changelog:
 * use 'git log'
 
 This is the PC part that communicates with Arduino UNO by serial line.
-To compile: gcc -g3 -O0 afterburner afterburner.c
-*/
+To compile: gcc -g3 -O0 -o afterburner afterburner.c
 
+* 2024-02-02  Fixed: Command 'B9' (Calibration Offset = 0,25V) doesn't work
+              Note: Also requires elimination of a bug in the PC program afterburner.ino
+              Added: Sending B4, if b /wo -co is executed
+*/
 
 #include <unistd.h>
 #include <stdlib.h>
@@ -122,7 +125,7 @@ char fusemap[MAXFUSES];
 char noGalCheck = 0;
 char varVppExists = 0;
 char printSerialWhileWaiting = 0;
-int calOffset = 0xFFFF; //calibration offset is not applied
+int calOffset = 0; //no calibration offset is applied
 char enableSecurity = 0;
 
 char opRead = 0;
@@ -273,15 +276,15 @@ static int8_t checkArgs(int argc, char** argv) {
             if (calOffset < -20 || calOffset > 25) {
                 printf("Calibration offset out of range (-20..25 inclusive).\n");
             }
+            if (calOffset < -20) {
+                calOffset = -20;
+            } else if (calOffset > 25) {
+                calOffset = 25;
+            }
         }
         else if (param[0] != '-') {
             modes = param;
         }
-    }
-    if (calOffset < -20) {
-        calOffset = -20;
-    } else if (calOffset > 25) {
-        calOffset = 25;
     }
 
     i = 0;
@@ -970,20 +973,18 @@ static char operationTestVpp(void) {
 
 static char operationCalibrateVpp(void) {
     char result;
+    char cmd [8] = {0};
+    char val = (char)('0' + (calOffset + 20) / 5);
 
     if (openSerial() != 0) {
         return -1;
     }
 
-    if (calOffset != 0xFFFF) {
-        char cmd [8] = {0};
-        char val = (char)('0' + (calOffset + 20) / 5);
-        sprintf(cmd, "B%c\r", val);
-        if (verbose) {
-            printf("sending 'B%c' command...\n", val);
-        }
-        result = sendGenericCommand(cmd, "VPP cal. offset failed", 4000, 1);
+    sprintf(cmd, "B%c\r", val);
+    if (verbose) {
+        printf("sending 'B%c' command...\n", val);
     }
+    result = sendGenericCommand(cmd, "VPP cal. offset failed", 4000, 1);
 
     if (verbose) {
         printf("sending 'b' command...\n");
@@ -1011,7 +1012,7 @@ static char operationMeasureVpp(void) {
     
     //print the measured voltages if the feature is available
     printSerialWhileWaiting = 1;
-    result = sendGenericCommand("m\r", "VPP measurement failed", 22000, 1);
+    result = sendGenericCommand("m\r", "VPP measurement failed", 30000, 1);
     printSerialWhileWaiting = 0;
 
     closeSerial();
