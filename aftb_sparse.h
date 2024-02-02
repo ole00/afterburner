@@ -90,16 +90,17 @@ static uint16_t getFusePositionAndType(uint16_t bitPos) {
   //calculate fusemap offset
   while (1) {
     uint8_t rec = fuseType[i];
-    // speed optimised special case: all 8 bits are 0 (4 * 32 bits)
-    if (rec == 0) {
+    // speed optimised special case: all 8 bits are 0 or all are 1 (4 * 32 bits)
+    if (rec == 0 || rec == 0xFF) {
         counter += 128;
         if (counter > bitPos) {
-          return (fuseOffset << 2); // type is 0
+          return (fuseOffset << 2) | (rec & 0b11); // type is 0 or 3
         }
         sparseCacheBitPos = counter;
         sparseCacheOffset = fuseOffset;
         sparseCacheIndex = i + 1;
-    } else {
+    }
+    else {
       uint8_t j = 0;
       //4 fuse types per byte
       while (j < 4) {
@@ -152,6 +153,7 @@ static void sparseCompactFuseMap(void) {
   sparseCompactRun++; //statistics
 #endif
 
+
   i = total - 1;
   while(i) {
     // remove 4 fusemap bytes at a position when the bits are all 1's
@@ -176,6 +178,13 @@ static void sparseCompactFuseMap(void) {
   sparseCacheBitPos = 0;
   sparseCacheOffset = 0;
   sparseCacheIndex = 0;
+#if COMPACT_STAT
+  Serial.print(F("sp comp:"));
+  Serial.print(sparseCompactRun, DEC);
+  Serial.print(F(" total:"));
+  Serial.println(sparseFusemapStat & 0x7FF, DEC);
+
+#endif  
 }
 
 static inline uint16_t sparseSetFuseBit(uint16_t bitPos) {
