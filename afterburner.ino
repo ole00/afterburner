@@ -412,8 +412,8 @@ galinfo_t galinfo __attribute__ ((section (".noinit"))); //preserve data between
 // MAXFUSES calculated as the biggest required space to hold the fuse bitmap
 // MAXFUSES = GAL6002 8330 bits = 8330/8 = 1041.25 bytes rounded up to 1042 bytes
 //#define MAXFUSES 1042
-//extra space added for sparse fusemap
-#define MAXFUSES 1280
+//extra space added for sparse fusemap (just enough to fit erased ATF750C)
+#define MAXFUSES 1332
 #define USE_SPARSE_FUSEMAP
 #endif
 
@@ -666,7 +666,7 @@ static void copyGalInfo(void) {
   memcpy_P(&galinfo, &galInfoList[gal], sizeof(galinfo_t));
 
   // Note: Sparse fuse map is ignored on MCUs with big SRAM
-  if (gal == ATF750C) {
+  if (gal == ATF750C || gal == ATF22V10C) {
     sparseInit(0);
   } else {
     sparseDisable();
@@ -733,10 +733,14 @@ char handleTerminalCommands() {
   return COMMAND_NONE; 
 }
 
-// Parses decimal integer number typed as 4 digit.
+// Parses decimal integer number typed as 4 or 5 digits.
 // Returns the number value.
-unsigned short parse4dec(char i) {
-  unsigned short v = (line[i++] - '0') * 1000;
+unsigned short parse45dec(char i, char five) {
+  unsigned short v = 0;
+  if (five) { //containts 5 digits
+    v = (line[i++] - '0') * 10000;
+  }
+  v += (line[i++] - '0') * 1000;
   v += (line[i++] - '0') * 100;
   v += (line[i++] - '0') * 10;
   v += line[i] - '0';
@@ -765,14 +769,19 @@ unsigned short parse2hex(char i) {
 // Parses hexdecimal integer number typed as 4 digit.
 // Returns the number value.
 unsigned short parse4hex(char i) {
+  unsigned short v;
   if (line[i] == '\r' || line[i] ==  0 || line[i] == ' ') {
     return -1; 
   }
   
-  unsigned short v = ((unsigned short)toHex(line[i++])) << 12;
-  v |= ((unsigned short)toHex(line[i++])) << 8;
-  v |= toHex(line[i++]) << 4;
-  return v + toHex(line[i]); 
+  v = toHex(line[i++]);
+  v <<= 4;
+  v |= toHex(line[i++]);
+  v <<= 4;
+  v |= toHex(line[i++]);
+  v <<= 4;
+  v |= toHex(line[i]);
+  return v ;
 }
 
 // Parses a line fed by the serial connection.
@@ -817,8 +826,13 @@ void parseUploadLine() {
     case 'f': {
       char i = 8;
       char j;
-      unsigned short addr = parse4dec(3);
+      unsigned short addr;
       short v;
+      char fiveDigitAddr = (line[7] != ' ') ? 1 : 0;
+
+      addr = parse45dec(3, fiveDigitAddr);
+      i += fiveDigitAddr;
+
       do {
         v = parse2hex(i);
         if (v >= 0) {
@@ -1608,20 +1622,43 @@ static void readGalFuseMap(const unsigned char* cfgArray, char useDelay, char do
   }
 
   // read CFG
-  if (galinfo.cfgmethod == CFG_STROBE_ROW) {
-    strobeRow(galinfo.cfgrow);
-    if (flagBits & FLAG_BIT_ATF16V8C) {
-      setSDIN(0);
-      setPV(1);
+if (galinfo.cfgmethod == CFG_STROBE_ROW2) { //ATF750C
+    const uint8_t cfgstroberow = 96;
+    const uint8_t cfgrowlen = 10;
+    const uint8_t cfgrowcount = (galinfo.cfgbits + (cfgrowlen - 1)) /cfgrowlen;
+    uint8_t i;
+    for(i = 0; i < cfgrowcount; i++) {
+      strobeConfigRow(cfgstroberow + i);
+      for(bit = 0; bit < cfgrowlen; bit++) {
+        uint8_t absBit = (cfgrowlen * i) + bit;
+        if (absBit >= galinfo.cfgbits)
+          break;
+        if (receiveBit()) {
+          unsigned char cfgOffset = pgm_read_byte(&cfgArray[absBit]);
+          setFuseBit(cfgAddr + cfgOffset);
+        }
+      }
+      if (useDelay) {
+        delay(useDelay);
+      }
     }
   } else {
-    setRow(galinfo.cfgrow);
-    strobe(1);
-  }
-  for(bit = 0; bit < galinfo.cfgbits; bit++) {
-    if (receiveBit()) {
-      unsigned char cfgOffset = pgm_read_byte(&cfgArray[bit]); //read array byte flom flash
-      setFuseBit(cfgAddr + cfgOffset);
+    if (galinfo.cfgmethod == CFG_STROBE_ROW) {
+      strobeRow(galinfo.cfgrow);
+      if (flagBits & FLAG_BIT_ATF16V8C) {
+        setSDIN(0);
+        setPV(1);
+      }
+    }
+    else {
+      setRow(galinfo.cfgrow);
+      strobe(1);
+    }
+    for(bit = 0; bit < galinfo.cfgbits; bit++) {
+      if (receiveBit()) {
+        unsigned char cfgOffset = pgm_read_byte(&cfgArray[bit]); //read array byte flom flash
+        setFuseBit(cfgAddr + cfgOffset);
+      }
     }
   }
 
@@ -1700,6 +1737,11 @@ static unsigned short verifyGalFuseMap(const unsigned char* cfgArray, char useDe
   char mapBit;    // fuse bit stored in RAM
   unsigned short errors = 0;
 
+#ifdef DEBUG_VERIFY
+  Serial.print(F("rot f:"));
+  Serial.println(rotatedFuseMap, DEC);
+#endif
+
   if (flagBits & FLAG_BIT_ATF16V8C) {
       setPV(0);
   }
@@ -1715,12 +1757,12 @@ static unsigned short verifyGalFuseMap(const unsigned char* cfgArray, char useDe
       addr = galinfo.rows;
       addr *= bit;
       addr += row;
-      mapBit = getFuseBit(addr);
-      fuseBit = receiveBit();
+      mapBit = getFuseBit(addr); //bit from RAM
+      fuseBit = receiveBit(); // read from GAL
       if (mapBit != fuseBit) {
 #ifdef DEBUG_VERIFY
         Serial.print(F("f a="));
-        Serial.println((row * galinfo.bits) + bit, DEC);
+        Serial.print(addr, DEC);
 #endif
         errors++;
       }
@@ -1761,27 +1803,55 @@ static unsigned short verifyGalFuseMap(const unsigned char* cfgArray, char useDe
   if (flagBits & FLAG_BIT_ATF16V8C) {
       setPV(0);
   }
-  // read CFG
-  if (galinfo.cfgmethod == CFG_STROBE_ROW) {
-    strobeRow(galinfo.cfgrow);
-    if (flagBits & FLAG_BIT_ATF16V8C) {
-      setSDIN(0);
-      setPV(1);
-    }  
+
+  if (galinfo.cfgmethod == CFG_STROBE_ROW2) { //ATF750C
+    const uint8_t cfgstroberow = 96;
+    const uint8_t cfgrowlen = 10;
+    const uint8_t cfgrowcount = (galinfo.cfgbits + (cfgrowlen - 1)) /cfgrowlen;
+    uint8_t i;
+    for(i = 0; i < cfgrowcount; i++) {
+      strobeConfigRow(cfgstroberow + i);
+      for(bit = 0; bit < cfgrowlen; bit++) {
+        uint8_t absBit = (cfgrowlen * i) + bit;
+        if (absBit >= galinfo.cfgbits) {
+          break;
+        }
+        mapBit = getFuseBit(cfgAddr + pgm_read_byte(&cfgArray[absBit])); // cfgAddr + cfgOffset
+        fuseBit = receiveBit();
+        if (mapBit != fuseBit) {
+  #ifdef DEBUG_VERIFY
+        Serial.print(F("C a="));
+        Serial.println(absBit, DEC);
+  #endif
+          errors++;
+        }
+      }
+      if (useDelay) {
+        delay(useDelay);
+      }
+    }
   } else {
-    setRow(galinfo.cfgrow);
-    strobe(1);
-  }
-  for(bit = 0; bit < galinfo.cfgbits; bit++) {
-    unsigned char cfgOffset = pgm_read_byte(&cfgArray[bit]); //read array byte flom flash
-    mapBit = getFuseBit(cfgAddr + cfgOffset); 
-    fuseBit = receiveBit();
-    if (mapBit != fuseBit) {
-#ifdef DEBUG_VERIFY
-      Serial.print(F("C a="));
-      Serial.println(bit, DEC);
-#endif
-      errors++;
+    if (galinfo.cfgmethod == CFG_STROBE_ROW) {
+      strobeRow(galinfo.cfgrow);
+      if (flagBits & FLAG_BIT_ATF16V8C) {
+        setSDIN(0);
+        setPV(1);
+      }
+    } else {
+      setRow(galinfo.cfgrow);
+      strobe(1);
+    }
+    for(bit = 0; bit < galinfo.cfgbits; bit++) {
+      unsigned char cfgOffset = pgm_read_byte(&cfgArray[bit]); //read array byte flom flash
+      mapBit = getFuseBit(cfgAddr + cfgOffset);
+      fuseBit = receiveBit();
+      if (mapBit != fuseBit) {
+  #ifdef DEBUG_VERIFY
+        Serial.print(F("C a="));
+        Serial.println(bit, DEC);
+  #endif
+        errors++;
+      }
     }
   }
 
@@ -2112,17 +2182,22 @@ static void writeGalFuseMapV10(const unsigned char* cfgArray, char fillUesStart,
 }
 
 // fuse-map writing function for ATF750C chips
-static void writeGalFuseMapV750(const unsigned char* cfgArray, char fillUesStart, char useSdin) {
+static void writeGalFuseMapV750(const unsigned char* cfgArray) {
   unsigned short cfgAddr = galinfo.cfgbase;
   unsigned char row, bit;
   unsigned short addr;
+  unsigned short uesFill = galinfo.bits - (galinfo.uesbytes * 8) - 1;
+  uint8_t cfgRowLen = 10; //ATF750C
+  uint8_t cfgStrobeRow = 96; //ATF750C
 	
   // write fuse rows
   setRow(0); //RA0-5 low
   delayMicroseconds(20);
   for(row = 0; row < galinfo.rows; row++) {
     for (bit = 0; bit < galinfo.bits; bit++) {
-      addr = (galinfo.bits * row) + bit;
+      addr = galinfo.rows;
+      addr *= bit;
+      addr += row;
       sendBit(getFuseBit(addr));
     }
 
@@ -2135,72 +2210,63 @@ static void writeGalFuseMapV750(const unsigned char* cfgArray, char fillUesStart
     delayMicroseconds(12);
   }
 
-    // write UES
-    uint8_t fillBitsBegin = galinfo.bits - (8 * galinfo.uesbytes) - 1;
 
-    setRow(0); //RA0-5 low
-	  if (fillUesStart) {
-      sendBits(fillBitsBegin, 0);
-    }
-    else {
-      fillBitsBegin = 0;
+  setRow(0); //RA0-5 low
+  sendBits(uesFill, 0); //send X number of 0 bits between fuse rows and UES data
+
+  //write UES
+  for (bit = 0; bit < (8 * galinfo.uesbytes); bit++) {
+    addr = galinfo.uesfuse;
+    addr += bit;
+    sendBit(getFuseBit(addr));
+  }
+
+  //set 1 bit after UES to 0
+  sendBits(1, 0);
+
+  row = galinfo.uesrow;
+  sendAddress(7, row);
+  setPV(1);
+  strobe(progtime);
+  setPV(0);
+  delay(progtime);
+
+  // write CFG
+  uint8_t cfgrowcount = (galinfo.cfgbits + (cfgRowLen - 1)) / cfgRowLen;
+  for(uint8_t i = 0; i < cfgrowcount; i++) {
+    setRow(0);
+    delayMicroseconds(10);
+    setRow(galinfo.cfgrow);
+
+    for(bit = 0; bit < cfgRowLen; bit++) {
+      uint8_t absBit = bit + (i * cfgRowLen);
+      //addr = galinfo.cfgbase - (galinfo[gal].bits * rangeStartRow) + cfgArray[absBit];
+      addr = galinfo.cfgbase  + pgm_read_byte(&cfgArray[absBit]);
+      uint8_t v = getFuseBit(addr);
+      sendBit(v);
     }
 
-    for (bit = 0; bit < (8 * galinfo.uesbytes); bit++) {
-      addr = bit;
-      sendBit(getFuseBit(addr));
-    }
-
-    uint8_t fillBitsEnd = galinfo.bits - (8 * galinfo.uesbytes) - fillBitsBegin;
-    if (fillBitsEnd > 0) {
-      sendBits(fillBitsEnd, 0);
-    }
-
-    row = galinfo.uesrow;
-    sendAddress(7, row);
+    sendAddress(7, i + cfgStrobeRow);
+    delayMicroseconds(10);
+    setPV(1);
+    delayMicroseconds(18);
+    strobe(progtime); // 20ms
+    delayMicroseconds(32);
+    setPV(0);
+    delayMicroseconds(12);
+    setRow(0);
+    delayMicroseconds(12);
+  }
+  //TODO - read the power down fuse bit state from the fuse map and set it only if needed
+  if (1) {
+    // disable power-down feature (JEDEC bit #5892)
+    setRow(0);
+    sendAddress(7, 125);
     setPV(1);
     strobe(progtime);
     setPV(0);
-	  delay(progtime);
-
-    uint8_t cfgRowLen = 10; //ATF750C
-    uint8_t cfgStrobeRow = 96; //ATF750C
-    // write CFG
-    uint8_t cfgrowcount = (galinfo.cfgbits + (cfgRowLen - 1)) / cfgRowLen;
-    for(uint8_t i = 0; i < cfgrowcount; i++) {
-      setRow(0);
-      delayMicroseconds(10);
-      setRow(galinfo.cfgrow);
-
-      for(bit = 0; bit < cfgRowLen; bit++) {
-        uint8_t absBit = bit + (i * cfgRowLen);
-        //addr = galinfo.cfgbase - (galinfo[gal].bits * rangeStartRow) + cfgArray[absBit];
-        addr = galinfo.cfgbase  + pgm_read_byte(&cfgArray[absBit]);
-        uint8_t v = getFuseBit(addr);
-        sendBit(v);
-      }
-
-      sendAddress(7, i + cfgStrobeRow);
-      delayMicroseconds(10);
-      setPV(1);
-      delayMicroseconds(18);
-      strobe(progtime); // 20ms
-      delayMicroseconds(32);
-      setPV(0);
-      delayMicroseconds(12);
-      setRow(0);
-      delayMicroseconds(12);
-    }
-    if (useSdin) {
-      // disable power-down feature (JEDEC bit #5892)
-      setRow(0);
-      sendAddress(7, 125); //TODO - read the power down fuse bit state from the fuse map and set it only if needed
-      setPV(1);
-      strobe(progtime);
-      setPV(0);
-      delay(progtime);
-    }
-
+    delay(progtime);
+  }
 }
 
 // fuse-map writing function for 600x GAL chips
@@ -2311,7 +2377,7 @@ static void writeGal()
         writeGalFuseMapV10(cfgV10, (gal == GAL22V10) ? 0 : 1, (gal == ATF22V10C) ? 1 : 0);
         break;
     case ATF750C:
-        writeGalFuseMapV750(cfgV750, 1, 1);
+        writeGalFuseMapV750(cfgV750);
   }
   turnOff();
 }
@@ -2511,6 +2577,7 @@ static void printGalName() {
     case ATF20V8B: Serial.println(F("ATF20V8B")); break;
     case ATF22V10B: Serial.println(F("ATF22V10B")); break;
     case ATF22V10C: Serial.println(F("ATF22V10C")); break;
+    case ATF750C: Serial.println(F("ATF750C")); break;
     default:  Serial.println(F("GAL")); break;
     }
 }
