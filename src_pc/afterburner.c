@@ -921,7 +921,7 @@ static char operationWriteOrVerify(char doWrite) {
 
     // write command
     if (doWrite) {
-        result = sendGenericCommand("w\r", "write failed ?", 6000, 0);
+        result = sendGenericCommand("w\r", "write failed ?", 8000, 0);
         if (result) {
             goto finish;
         }
@@ -929,7 +929,7 @@ static char operationWriteOrVerify(char doWrite) {
 
     // verify command
     if (opVerify) {
-        result = sendGenericCommand("v\r", "verify failed ?", 6000, 0);
+        result = sendGenericCommand("v\r", "verify failed ?", 8000, 0);
     }
 finish:
     closeSerial();
@@ -1166,7 +1166,7 @@ static char operationReadFuses(void) {
 
     //READ_FUSE command
     sprintf(buf, "r\r");
-    readSize = sendLine(buf, GALBUFSIZE, 8000);
+    readSize = sendLine(buf, GALBUFSIZE, 12000);
     if (readSize < 0)  {
         return -1;
     }
