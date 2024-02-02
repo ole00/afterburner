@@ -32,9 +32,12 @@ Changelog:
 * use 'git log'
 
 This is the PC part that communicates with Arduino UNO by serial line.
-To compile: gcc -g3 -O0 afterburner afterburner.c
-*/
+To compile: gcc -g3 -O0 -o afterburner afterburner.c
 
+* 2024-02-02  Fixed: Command 'B9' (Calibration Offset = 0,25V) doesn't work
+              Note: Also requires elimination of a bug in the PC program afterburner.ino
+              Added: Sending B4, if b /wo -co is executed
+*/
 
 #include <unistd.h>
 #include <stdlib.h>
@@ -45,7 +48,7 @@ To compile: gcc -g3 -O0 afterburner afterburner.c
 
 #include "serial_port.h"
 
-#define VERSION "v.0.5.5"
+#define VERSION "v.0.5.5hh"
 
 #define MAX_LINE 1024
 
@@ -269,19 +272,20 @@ static int8_t checkArgs(int argc, char** argv) {
             pesString = argv[i];
         } else if (strcmp("-co", param) == 0) {
             i++;
+            i++;
             calOffset = atoi(argv[i]);
             if (calOffset < -20 || calOffset > 25) {
                 printf("Calibration offset out of range (-20..25 inclusive).\n");
+            }
+            if (calOffset < -20) {
+                calOffset = -20;
+            } else if (calOffset > 25) {
+                calOffset = 25;
             }
         }
         else if (param[0] != '-') {
             modes = param;
         }
-    }
-    if (calOffset < -20) {
-        calOffset = -20;
-    } else if (calOffset > 25) {
-        calOffset = 25;
     }
 
     i = 0;
@@ -975,15 +979,13 @@ static char operationCalibrateVpp(void) {
         return -1;
     }
 
-    if (calOffset != 0xFFFF) {
-        char cmd [8] = {0};
-        char val = (char)('0' + (calOffset + 20) / 5);
-        sprintf(cmd, "B%c\r", val);
-        if (verbose) {
-            printf("sending 'B%c' command...\n", val);
-        }
-        result = sendGenericCommand(cmd, "VPP cal. offset failed", 4000, 1);
+    char cmd [8] = {0};
+    char val = calOffset != 0xFFFF ? (char)('0' + (calOffset + 20) / 5) : '4';
+    sprintf(cmd, "B%c\r", val);
+    if (verbose) {
+        printf("sending 'B%c' command...\n", val);
     }
+    result = sendGenericCommand(cmd, "VPP cal. offset failed", 4000, 1);
 
     if (verbose) {
         printf("sending 'b' command...\n");
