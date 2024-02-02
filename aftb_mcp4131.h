@@ -1,6 +1,10 @@
 //MCP4131 digital pot (bitbanged control) for Afterburner GAL project.
 //  * compatible with MCP4151 (resolution of the wiper is halved to match MCP4131)
 
+//  2024-02-02 Minor change
+#ifndef __AFTB_MCP4131_H__
+#define __AFTB_MCP4131_H__ 
+
 //set default pins
 #ifndef POT_CS
 #define POT_CS   A3
@@ -156,4 +160,4 @@ static uint8_t mcp4131_detect(void) {
 #endif
     return 1;   
 }
-
+#endif
