@@ -661,16 +661,20 @@ void setup() {
   Serial.println(">");
 }
 
+static void sparseSetup(char clearArray){
+  // Note: Sparse fuse map is ignored on MCUs with big SRAM
+  if (gal == ATF750C) {
+    sparseInit(clearArray);
+  } else {
+    sparseDisable();
+  }
+}
+
 //copy galinfo item from the flash array into RAM backed struct
 static void copyGalInfo(void) {
   memcpy_P(&galinfo, &galInfoList[gal], sizeof(galinfo_t));
 
-  // Note: Sparse fuse map is ignored on MCUs with big SRAM
-  if (gal == ATF750C || gal == ATF22V10C) {
-    sparseInit(0);
-  } else {
-    sparseDisable();
-  }
+  sparseSetup(0);
 }
 
 // read from serial line and discard the data
@@ -1997,7 +2001,7 @@ static void readOrVerifyGal(char verify)
     for (i = 0; i < MAXFUSES; i++) {
       fusemap[i] = 0;
     }
-    sparseInit(1);
+    sparseSetup(1);
   }
 
   turnOn(READGAL);
@@ -2872,7 +2876,7 @@ void loop() {
         for (i = 0; i < MAXFUSES; i++) {
           fusemap[i] = 0;
         }
-        sparseInit(1);
+        sparseSetup(1);
         isUploading = 1;
         uploadError = 0;
       } break;
