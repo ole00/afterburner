@@ -193,8 +193,13 @@ Soldering steps:
 MT3608 modules:
 ---------------
   * There is a report some of the MT3608 modules / clones are not compatible with Afterburner. Thanks @meup for the information.
-  * The incompatible MT3608 'clone' causes calibration issue and basically breaks the variable voltage functionality.
-  * Bellow is the image of the good and bad MT3608 modules. If you happen to have the incompatible module, see issue #31 for possible solution.
+  * The incompatible MT3608 'clone' causes calibration issue and basically breaks the variable voltage functionality. This can be fixed by replacing the 2k2 resistor located on the module by a 15k resistor.
+  * Bellow is the image of the old (compatible without a mod) and new (require the resistor mod) MT3608 modules. If you happen to have the incompatible module here are the steps to replace the resistor:
+      - heat up a soldering iron to ~350 deg C and put a medium sized solder blob on its tip
+      - touch the tip of the iron in the middle of the resistor for a second
+      - gently press on the resistor and slide it off the PCB.
+      - the resistor footprint allows to solder new SMT or through hole resistor
+  
   ![mt3608_modules](https://github.com/ole00/afterburner/raw/master/img/mt3608_modules.jpg "mt3608_modules")
 
 Troubleshooting:
