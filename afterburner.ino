@@ -1274,7 +1274,7 @@ static void setGalDefaults(void) {
     if (gal == ATF16V8B || gal == ATF20V8B || gal == ATF22V10B || gal == ATF22V10C) {
         progtime = 20;
         erasetime = 100;
-        vpp = 40; /* 10V */
+        vpp = 42; /* 10.5V */
     } else {
         progtime = 80;
         erasetime = 80;
@@ -1365,8 +1365,8 @@ void parsePes(char type) {
         }
     }
 
-    //Afterburnes seems to work with programming voltages reduced by 2V
-    vpp -= 8; // -2V
+    //Afterburnes seems to work with programming voltages reduced by 1V
+    vpp -= 4; // -1V
 }
 
 // print PES information
