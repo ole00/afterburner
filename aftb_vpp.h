@@ -45,12 +45,6 @@
 
 #define VPP_VERBOSE 0
 
-/* No longer necessary due to new measurement algorithm
-//UNO R4 Minima or Wifi (Aref internally pulled down by 130kOhm, AVR Uno R3 pulled down by 32kOhm)
-#ifdef _RENESAS_RA_
-#define AREF_IS_3V2
-#endif
-*/
 //pot wiper indices for the voltages 
 uint8_t vppWiper[MAX_WIPER] = {0};
 
@@ -170,60 +164,7 @@ static int16_t varVppMeasureVpp(int8_t printValue) {
     }
     return int16_t(vpp * 100.0);
 }
-/* No longer necessary due to new measurement algorithm
-// UNO R4/Minima - Renesas IC (significant ADC gain errors measured)
-#ifdef AREF_IS_3V2
-#define SAMPLE_CNT 16
-#define SAMPLE_DIVIDER 8
-#define SAMPLE_MULTIPLIER 25
-// SAMPLE_SHIFT moves the ADC gain error up/down
-#define SAMPLE_SHIFT -45;
 
-//AVR based Arduinos (no ADC gain errors measured)
-#else
-#define SAMPLE_CNT 14
-#define SAMPLE_DIVIDER 8
-#define SAMPLE_MULTIPLIER 1
-#define SAMPLE_OFFSET 5
-#endif
-
-static int16_t varVppMeasureVpp(int8_t printValue) {
-    int8_t i = 0;
-    uint16_t r1 = 0;
-    int16_t r2; //correction for ADC gain error
-
-    while (i++ < SAMPLE_CNT) {
-        r1 += analogRead(VPP);
-    }
-    r2 = (r1 / (SAMPLE_DIVIDER * SAMPLE_MULTIPLIER));
-#ifdef SAMPLE_OFFSET
-    r1+= SAMPLE_OFFSET;
-#endif    
-    r1 /= SAMPLE_DIVIDER;
-#ifdef SAMPLE_SHIFT
-    r2 += SAMPLE_SHIFT;
-    r1 += r2;
-#endif    
-    r1 += calOffset;
-    if (printValue) {
-        uint8_t a = r1%100;
-        Serial.print(r1/100);
-        Serial.print(F("."));
-        if (a < 10) {
-            Serial.print(F("0"));          
-        }
-#if 1
-        Serial.println(a);
-#else
-        //debug - display the voltage skew value in r2
-        Serial.print(a);
-        Serial.println(F(", "));
-        Serial.println(r2);
-#endif        
-    }
-    return r1;
-}
-*/
 // Returns 1 on Success, 0 on Failure
 static uint8_t varVppCalibrateVpp(void) {
     uint8_t vppIndex = 0;
