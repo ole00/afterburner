@@ -851,7 +851,7 @@ static void setVPP(char on) {
             }
             // 36 <= vpp <=66       ==> v = 0 ... 15 ==> VPP_9V0 ... VPP_16V5
             v = (vpp >> 1) - 18; // 18: 2 * 9V, resolution 0.5V (not 0.25V) hence 'vpp >> 1'
-#if 1            
+#if 0            
             Serial.print(F("setVPP "));
             Serial.print(vpp);
             Serial.print(F(" index="));
