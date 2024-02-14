@@ -43,7 +43,7 @@
 
 #define MAX_WIPER 16
 
-#define VPP_VERBOSE 1
+#define VPP_VERBOSE 0
 
 /* No longer necessary due to new measurement algorithm
 //UNO R4 Minima or Wifi (Aref internally pulled down by 130kOhm, AVR Uno R3 pulled down by 32kOhm)
