@@ -37,7 +37,7 @@
                                                                        */
 
 
-#define VERSION "0.5.6"
+#define VERSION "0.5.6hh"
 
 //#define DEBUG_PES
 //#define DEBUG_VERIFY
@@ -832,7 +832,7 @@ static void setVCC(char on) {
 static void setVPP(char on) {
     // new board desgin
     if (varVppExists) {
-        uint8_t v = VPP_11V0;
+        uint8_t v;     // v is recalculated in each case; initialization of the variable is unnecessary
 
         // when PES is read the VPP is not determined via PES
         if (on == READPES) {
@@ -843,12 +843,13 @@ static void setVPP(char on) {
             }
         } else {
             //safety check
-            if (vpp < 36) {
-                vpp = 36; //9V
+            if (vpp < 36) {      // set minimum to 9V0
+                vpp = 36; //9V   // ==> v = (36 / 2) - 18 = 0 ==> VPP_9V0
             } else
-            if (vpp > 66) {
-                vpp = 40; //12V
+            if (vpp > 66) {      // set maximum to 10V0
+                vpp = 40; //12V  // ==> v = (40 / 2) - 18 = 2 ==> VPP_10V0
             }
+            // 36 <= vpp <=66       ==> v = 0 ... 15 ==> VPP_9V0 ... VPP_16V5
             v = (vpp >> 1) - 18; // 18: 2 * 9V, resolution 0.5V (not 0.25V) hence 'vpp >> 1'
 #if 0            
             Serial.print(F("setVPP "));
