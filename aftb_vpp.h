@@ -70,7 +70,7 @@ static void varVppReadCalib(void) {
     calOffset = (int8_t) EEPROM.read(2);
     for (i = 0; i < MAX_WIPER; i++) {
         vppWiper[i] = EEPROM.read(i + 3);
-#if 1        
+#if 0        
         Serial.print(F("Calib "));
         Serial.print(i);
         Serial.print(F(":"));
