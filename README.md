@@ -14,6 +14,9 @@ from various manufcaturers. It is based on work of several other people:
  Yorck Thiele:
      https://www.ythiee.com/2021/06/06/galmate-hardware/
 
+ Michael Dreher:
+     https://github.com/nospam2000/afterburner.git
+
 who did the most of the hard work of deciphering and publishing the programming
 protocol of these chips. Some of their early programs were Windows based and relied on
 presence of parallel port (LPT). Afterburner was written for Linux OS 
@@ -34,6 +37,7 @@ Supported GAL chips:
 | 6002 | - | GAL6002B | - | - |
 | 26CV12 | - | GAL26CV12B[2] | - | - |
 | 26V12 | - | GAL26V12C[2] | - | - |
+| 750 | ATF750C | - | - | - |
 
 [1]: requires PCB v.3.1 or modified PCB v.3.0 - see Troubleshooting  
 [2]: requires adapter - see gerbers, pcb and img directory  
