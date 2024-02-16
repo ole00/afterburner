@@ -836,8 +836,8 @@ static void setVPP(char on) {
 
         // when PES is read the VPP is not determined via PES
         if (on == READPES) {
-            if (gal == ATF16V8B || gal == ATF20V8B || gal == ATF22V10B || gal == ATF22V10B) {
-                v = VPP_10V0; 
+            if (gal == ATF16V8B || gal == ATF20V8B || gal == ATF22V10B || gal == ATF22V10C) {
+                v = VPP_10V5; 
             } else {
                 v = VPP_11V5;
             }
@@ -847,7 +847,7 @@ static void setVPP(char on) {
                 vpp = 36; //9V
             } else
             if (vpp > 66) {
-                vpp = 40; //12V
+                vpp = 48; //12V
             }
             v = (vpp >> 1) - 18; // 18: 2 * 9V, resolution 0.5V (not 0.25V) hence 'vpp >> 1'
 #if 0            
