@@ -189,6 +189,9 @@ Soldering steps:
   * solder the two ICS: U1 (digital pot) and U2 (shift register)
   * solder the LED, the switch and the big capacitors
   * **special step** solder a thin wire between the MT3608 module and the PCB hole marked as POT. See the image bellow.
+  * **Important** after you solder the wire measure the resistance between the wire's connection on Afterburner PCB and ground (use TP GND hole) - see red dots
+     on the picture beelow.  It must be around 12.5 kilo Ohm. If it is very low value then you made a short while soldering the wire. Fix/remove the short
+     or else the MT3608 will be damaged when it is turned on on.
   * solder the MT3608 module - the POT connection wire must be already soldered!
   * calibrate the board. See calibration steps in the Setup section.
   * solder the ZIF socket
