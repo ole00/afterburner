@@ -2994,9 +2994,9 @@ void loop() {
       // small differences in analog ref which is ~3.3 V derived from LDO.
       case COMMAND_CALIBRATION_OFFSET: {
         int8_t offset = line[1] - '0';
-        if (offset >=0 && offset <= 9) {
-          //0:-0.2V 1:-0.15V  2: -0.1V 3: -0.05V 4: 0V  5: 0.05V  6: 0.1V 7: 0.15V 8: 0.20V 9:0.25V
-          calOffset = (offset - 4) * 5;
+        if (offset >=0 && offset <= 64) {
+          //0:-0.32V 1:-0.31V  2: -0.30V  ... 32:0V  33:0.01V 34: 0.02V ... 64:0.32V
+          calOffset = offset - 32;
           Serial.print(F("Using cal offset: "));
           Serial.println(calOffset);
         } else {

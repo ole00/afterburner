@@ -276,13 +276,13 @@ static int8_t checkArgs(int argc, char** argv) {
         } else if (strcmp("-co", param) == 0) {
             i++;
             calOffset = atoi(argv[i]);
-            if (calOffset < -20 || calOffset > 25) {
-                printf("Calibration offset out of range (-20..25 inclusive).\n");
+            if (calOffset < -32 || calOffset > 32) {
+                printf("Calibration offset out of range (-32..32 inclusive).\n");
             }
-            if (calOffset < -20) {
-                calOffset = -20;
-            } else if (calOffset > 25) {
-                calOffset = 25;
+            if (calOffset < -32) {
+                calOffset = -32;
+            } else if (calOffset > 32) {
+                calOffset = 32;
             }
         }
         else if (param[0] != '-') {
@@ -988,7 +988,7 @@ static char operationTestVpp(void) {
 static char operationCalibrateVpp(void) {
     char result;
     char cmd [8] = {0};
-    char val = (char)('0' + (calOffset + 20) / 5);
+    char val = (char)('0' + (calOffset + 32));
 
     if (openSerial() != 0) {
         return -1;
