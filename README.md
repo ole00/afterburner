@@ -23,7 +23,11 @@ presence of parallel port (LPT). Afterburner was written for Linux OS
 (also works on Win32/64, Mac OSX64), and requires serial connection to
 Arduino UNO, which does the programming of the GAL chip.
 
+**Update: ver.0.5.8 improved calibration alogrithm and resolution for mcp4151 digi pot.
+Please re-calibrate your Afterburner as the previsouly stored calibration data are invalid.**
+
 Supported GAL chips:
+---------------------
 
 | | Atmel | Lattice | National | ST |
 | --- | --- | --- | --- | --- |
