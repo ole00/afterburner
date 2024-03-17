@@ -48,7 +48,7 @@ To compile: gcc -g3 -O0 -o afterburner afterburner.c
 
 #include "serial_port.h"
 
-#define VERSION "v.0.5.7"
+#define VERSION "v.0.5.8"
 
 #define MAX_LINE 1024
 
