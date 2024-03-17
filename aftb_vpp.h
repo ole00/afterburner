@@ -57,12 +57,15 @@
 //pot wiper indices for the voltages 
 uint8_t vppWiper[MAX_WIPER] = {0};
 
-// VPP must ramp-up to prevent voltage spikes and possibly resting arduino
-#define varVppSetMax() varVppSetVppIndex(0x40); \
-                        varVppSetVppIndex(0x70); \
-                        varVppSetVppIndex(0x7c); \
-                        varVppSetVppIndex(0x7e); \
-                        varVppSetVppIndex(0x80); 
+// VPP must ramp-up to prevent voltage spikes and possibly resetting arduino
+// These values are for mcp4151  (for mcp4131 they are divided by 2)
+#define varVppSetMax() varVppSetVppIndex(0x80); \
+                        varVppSetVppIndex(0xE0); \
+                        varVppSetVppIndex(0xF4); \
+                        varVppSetVppIndex(0xFA); \
+                        varVppSetVppIndex(0xFF); 
+
+
 #define varVppSetMin() varVppSetVppIndex(0x0);
 
 uint8_t wiperStat = 0; //enabled / disabled
@@ -84,7 +87,7 @@ static void varVppReadCalib(void) {
         Serial.print(i);
         Serial.print(F(":"));
         Serial.println(vppWiper[i]);
-#endif        
+#endif
     }
 }
 
@@ -124,7 +127,7 @@ static void varVppSet(uint8_t value) {
         varVppSetVppIndex(0);
         return;
     }
-#if VPP_VERBOSE   
+#if VPP_VERBOSE
     Serial.print(F("varSetVpp "));
     Serial.print(value);
     Serial.print(F(":"));
@@ -209,7 +212,7 @@ static uint8_t varVppCalibrateVpp(void) {
     int16_t v = 900; //starting at 9.00 V
     int16_t r1 = 0;
     int16_t r2;
-    int16_t minDif = 5000;
+    int16_t minDif;
 
     Serial.print(F("VPP calib. offset: "));
     Serial.println(calOffset);
@@ -218,34 +221,50 @@ static uint8_t varVppCalibrateVpp(void) {
     delay(300); //settle voltage
 
     while (1) {
-        while (i <= 0x80) {
+      // reset the 'minimal difference' variable every time we search for a new index
+        minDif = 9000;
+        //the 'vppWiper' storage for tap indices is 8bit wide, therefore we must not use tap index 256.
+        while (i <= 0xFF) {
             int16_t d1,d2;
             varVppSetVppIndex(i);
-            delay(50); //let the voltage settle
-#if VPP_VERBOSE
-            Serial.print(i);
-            Serial.print(F(") "));
-#endif
+            delay(100); //let the voltage settle
+
             r2 = varVppMeasureVpp(0);
+            // Sanity check: the previous voltage can't be higher than the voltage just measured
+            // because we are ramping up the voltage. Therefore it must be an ADC measurement
+            // glitch. In that case use the previous value as the measured one.
+            // This can happen at lower tap indices where the voltage differences are very small (like 0.01V).
+            if (r1 > r2) {
+              r2 = r1;
+            }
             d1 = r1 - v;
             d2 = r2 - v;
             d1 = ABS(d1);
             d2 = ABS(d2);
+#if VPP_VERBOSE
+            Serial.print(i);
+            Serial.print(F(") r2="));
+            Serial.print(r2, DEC);
+            Serial.print(F(" d1="));
+            Serial.print(d1, DEC);
+            Serial.print(F(" d2="));
+            Serial.print(d2, DEC);
+            Serial.print(F(" md="));
+            Serial.println(minDif, DEC);
+#endif
 
             if (r2 <= 100) { // less than 1V ? Failure
                 r1 = FAIL;
                 goto ret;
             }
-            
-            if (d2 < minDif) {
+
+            if (d2 <= minDif) {
                 minDif = d2;
                 vppWiper[vppIndex] = i;
                 //check last value / voltage
-                if (i == 0x80) {
+                if (i == 0xFF) {
                     if (v >= 1620 && v <= 1670) {
-#if 1 || VPP_VERBOSE
-                        Serial.println(F("*Index for VPP 1650 is 128"));
-#endif
+                        Serial.println(F("*Index for VPP 1650 is 255"));
                         r1 = OK;
                         goto ret;
                     }
@@ -255,12 +274,10 @@ static uint8_t varVppCalibrateVpp(void) {
             } else {
                 i--;
                 minDif = 5000;
-#if 1 || VPP_VERBOSE
                 Serial.print(F("*Index for VPP "));
                 Serial.print(v);
                 Serial.print(F(" is "));
                 Serial.println(i);
-#endif
                 break;
             }
             
@@ -276,7 +293,7 @@ static uint8_t varVppCalibrateVpp(void) {
             r1 = OK;
             goto ret; 
         }
-        v += 50;
+        v += 50; //next voltage to search for is 0.5V higher
     }
 
 ret:
@@ -312,7 +329,7 @@ static int8_t varVppInit(void) {
     mcp4131_init();
     if (mcp4131_detect()) {
 #if VPP_VERBOSE
-        Serial.print(mcp4151_detected ? F("MCP4151") : F("MCP4131"));
+        Serial.print(mcp4131_detected ? F("MCP4131") : F("MCP4151"));
         Serial.println(F(" POT found"));
 #endif
         return OK;
@@ -352,7 +369,30 @@ static int8_t varVppCheckCalibration(void) {
     return OK;
 }
 
+// only for VPP testing and debugging
+static void varrVppTestRamp(void) {
+    uint8_t i = 1;
+
+    while (i < 256) {
+      varVppSetVppIndex(i);
+      delay(400);
+      Serial.println(i, DEC);
+      varVppMeasureVpp(1);
+      i++;
+    }
+    delay(2000);
+    varVppSetVppIndex(0);
+
+
+}
+
 static int8_t varVppCalibrate(void) {
+#if 0 
+    // only for testing and debugging
+    varrVppTestRamp();
+    return OK;
+#endif
+
     if (varVppCalibrateVpp()) {
         varVppStoreWiperCalib();
     } else {

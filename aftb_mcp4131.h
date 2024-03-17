@@ -1,5 +1,6 @@
-//MCP4131 digital pot (bitbanged control) for Afterburner GAL project.
-//  * compatible with MCP4151 (resolution of the wiper is halved to match MCP4131)
+//MCP4151 digital pot (bitbanged control) for Afterburner GAL project.
+//  * compatible with MCP4131 (resolution of the wiper is divided by 2)
+//  * the storage for tap indices is 8bit wide, therefore we must not use index 256.
 
 //  2024-02-02 Minor change
 #ifndef __AFTB_MCP4131_H__
@@ -40,7 +41,7 @@
 #define mcp4131_read(A)  mcp4131_reg((A),0,1)
 #define mcp4131_write(A,V)  mcp4131_reg((A),(V),0)
 
-static uint8_t mcp4151_detected;
+static uint8_t mcp4131_detected;
 
 // read or write the mcp4131 register
 static uint16_t  mcp4131_reg(uint8_t address, uint16_t value, uint8_t read_reg) {
@@ -49,8 +50,9 @@ static uint16_t  mcp4131_reg(uint8_t address, uint16_t value, uint8_t read_reg) 
 
     r <<= 12;
 
-    if (mcp4151_detected && address == ADDR_WIPER) {
-        value <<= 1; //multiply the wiper value by 2
+    if (mcp4131_detected && address == ADDR_WIPER) {
+        value >>= 1; //divide the wiper value by 2
+        value++; // ensure we use the last tap (index 128)
     }
 
     if (address == ADDR_INCREMENT) {
@@ -95,8 +97,9 @@ static uint16_t  mcp4131_reg(uint8_t address, uint16_t value, uint8_t read_reg) 
         pinMode(POT_DAT, OUTPUT);
     }
 
-    if (mcp4151_detected && address == ADDR_WIPER && read_reg) {
-        r >>= 1; //divide the wiper value by 2
+    if (mcp4131_detected && address == ADDR_WIPER && read_reg) {
+        r--;
+        r >>= 1; //multiply  the wiper value by 2
     }
 
     //disable IC
@@ -117,7 +120,7 @@ static void mcp4131_init(void) {
 static uint8_t mcp4131_detect(void) {
     uint16_t r;
 
-    mcp4151_detected = 0;
+    mcp4131_detected = 0;
 
     mcp4131_disableWiper();
 
@@ -143,16 +146,16 @@ static uint8_t mcp4131_detect(void) {
     //detect MCP4151 by incrementing again - MCP4131 clamps the value to 128, MCP4151 increments to 129
     mcp4131_write(ADDR_INCREMENT, 0);
     r = mcp4131_read(ADDR_WIPER);
-#if 0    
-    Serial.print(F("MCP41541 detect: "));
+#if 0
+    Serial.print(F("MCP4151 detect: "));
     Serial.println(r == 129 ? 1 : 0, DEC);
 #endif
-    if (r == 129) {
-        mcp4151_detected = 1;
+    if (r == 128) {
+        mcp4131_detected = 1;
     } else 
-    if (r != 128) {
-        return 0; //error - the value should be clamped to 128
-    }
+    if (r != 129) {
+        return 0; //error - the value should be either 128 (clamped by mcp4313) or 129 (mcp5151)
+    } 
 
     mcp4131_write(ADDR_WIPER, POT_DEFAULT_VALUE);
 #if POT_WIPER_ENABLED
