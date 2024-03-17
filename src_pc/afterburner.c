@@ -1006,7 +1006,7 @@ static char operationCalibrateVpp(void) {
     
     printf("VPP voltages are scanned - this might take a while...\n");
     printSerialWhileWaiting = 1;
-    result = sendGenericCommand("b\r", "VPP calibration failed", 16000, 1);
+    result = sendGenericCommand("b\r", "VPP calibration failed", 34000, 1);
     printSerialWhileWaiting = 0;
 
     closeSerial();
