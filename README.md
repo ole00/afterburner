@@ -92,8 +92,8 @@ Setup:
   <pre>
   ./afterburner b
   </pre>
-  You will see several messages on the console. Check the one with '*Index for VPP 900 is'. This is the lowest supported VPP of 9V and the index should ideally be between 15 and 35.
-  If you see a different index value (lower or higher) move the Afterburner's compensation pot (R9) either a bit lower or higher (depending on the VPP 900 index value) and go back to Calibration step 2). Repeat the Calibration steps 2) and 3) until you find the good value on VPP 900 index. If everything goes OK the last VPP index (VPP 1650) should be 128.
+  You will see several messages on the console. Check the one with '*Index for VPP 900 is'. This is the lowest supported VPP of 9V and the index should ideally be between 30 and 70, but if it a bit less or a bit higher (let's say from 20 to 90) the calibration should still be valid. 
+  If you see a significantly different index value (lower or higher) move the Afterburner's compensation pot (R9) either a bit lower or higher (depending on the VPP 900 index value) and go back to Calibration step 2). Repeat the Calibration steps 2) and 3) until you find the good value on VPP 900 index. If everything goes OK the last VPP index (VPP 1650) should be 255. If it is not exactly 255, but at least above 250 then it is fine. 
 
   * **Calibration step 4)** Measure the actual VPP to verify the value read by Arduino is correct. Run the following command while measuring the VPP on your multimeter:
   <pre>
@@ -103,7 +103,7 @@ Setup:
   <pre>
   ./afterburner b -co X
   </pre>
-  Where X is a number from -20 (representing -0.2V offset) to value 25 (representing +0.25V offset). If your multimeter reads 12.1V and the reading on the text console shows 12.00V you need to set positive offset of +0.1V ('-co 10'). If your multimeter reads 11.85V and the reading on the text console shows 12.05V you need to set negative offset of -0.2V ('-co -20'). After setting the calibration offset, the readings on your multimeter should read the same values as the text on the console (+/- 0.05V). The calibration is then done. If (when specifying negative offset value) the calibration fails, turn the MT3608 Pot about 10-15 degrees counter-clockwise (to rise the VPP a tiny bit) and re-do the Calibration step 4.
+  Where X is a number from -32 (representing -0.32V offset) to value 32 (representing +0.32V offset). If your multimeter reads 12.1V and the reading on the text console shows 12.00V you need to set positive offset of +0.1V ('-co 10'). If your multimeter reads 11.85V and the reading on the text console shows 12.05V you need to set negative offset of -0.2V ('-co -20'). After setting the calibration offset, the readings on your multimeter should ideally read the same values as the text on the console (+/- 0.05V). The calibration is then done. If (when specifying negative offset value) the calibration fails, turn the MT3608 Pot about 10-15 degrees counter-clockwise (to rise the VPP a tiny bit) and re-do the Calibration step 3.
 
   * Note that if you use your calibrated Afterburner board with a different Arduino (made by a different company or slightly different design), you may need to re-do the calibration.
 
