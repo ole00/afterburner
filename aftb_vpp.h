@@ -122,7 +122,6 @@ static void varVppSetVppIndex(uint8_t value) {
 static void varVppSet(uint8_t value) {
     uint8_t v;
     int8_t inc;
-    int8_t incMin;
     if (value == VPP_5V0 || value >= MAX_WIPER) {
         varVppSetVppIndex(0);
         return;
@@ -134,19 +133,14 @@ static void varVppSet(uint8_t value) {
     Serial.println(vppWiper[value]);
 #endif
     //ramp up to prevent massive voltage overshoots
-    v = vppWiper[value] / 2;
-    v -= 2;
-    inc = 16;
-    incMin = 2;
-    if (value > VPP_13V0) {
-        incMin = 1;
-    }
+    v = vppWiper[value] / 3;
+    inc = v >> 2;
     while (v < vppWiper[value]) {
         varVppSetVppIndex(v);
-        v+= inc + (inc / 2);
-        inc -= inc / 2;
-        if (inc < incMin) {
-            inc = incMin;
+        v+= (inc << 1);
+        inc -= (inc >> 1);
+        if (inc < 2) {
+            inc = 2;
         }
     }
     varVppSetVppIndex(vppWiper[value]);
