@@ -50,7 +50,7 @@ To compile: gcc -g3 -O0 -o afterburner afterburner.c
 
 #define VERSION "v.0.5.8"
 
-#define MAX_LINE 1024
+#define MAX_LINE (16*1024)
 
 #define MAXFUSES 30000
 #define GALBUFSIZE 65536
@@ -723,6 +723,10 @@ static int waitForSerialPrompt(char* buf, int bufSize, int maxDelay) {
             } else {
                 buf += readSize;
                 bufSize -= readSize;
+                if (bufSize <= 0) {
+                    printf("ERROR: serial port read buffer is too small!\nAre you dumping large amount of data?\n");
+                    return -1;
+                }
             }
             if (printSerialWhileWaiting) {
                 bufPrint = printBuffer(bufPrint, readSize);
@@ -771,6 +775,9 @@ static int sendLine(char* buf, int bufSize, int maxDelay) {
     }
 
     total = waitForSerialPrompt(obuf, bufSize, (maxDelay < 0) ? 6 : maxDelay);
+    if (total < 0) {
+        return total;
+    }
     obuf[total] = 0;
     obuf = stripPrompt(obuf);
     if (verbose) {
