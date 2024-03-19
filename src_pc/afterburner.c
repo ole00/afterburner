@@ -50,6 +50,12 @@ To compile: gcc -g3 -O0 -o afterburner afterburner.c
 
 #define VERSION "v.0.5.8"
 
+#ifdef GCOM
+#define VERSION_EXTENDED VERSION "-" GCOM
+#else
+#define VERSION_EXTENDED VERSION
+#endif
+
 #define MAX_LINE (16*1024)
 
 #define MAXFUSES 30000
@@ -159,7 +165,7 @@ static void printGalTypes() {
 }
 
 static void printHelp() {
-    printf("Afterburner " VERSION "  a GAL programming tool for Arduino based programmer\n");
+    printf("Afterburner " VERSION_EXTENDED "  a GAL programming tool for Arduino based programmer\n");
     printf("more info: https://github.com/ole00/afterburner\n");
     printf("usage: afterburner command(s) [options]\n");
     printf("commands: ierwvsbm\n");
