@@ -1033,7 +1033,7 @@ static char operationMeasureVpp(void) {
     
     //print the measured voltages if the feature is available
     printSerialWhileWaiting = 1;
-    result = sendGenericCommand("m\r", "VPP measurement failed", 30000, 1);
+    result = sendGenericCommand("m\r", "VPP measurement failed", 40000, 1);
     printSerialWhileWaiting = 0;
 
     closeSerial();
