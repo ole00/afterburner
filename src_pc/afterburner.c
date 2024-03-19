@@ -198,7 +198,7 @@ static void printHelp() {
     printf("         of the chip. If the programing voltage is unknown use 10V.\n");
     printf("  - known VPP voltages as tested on Afterburner with Arduino UNO: \n");
     printf("        Lattice GAL16V8D, GAL20V8B, GAL22V10D: 12V \n");
-    printf("        Atmel   ATF16V8B, AFT16V8C, ATF22V10C: 10V \n");
+    printf("        Atmel   ATF16V8B, ATF16V8C, ATF22V10C: 11V \n");
 }
 
 static int8_t verifyArgs(char* type) {
