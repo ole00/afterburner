@@ -483,6 +483,9 @@ static void setFlagBit(uint8_t flag, uint8_t value) {
 }
 
 static void setPinMux(uint8_t pm) {
+  // ensure pull-up is enabled during reading and disabled when inactive on DOUT pin
+  uint8_t doutMode = pm == OUTPUT ? INPUT_PULLUP: INPUT;
+
   switch (gal) {
   case GAL16V8:
   case ATF16V8B:
@@ -490,7 +493,7 @@ static void setPinMux(uint8_t pm) {
     pinMode(PIN_ZIF11, INPUT);
     pinMode(PIN_ZIF13, INPUT);
     pinMode(PIN_ZIF14, INPUT);
-    pinMode(PIN_ZIF16, INPUT_PULLUP); //DOUT
+    pinMode(PIN_ZIF16, doutMode); //DOUT
     // ensure ZIF10 is Grounded via transistor
     digitalWrite(PIN_ZIF_GND_CTRL, pm == OUTPUT ? HIGH: LOW);
     break;        
@@ -500,7 +503,7 @@ static void setPinMux(uint8_t pm) {
     pinMode(PIN_ZIF11, INPUT);
     pinMode(PIN_ZIF13, INPUT);
     pinMode(PIN_ZIF14, INPUT);
-    pinMode(PIN_ZIF9, INPUT_PULLUP); //DOUT
+    pinMode(PIN_ZIF9, doutMode); //DOUT
     // ensure ZIF10 is Grounded via transistor
     digitalWrite(PIN_ZIF_GND_CTRL, pm == OUTPUT ? HIGH: LOW);
 
@@ -517,8 +520,7 @@ static void setPinMux(uint8_t pm) {
     pinMode(PIN_ZIF11, pm);
     pinMode(PIN_ZIF13, pm);
     pinMode(PIN_ZIF14, pm);
-    // ensure pull-up is enabled during reading and disabled when inactive
-    pinMode(PIN_ZIF15, pm == OUTPUT ? INPUT_PULLUP: INPUT); //DOUT
+    pinMode(PIN_ZIF15, doutMode); //DOUT
     pinMode(PIN_ZIF16, pm);       
     // ensure ZIF10 GND pull is disabled
     digitalWrite(PIN_ZIF_GND_CTRL, LOW);
@@ -541,7 +543,7 @@ static void setPinMux(uint8_t pm) {
     pinMode(PIN_ZIF10, pm);
     pinMode(PIN_ZIF11, pm);
     pinMode(PIN_ZIF13, pm);
-    pinMode(PIN_ZIF14, INPUT_PULLUP); //DOUT
+    pinMode(PIN_ZIF14, doutMode); //DOUT
     pinMode(PIN_ZIF15, pm);
     pinMode(PIN_ZIF16, pm);       
     // ensure ZIF10 GND pull is disabled
@@ -559,7 +561,7 @@ static void setPinMux(uint8_t pm) {
     pinMode(PIN_ZIF10, pm);
     pinMode(PIN_ZIF11, pm);
     pinMode(PIN_ZIF13, pm);
-    pinMode(PIN_ZIF14, INPUT_PULLUP); //DOUT
+    pinMode(PIN_ZIF14, doutMode); //DOUT
     pinMode(PIN_ZIF15, pm);
     pinMode(PIN_ZIF16, pm);       
     // ensure ZIF10 GND pull is disabled
