@@ -2,6 +2,8 @@
 #define _SERIAL_PORT_H_
 
 
+char guessedSerialDevice[512] = {0};
+
 #ifdef _USE_WIN_API_
 
 #include <windows.h>
@@ -9,6 +11,46 @@
 #define SerialDeviceHandle HANDLE
 #define DEFAULT_SERIAL_DEVICE_NAME "COM1"
 #define INVALID_HANDLE  INVALID_HANDLE_VALUE
+
+// ideas: https://stackoverflow.com/questions/1388871/how-do-i-get-a-list-of-available-serial-ports-in-win32
+static void serialDeviceGuessName(char** deviceName) {
+    char buf[64 * 1024] = {0};
+    int size = QueryDosDevice(NULL, buf, 64 * 1024);
+    int topComNum = 0;
+
+    // buffer was filled in
+    if (size > 0) {
+        char* text = buf;
+        int pos = 0;
+        int start = 0;
+
+        // search the received buffer for COM string
+        while (pos < size) {
+            int nameLen;
+            start = pos;
+            // find the string terminator
+            while(pos < size && buf[pos] != 0) {
+                pos++;
+            }
+            nameLen = pos - start;
+            // COM port found
+            if (nameLen >= 4 && nameLen <=6 && 0 == strncmp(text, "COM", 3) && text[3] >= '0' && text[3] <= '9') {
+                int comNum = atoi(text + 3);
+                if (comNum > topComNum) {
+                    topComNum = comNum;
+                    strcpy(guessedSerialDevice, text);
+                }
+            }
+            pos++;
+            text = &buf[pos];
+        }
+        
+        // if we have found a COM port then pass it back as the result
+        if (topComNum > 0) {
+            *deviceName = guessedSerialDevice;
+        }
+    }
+}
 
 // https://www.xanthium.in/Serial-Port-Programming-using-Win32-API
 
@@ -132,6 +174,54 @@ static inline int serialDeviceRead(SerialDeviceHandle deviceHandle, char* buffer
 #ifdef NO_CLOSE
 static SerialDeviceHandle serH = INVALID_HANDLE;
 #endif
+
+
+#ifdef _OSX_
+    #define CHECK_SERIAL() (text != NULL)
+    #define LIST_DEVICES  "ls -1 /dev/tty.usb* /dev/tty.wchusb* 2>/dev/null"
+#else    
+    #define CHECK_SERIAL() (text != NULL && 0 == strncmp(text + 18, "usb-", 4))
+    #define LIST_DEVICES "ls -1 /dev/serial/by-id/* 2>/dev/null"
+#endif    
+
+// ideas: https://unix.stackexchange.com/questions/647235/debian-how-to-identify-usb-devices-with-similar-dev-tty-file
+//        https://pubs.opengroup.org/onlinepubs/009696799/functions/popen.html
+static void serialDeviceGuessName(char** deviceName) {
+    int i;
+    char text[512];
+    int topTtyNum = 0;
+
+    FILE* f = popen(LIST_DEVICES, "r");
+    if (f == NULL) {
+        return;
+    }
+    i = 1;
+    while (fgets(text, 512, f) != NULL) {
+        // filer out non USB devices and prioritise those with Arduino name
+        if (CHECK_SERIAL()) {
+            int ttyNum  = i;
+            int textLen = strlen(text);
+            // prefer Arduino over generic USB serial ports (does not work on OSX)
+            if (textLen > 29 && 0 == strncmp(text + 18, "usb-Arduino", 11)) {
+                ttyNum += 1000;
+            }
+            if (ttyNum > topTtyNum) {
+                topTtyNum = ttyNum;
+                strcpy(guessedSerialDevice, text);
+                //strip the new-line trailing markers
+                if (guessedSerialDevice[textLen - 1] == '\n' || guessedSerialDevice[textLen - 1] == '\r') {
+                    guessedSerialDevice[textLen - 1] = 0;
+                }
+            }
+        }
+        i++;
+    }
+    pclose(f);
+
+    if (topTtyNum > 0) {
+        *deviceName = guessedSerialDevice;
+    }
+}
 
 static inline SerialDeviceHandle serialDeviceOpen(char* deviceName) {
 

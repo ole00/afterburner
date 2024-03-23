@@ -578,6 +578,9 @@ static int openSerial(void) {
 
 
     //open device name
+    if (deviceName == 0) {
+        serialDeviceGuessName(&deviceName);
+    }
     snprintf(devName, sizeof(devName), "%s", (deviceName == 0) ? DEFAULT_SERIAL_DEVICE_NAME : deviceName);
     serialDeviceCheckName(devName, sizeof(devName));
 
