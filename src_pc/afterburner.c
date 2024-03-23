@@ -820,7 +820,6 @@ static char upload() {
     fuseSet = 0;
     
     printf("Uploading fuse map...\n");
-    printf("\e[?25l");
     for (i = 0; i < totalFuses;) {
         unsigned char f = 0;
         if (i % 32 == 0) {
@@ -852,9 +851,9 @@ static char upload() {
         printf("%4d/%4d |", i + 1, totalFuses);
         int done = ((i + 1) * 40) / totalFuses;
         printf("%.*s%*s|\r", done, "########################################", 40 - done, "");
+        fflush(stdout); //flush the text out so that the animation of the progress bar looks smooth
     }
     printf("%4d/%4d |########################################|\n", totalFuses, totalFuses);
-    printf("\e[?25h");
 
     // send last unfinished fuse line
     if (fuseSet) {
