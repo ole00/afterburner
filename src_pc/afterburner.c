@@ -796,6 +796,17 @@ static int sendLine(char* buf, int bufSize, int maxDelay) {
     return total;
 }
 
+static void updateProgressBar(char* label, int current, int total) {
+    int done = ((current + 1) * 40) / total;
+    if (current >= total) {
+        printf("%s%5d/%5d |########################################|\n", label, total, total);
+    } else {
+        printf("%s%5d/%5d |", label, current, total);
+        printf("%.*s%*s|\r", done, "########################################", 40 - done, "");
+        fflush(stdout); //flush the text out so that the animation of the progress bar looks smooth
+    }
+}
+
 // Upload fusemap in byte format (as opposed to bit format used in JEDEC file).
 static char upload() {
     char fuseSet;
@@ -851,12 +862,9 @@ static char upload() {
         sprintf(line, "%02X", f);
         strcat(buf, line);
 
-        printf("%4d/%4d |", i + 1, totalFuses);
-        int done = ((i + 1) * 40) / totalFuses;
-        printf("%.*s%*s|\r", done, "########################################", 40 - done, "");
-        fflush(stdout); //flush the text out so that the animation of the progress bar looks smooth
+        updateProgressBar("", i, totalFuses);
     }
-    printf("%4d/%4d |########################################|\n", totalFuses, totalFuses);
+    updateProgressBar("", totalFuses, totalFuses);
 
     // send last unfinished fuse line
     if (fuseSet) {
