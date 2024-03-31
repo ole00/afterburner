@@ -157,6 +157,9 @@ static char sendGenericCommand(const char* command, const char* errorText, int m
 static void printGalTypes() {
     int i;
     for (i = 1; i < sizeof(galinfo) / sizeof(galinfo[0]); i++) {
+        if (i % 8 == 1) {
+            printf("\n\t");
+        } else
         if (i > 1) {
             printf(" ");
         }
