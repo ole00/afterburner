@@ -482,6 +482,12 @@ static void setFlagBit(uint8_t flag, uint8_t value) {
     }
 }
 
+static void setPinMuxUnused(uint8_t pin, uint8_t pm) {
+  // set to OUTPUT during active GAL operation and to INPUT when GAL is inactive
+  pinMode(pin, pm);
+  digitalWrite(pin, LOW);
+}
+
 static void setPinMux(uint8_t pm) {
   // ensure pull-up is enabled during reading and disabled when inactive on DOUT pin
   uint8_t doutMode = pm == OUTPUT ? INPUT_PULLUP: INPUT;
@@ -507,11 +513,9 @@ static void setPinMux(uint8_t pm) {
     // ensure ZIF10 is Grounded via transistor
     digitalWrite(PIN_ZIF_GND_CTRL, pm == OUTPUT ? HIGH: LOW);
 
-    //pull down unused pins
-    pinMode(PIN_ZIF15, pm);
-    pinMode(PIN_ZIF16, pm);
-    digitalWrite(PIN_ZIF15, LOW);
-    digitalWrite(PIN_ZIF16, LOW);
+    //pull down unused pins when active
+    setPinMuxUnused(PIN_ZIF15, pm);
+    setPinMuxUnused(PIN_ZIF16, pm);
     break;
   
   case GAL20V8:
@@ -525,10 +529,10 @@ static void setPinMux(uint8_t pm) {
     // ensure ZIF10 GND pull is disabled
     digitalWrite(PIN_ZIF_GND_CTRL, LOW);
 
-    //pull down unused pins
-    digitalWrite(PIN_ZIF14, LOW);
-    digitalWrite(PIN_ZIF16, LOW);
-    digitalWrite(PIN_ZIF23, LOW);
+    //pull down unused pins when active
+    setPinMuxUnused(PIN_ZIF14, pm);
+    setPinMuxUnused(PIN_ZIF16, pm);
+    setPinMuxUnused(PIN_ZIF23, pm);
 
     break;
 
@@ -549,11 +553,11 @@ static void setPinMux(uint8_t pm) {
     // ensure ZIF10 GND pull is disabled
     digitalWrite(PIN_ZIF_GND_CTRL, LOW);
 
-    //pull down unused pins
-    digitalWrite(PIN_ZIF15, LOW);
-    digitalWrite(PIN_ZIF16, LOW);
-    digitalWrite(PIN_ZIF22, LOW);
-    digitalWrite(PIN_ZIF23, LOW);
+    //pull down unused pins when active
+    setPinMuxUnused(PIN_ZIF15, pm);
+    setPinMuxUnused(PIN_ZIF16, pm);
+    setPinMuxUnused(PIN_ZIF22, pm);
+    setPinMuxUnused(PIN_ZIF23, pm);
     break;
   
   case GAL6001:
@@ -567,11 +571,11 @@ static void setPinMux(uint8_t pm) {
     // ensure ZIF10 GND pull is disabled
     digitalWrite(PIN_ZIF_GND_CTRL, LOW);
 
-    //pull down unused pins
-    digitalWrite(PIN_ZIF3, LOW);
-    digitalWrite(PIN_ZIF15, LOW);
-    digitalWrite(PIN_ZIF16, LOW);
-    digitalWrite(PIN_ZIF22, LOW);
+    //pull down unused pins when active
+    setPinMuxUnused(PIN_ZIF3, pm);
+    setPinMuxUnused(PIN_ZIF15, pm);
+    setPinMuxUnused(PIN_ZIF16, pm);
+    setPinMuxUnused(PIN_ZIF22, pm);
     break;
 
   }
