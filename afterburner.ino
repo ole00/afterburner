@@ -114,6 +114,7 @@
 #define COMMAND_MEASURE_VPP 'm'
 #define COMMAND_CALIBRATE_VPP 'b'
 #define COMMAND_CALIBRATION_OFFSET 'B'
+#define COMMAND_JTAG_PLAYER 'j'
 
 #define READGAL 0
 #define VERIFYGAL 1
@@ -445,6 +446,10 @@ static void printFormatedNumberHex2(unsigned char num) ;
 #include "aftb_vpp.h"
 #include "aftb_sparse.h"
 
+// share fusemap buffer with jtag
+#define XSVF_HEAP fusemap
+#include "jtag_xsvf_player.h"
+
 // print some help on the serial console
 void printHelp(char full) {
   Serial.println(F("AFTerburner v." VERSION));
@@ -727,7 +732,7 @@ char handleTerminalCommands() {
       c = line[0];  
       if (!isUploading || c != '#') {
         // prevent 2 character commands from being flagged as invalid
-        if (!(c == COMMAND_SET_GAL_TYPE || c == COMMAND_CALIBRATION_OFFSET)) {
+        if (!(c == COMMAND_SET_GAL_TYPE || c == COMMAND_CALIBRATION_OFFSET || c == COMMAND_JTAG_PLAYER)) {
           c = COMMAND_UNKNOWN; 
         }
       }
@@ -2838,6 +2843,33 @@ static void calibrateVpp(void) {
   }
 }
 
+static void startJtagPlayer(uint8_t vpp) {
+  jtag_port_t jport;
+  //assign jtag pins
+  jport.tms = 12;
+  jport.tdi = 2;
+  jport.tdo = 4;
+  jport.tck = 3;
+  jport.vref = 10;
+
+  //Serial.println(vpp ? F("JTAG VPP 1"): F("JTAG VPP 0"));
+
+  // ensure PC app is ready
+  delay(200);
+  // set VPP if required
+  if (varVppExists) {
+    varVppSet(vpp ? VPP_11V0 : VPP_5V0);
+  }
+
+  // start XSVF player / processor
+  jtag_play_xsvf(&jport);
+
+  // unset VPP
+  if (varVppExists) {
+    varVppSet(VPP_5V0);
+  }
+}
+
 // Arduino main loop
 void loop() {
 
@@ -3012,6 +3044,12 @@ void loop() {
 
       case COMMAND_CALIBRATE_VPP: {
         calibrateVpp();
+      } break;
+
+      case COMMAND_JTAG_PLAYER: {
+        startJtagPlayer(line[1] == '1');
+        //flush the serial line in case the player ended abruptly
+        readGarbage();
       } break;
 
       default: {
