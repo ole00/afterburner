@@ -12,6 +12,10 @@ char guessedSerialDevice[512] = {0};
 #define DEFAULT_SERIAL_DEVICE_NAME "COM1"
 #define INVALID_HANDLE  INVALID_HANDLE_VALUE
 
+#ifdef NO_CLOSE
+static SerialDeviceHandle serH = INVALID_HANDLE;
+#endif
+
 // ideas: https://stackoverflow.com/questions/1388871/how-do-i-get-a-list-of-available-serial-ports-in-win32
 static void serialDeviceGuessName(char** deviceName) {
     char buf[64 * 1024] = {0};
@@ -56,6 +60,12 @@ static void serialDeviceGuessName(char** deviceName) {
 
 static inline SerialDeviceHandle serialDeviceOpen(char* deviceName) {
     SerialDeviceHandle h;
+
+#ifdef NO_CLOSE
+    if (serH != INVALID_HANDLE) {
+        return serH;
+    }
+#endif
 
     h = CreateFile(
         deviceName,                  //port name
@@ -109,7 +119,9 @@ static inline SerialDeviceHandle serialDeviceOpen(char* deviceName) {
         }
         //ensure no leftover bytes exist on the serial line
         result = PurgeComm(h, PURGE_RXCLEAR | PURGE_TXCLEAR | PURGE_RXABORT | PURGE_TXABORT);
-
+#ifdef NO_CLOSE
+        serH = h;
+#endif
         return h;
     } else {
         return INVALID_HANDLE;
@@ -142,7 +154,9 @@ void serialDeviceCheckName(char* name, int maxSize) {
 }
 
 static inline void serialDeviceClose(SerialDeviceHandle deviceHandle) {
+#ifndef NO_CLOSE
     CloseHandle(deviceHandle);
+#endif
 }
 
 static inline int serialDeviceWrite(SerialDeviceHandle deviceHandle, char* buffer, int bytesToWrite) {
@@ -170,7 +184,6 @@ static inline int serialDeviceRead(SerialDeviceHandle deviceHandle, char* buffer
 #define DEFAULT_SERIAL_DEVICE_NAME "/dev/ttyUSB0"
 
 #define INVALID_HANDLE -1
-
 #ifdef NO_CLOSE
 static SerialDeviceHandle serH = INVALID_HANDLE;
 #endif
