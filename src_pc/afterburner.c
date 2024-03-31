@@ -59,7 +59,10 @@ To compile: gcc -g3 -O0 -o afterburner afterburner.c
 #define MAX_LINE (16*1024)
 
 #define MAXFUSES 30000
-#define GALBUFSIZE 65536
+#define GALBUFSIZE (256 * 1024)
+
+#define JTAG_ID 0xFF
+
 
 typedef enum {
     UNKNOWN,
@@ -78,6 +81,9 @@ typedef enum {
     ATF22V10B,
     ATF22V10C,
     ATF750C,
+    //jtag based PLDs at the end: they do not have a gal type in MCU software
+    ATF1502AS,
+    ATF1504AS,
 } Galtype;
 
 
@@ -117,6 +123,8 @@ galinfo[] = {
     {ATF22V10B, 0x00, 0x00, "ATF22V10B", 5892, 24, 44, 132, 44, 5828, 8, 61, 60, 58, 10, 16, 20},
     {ATF22V10C, 0x00, 0x00, "ATF22V10C", 5892, 24, 44, 132, 44, 5828, 8, 61, 60, 58, 10, 16, 20},
     {ATF750C,   0x00, 0x00, "ATF750C",  14499, 24, 84, 171, 84, 14435, 8, 61, 60, 127, 10, 16, 71},
+    {ATF1502AS, JTAG_ID, JTAG_ID, "ATF1502AS",   0, 0, 0,  0, 0,   0, 0, 0, 0, 0, 8, 0, 0},
+    {ATF1504AS, JTAG_ID, JTAG_ID, "ATF1504AS",   0, 0, 0,  0, 0,   0, 0, 0, 0, 0, 8, 0, 0},
 };
 
 char verbose = 0;
@@ -228,10 +236,6 @@ static int8_t verifyArgs(char* type) {
         printf("Error: VPP functions can not be conbined with read/write/verify operations\n");
         return -1;
     }
-    if (0 == filename && (opWrite == 1 || opVerify == 1)) {
-        printf("Error: missing JED filename\n");
-        return -1;
-    }
     if (0 == type && (opWrite || opRead || opErase || opVerify || opInfo || opWritePes))  {
         printf("Error: missing GAL type. Use -t <type> to specify.\n");
         return -1;
@@ -249,6 +253,10 @@ static int8_t verifyArgs(char* type) {
             printf("\n");
             return -1;
         }
+    }
+    if (0 == filename && (opWrite == 1 || opVerify == 1)) {
+        printf("Error: missing %s filename (param: -f fname)\n", galinfo[gal].id0 == JTAG_ID ? ".xsvf" : ".jed");
+        return -1;
     }
     return 0;
 }
@@ -552,11 +560,14 @@ static int parseFuseMap(char *ptr) {
     return n;
 }
 
-static char readJedec(void) {
+static char readFile(int* fileSize) {
     FILE* f;
     int size;
 
-    f = fopen(filename, "r");
+    if (verbose) {
+        printf("opening file: '%s'\n", filename);
+    }
+    f = fopen(filename, "rb");
     if (f) {
         size = fread(galbuffer, 1, GALBUFSIZE, f);
         fclose(f);
@@ -564,6 +575,9 @@ static char readJedec(void) {
     } else {
         printf("Error: failed to open file: %s\n", filename);
         return -1;
+    }
+    if (fileSize != NULL) {
+        *fileSize = size;
     }
     return 0;
 }
@@ -760,19 +774,13 @@ static int waitForSerialPrompt(char* buf, int bufSize, int maxDelay) {
     return bufPos;
 }
 
-static int sendLine(char* buf, int bufSize, int maxDelay) {
+static int sendBuffer(char* buf) {
     int total;
     int writeSize;
-    char* obuf = buf;
-
-    if (serialF == INVALID_HANDLE) {
-        return -1;
-    }
 
     if (buf == 0) {
         return -1;
     }
-
     total = strlen(buf);
     // write the query into the serial port's file
     // file is opened non blocking so we have to ensure all contents is written
@@ -784,6 +792,21 @@ static int sendLine(char* buf, int bufSize, int maxDelay) {
         }
         buf += writeSize;
         total -= writeSize;
+    }
+    return 0;
+}
+
+static int sendLine(char* buf, int bufSize, int maxDelay) {
+    int total;
+    char* obuf = buf;
+
+    if (serialF == INVALID_HANDLE) {
+        return -1;
+    }
+
+    total = sendBuffer(buf);
+    if (total) {
+        return total;
     }
 
     total = waitForSerialPrompt(obuf, bufSize, (maxDelay < 0) ? 6 : maxDelay);
@@ -922,7 +945,7 @@ static char operationWriteOrVerify(char doWrite) {
 
     char result;
 
-    if (readJedec()) {
+    if (readFile(NULL)) {
         return -1;
     }
 
@@ -1208,6 +1231,286 @@ static char operationReadFuses(void) {
     return 0;
 }
 
+
+static int readJtagSerialLine(char* buf, int bufSize, int maxDelay, int* feedRequest) {
+    char* bufStart = buf;
+    int readSize;
+    int bufPos = 0;
+
+    memset(buf, 0, bufSize);
+
+    while (maxDelay > 0) {
+        readSize = serialDeviceRead(serialF, buf, 1);
+        if (readSize > 0) {
+            bufPos += readSize;
+            buf[1] = 0;
+            //handle the feed request
+            if (buf[0] == '$') {
+                char tmp[5];
+                bufPos -= readSize;
+                buf[0] = 0;
+                //extra 5 bytes should be present: 3 bytes of size, 2 new line chars
+                readSize = serialDeviceRead(serialF, tmp, 5);
+                if (readSize == 5) {
+                    tmp[3] = 0;
+                    *feedRequest = atoi(tmp);
+                    maxDelay = 0; //force exit
+                } else {
+                    printf("Warning: corrupted feed request!\n");
+                }
+                //printf("***\n");
+            } else
+            if (buf[0] == '\r') {
+                readSize = serialDeviceRead(serialF, buf, 1); // read \n coming from Arduino
+                //printf("-%c-\n", buf[0] == '\n' ? 'n' : 'r');
+                buf[0] = 0;
+                bufPos++;
+                maxDelay = 0; //force exit
+            } else {
+                //printf("(0x%02x %d) \n", buf[0], (int) buf[0]);
+                buf += readSize;
+                if (bufPos == bufSize) {
+                    printf("ERROR: serial port read buffer is too small!\nAre you dumping large amount of data?\n");
+                    return -1;
+                }
+            }
+        }
+        if (maxDelay > 0) {
+        /* WIN_API handles timeout itself */
+#ifndef _USE_WIN_API_
+            usleep(1 * 1000);
+            maxDelay -= 10;
+#else
+            maxDelay -= 30;
+#endif
+        }
+    }
+    return bufPos;
+}
+
+static int playJtagFile(char* label, int fSize, int vpp, int showProgress) {
+    char buf[MAX_LINE] = {0};
+    int sendPos = 0;
+    char ready = 0;
+    int result = 0;
+    unsigned int csum = 0;
+    int feedRequest = 0;
+    // support for XCOMMENT messages which might be interrupted by a feed request
+    int continuePrinting = 0;
+
+    if (openSerial() != 0) {
+        return -1;
+    }
+    //compute check sum
+    if (verbose) {
+        int i;
+        for (i = 0; i < fSize; i++) {
+            csum += (unsigned char) galbuffer[i];
+        }
+    }
+
+    // send start-JTAG-player command
+    sprintf(buf, "j%d\r", vpp ? 1: 0);
+    sendBuffer(buf);
+
+    // read response from MCU and feed the XSVF player with data
+    while(1) {
+        int readBytes;
+
+        feedRequest = 0;
+        buf[0] = 0;
+        readBytes = readJtagSerialLine(buf, MAX_LINE, 3000, &feedRequest);
+        //printf(">> read %d  len=%d cp=%d '%s'\n", readBytes, (int) strlen(buf), continuePrinting,  buf);
+
+        //request to send more data was received
+        if (feedRequest > 0) {
+            if (ready) {
+                int chunkSize = fSize - sendPos;
+                if (chunkSize > feedRequest) {
+                    chunkSize = feedRequest;
+                    // make the initial chunk big so the data are buffered by the OS
+                    if (sendPos == 0) {
+                        chunkSize *= 4;
+                        if (chunkSize > fSize) {
+                            chunkSize = fSize;
+                        }
+                    }
+                }
+                if (chunkSize > 0) {
+                    // send the data over serial line
+                    int w = serialDeviceWrite(serialF, galbuffer + sendPos, chunkSize);
+                    sendPos += w;
+                    // print progress / file position
+                    if (showProgress && (sendPos % 1024 == 0 || sendPos == fSize)) {
+                        updateProgressBar(label, sendPos, fSize);
+                    }
+               }
+            }
+            if (readBytes > 2) {
+                continuePrinting = 1;
+            }
+        }
+        // when the feed request was detected, there might be still some data in the buffer
+        if (buf[0] != 0) {
+            //prevous line had a feed request - this is a continuation
+            if (feedRequest == 0 && continuePrinting) {
+                continuePrinting = 0;
+                printf("%s\n", buf);
+            } else
+            //print debug messages
+            if (buf[0] == 'D') {
+                if (feedRequest) { // the rest of the message will follow
+                    printf("%s", buf + 1);
+                } else {
+                    printf("%s\n", buf + 1);
+               }
+            }
+            // quit
+            if (buf[0] == 'Q') {
+                result = atoi(buf + 1);
+                //print error result
+                if (result != 0) {
+                    printf("%s\n", buf + 1);
+                } else
+                // when all is OK and verbose mode is on, then print the checksum for comparison
+                if (verbose) {
+                    printf("PC : 0x%08X\n", csum);
+                }
+                break;
+            } else
+            // ready to receive anouncement
+            if (strcmp("RXSVF", buf) == 0) {
+                ready = 1;
+            } else
+            // print important messages
+            if (buf[0] == '!') {
+                // in verbose mode print all messages, otherwise print only success or fail messages
+                if (verbose || 0 == strcmp("!Success", buf) || 0 == strcmp("!Fail", buf)) {
+                    printf("%s\n", buf + 1);
+                }
+            }
+#if 0
+             //print all the rest
+             else if (verbose) {
+                printf("'%s'\n", buf);
+            }
+#endif
+        } else
+        // the buffer is empty but there was a feed request just before - print a new line
+        if (readBytes > 0 && continuePrinting) {
+            printf("\n");
+            continuePrinting = 0;
+        }
+    }
+
+    readJtagSerialLine(buf, MAX_LINE, 1000, &feedRequest);
+    return result;
+}
+
+
+static int processJtagInfo(void) {
+    int result;
+    int fSize = 0;
+    char tmp[256];
+
+    if (!opInfo) {
+        return 0;
+    }
+
+    if (!(gal == ATF1502AS || gal == ATF1504AS)) {
+        printf("error: infor command is unsupported");
+        return 1;
+    }
+
+    // Use default .xsvf file for erase if no file is provided.
+    // if the file is provided while write operation is also requested
+    // then the file is specified for writing -> do not use it for erasing
+    sprintf(tmp, "xsvf/id_ATF150X.xsvf");
+    filename = tmp;
+
+    result = readFile(&fSize);
+    if (result) {
+        return result;
+    }
+
+    //play the info file and use high VPP
+    return playJtagFile("", fSize, 1, 0);
+}
+
+static int processJtagErase(void) {
+    int result;
+    int fSize = 0;
+    char tmp[256];
+    char* originalFname = filename;
+
+    if (!opErase) {
+        return 0;
+    }
+    // Use default .xsvf file for erase.
+    sprintf(tmp, "xsvf/erase_%s.xsvf", galinfo[gal].name);
+    filename = tmp;
+
+    result = readFile(&fSize);
+    if (result) {
+        filename = originalFname;
+        return result;
+    }
+    filename = originalFname;
+
+    //play the erase file and use high VPP
+    return playJtagFile("erase ", fSize, 1, 1);
+}
+
+static int processJtagWrite(void) {
+    int result;
+    int fSize = 0;
+
+    if (!opWrite) {
+        return 0;
+    }
+
+    // paranoid: this condition should be already checked during argument's check
+    if (0 == filename) {
+        return -1;
+    }
+    result = readFile(&fSize);
+    if (result) {
+        return result;
+    }
+
+    //play the file and use low VPP
+    return playJtagFile("write ", fSize, 0, 1);
+}
+
+
+static int processJtag(void) {
+    int result;
+    if (verbose) {
+        printf("JTAG\n");
+    }
+
+    if ((gal == ATF1502AS || gal == ATF1504AS) && (opRead || opVerify)) {
+        printf("error: read and verify operation is not supported\n");
+        return 1;
+    }
+
+    result = processJtagInfo();
+    if (result) {
+        return result;
+    }
+
+    result = processJtagErase();
+    if (result) {
+        return result;
+    }
+
+    result = processJtagWrite();
+    if (result) {
+        return result;
+    }
+    return 0;
+}
+
 int main(int argc, char** argv) {
     char result = 0;
     int i;
@@ -1218,6 +1521,12 @@ int main(int argc, char** argv) {
     }
     if (verbose) {
         printf("Afterburner " VERSION " \n");
+    }
+
+    // process JTAG operations
+    if (gal != 0 && galinfo[gal].id0 == JTAG_ID && galinfo[gal].id1 == JTAG_ID) {
+        result = processJtag();
+        goto finish;
     }
 
     result = operationSetGalCheck();
@@ -1262,6 +1571,7 @@ int main(int argc, char** argv) {
         }
     }
 
+finish:
     if (verbose) {
         printf("result=%i\n", (char)result);
     }
