@@ -184,8 +184,8 @@ static void printHelp() {
     printGalTypes();
     printf("\n");
     printf("  -f <file> : JEDEC fuse map file\n");
-    printf("  -d <serial_device> : name of the serial device. Default is: %s\n", DEFAULT_SERIAL_DEVICE_NAME);
-    printf("                       serial params are: 38400, 8N1\n");
+    printf("  -d <serial_device> : name of the serial device. Without this option the device is guessed.\n");
+    printf("                       serial params are: 57600, 8N1\n");
     printf("  -nc : do not check device GAL type before operation: force the GAL type set on command line\n");
     printf("  -sec: enable security - protect the chip. Use with 'w' or 'v' commands.\n");
     printf("  -co <offset>: Set calibration offset. Use with 'b' command. Value: -20 (-0.2V) to 25 (+0.25V)\n");
