@@ -1404,6 +1404,7 @@ static int playJtagFile(char* label, int fSize, int vpp, int showProgress) {
     }
 
     readJtagSerialLine(buf, MAX_LINE, 1000, &feedRequest);
+    closeSerial();
     return result;
 }
 
