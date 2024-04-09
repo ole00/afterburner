@@ -312,7 +312,7 @@ static uint8_t  xsvf_player_next_byte(void) {
   if (xsvf->wrpos == xsvf->rdpos) {
     size_t r = 0;
     while (r == 0) {
-      Serial.println("$064"); // request to receive BUF size bytes
+      Serial.println(F("$064")); // request to receive BUF size bytes
       r = Serial.readBytes(xsvf_buf + pos, XSVF_BUF_SIZE - pos);
       if (r == 0) {
         retry --;
