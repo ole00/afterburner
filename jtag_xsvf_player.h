@@ -209,8 +209,8 @@ typedef struct xsvf_t {
   uint32_t csum;
   #endif
 
-  uint16_t instruction_counter = 0;
-  uint8_t  error = 0;
+  uint16_t instruction_counter;
+  uint8_t  error;
   uint8_t  xcomplete;
 
   uint16_t sirsize_bits;
