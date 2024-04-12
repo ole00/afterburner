@@ -70,6 +70,8 @@ Arduino usage:
 #define		XSIR2 21
 #define		XCOMMENT 22
 #define		XWAIT 23
+#define		XWAITSTATE 24
+#define		XTRST 28
 
 #define S_MAX_CHAIN_SIZE_BYTES 129
 #define S_MAX_CHAIN_SIZE_BITS (S_MAX_CHAIN_SIZE_BYTES * 8)
@@ -537,7 +539,7 @@ static void xsvf_jtagtap_state_goto(jtag_port_t* port, uint8_t state) {
 	}
 }
 
-static void xsvf_jtagtap_wait_time(jtag_port_t* port, uint32_t microseconds) {
+static void xsvf_jtagtap_wait_time(jtag_port_t* port, uint32_t microseconds, uint8_t wait_clock) {
 	uint32_t until;
 
   if (xsvf->error) {
@@ -545,12 +547,14 @@ static void xsvf_jtagtap_wait_time(jtag_port_t* port, uint32_t microseconds) {
   }
 
   until = micros() + microseconds;
-	while (microseconds--) {
-		jtag_port_pulse_clock(port);
-	}
-	while (micros() < until) {
+  if (wait_clock) {
+    while (microseconds--) {
+      jtag_port_pulse_clock(port);
+    }
+  }
+  while (micros() < until) {
     jtag_port_pulse_clock(port);
-	}
+  }
 }
 
 static void xsvf_jtag_sir(jtag_port_t* port) {
@@ -563,7 +567,7 @@ static void xsvf_jtag_sir(jtag_port_t* port) {
     xsvf_jtagtap_state_goto(port, xsvf->endir_state);
   } else {
     xsvf_jtagtap_state_goto(port, XSTATE_RUN_TEST_IDLE);
-    xsvf_jtagtap_wait_time(port, xsvf->runtest);
+    xsvf_jtagtap_wait_time(port, xsvf->runtest, 1);
   }
 }
 
@@ -625,7 +629,7 @@ static uint8_t xsvf_jtag_sdr(jtag_port_t* port, uint8_t flags)
 			xsvf_jtagtap_state_goto(port, XSTATE_PAUSE_DR);
 			xsvf_jtagtap_state_goto(port, XSTATE_SHIFT_DR);
 			xsvf_jtagtap_state_goto(port, XSTATE_RUN_TEST_IDLE);
-			xsvf_jtagtap_wait_time(port, xsvf->runtest);
+			xsvf_jtagtap_wait_time(port, xsvf->runtest, 1);
 			//
 			xsvf_jtagtap_state_goto(port, XSTATE_SHIFT_DR);
 #if XSVF_DEBUG
@@ -645,7 +649,7 @@ static uint8_t xsvf_jtag_sdr(jtag_port_t* port, uint8_t flags)
       xsvf_jtagtap_state_goto(port, xsvf->enddr_state);
 		} else {
 			xsvf_jtagtap_state_goto(port, XSTATE_RUN_TEST_IDLE);
-			xsvf_jtagtap_wait_time(port, xsvf->runtest);
+			xsvf_jtagtap_wait_time(port, xsvf->runtest, 1);
 		}
 	}
 
@@ -833,7 +837,7 @@ static uint8_t xsvf_player_handle_next_instruction(jtag_port_t* port) {
     	uint8_t c;
 #if XSVF_DEBUG
    Serial.println(F("XCOMMENT"));
-#endif  
+#endif
       Serial.print(F("D"));//debug message preamble
       //read the comment bytes
     	do {
@@ -863,26 +867,53 @@ static uint8_t xsvf_player_handle_next_instruction(jtag_port_t* port) {
   } else
 
   // ---[WAIT ] --------------------------------------------
-  if (instruction == XWAIT) {
+  if (instruction == XWAIT  || instruction == XWAITSTATE) {
+    uint32_t clock_cnt = 0;
+    uint8_t wait_clock = 1;
 #if XSVF_DEBUG
-   Serial.println(F("XWAIT"));
+   Serial.println(instruction == XWAIT ? F("XWAIT") : F("XWAITSTATE"));
 #endif
   //TOOD - do we need these states to be global?
     xsvf->wait_start_state = xsvf_player_get_next_byte();
     xsvf->wait_end_state = xsvf_player_get_next_byte();
-    xsvf->wait_time_usecs = xsvf_player_get_next_long();
+    if (instruction == XWAITSTATE) {
+      clock_cnt = xsvf_player_get_next_long();
+      wait_clock = clock_cnt > 0 ? 1 : 0;
+    }
+#if XSVF_DEBUG
+   Serial.print(F("Dclock:"));
+   Serial.println(clock_cnt, DEC);
+#endif
+   xsvf->wait_time_usecs = xsvf_player_get_next_long();
+#if XSVF_DEBUG
+   Serial.print(F("Dmicros:"));
+   Serial.println( xsvf->wait_time_usecs, DEC);
+#endif
+
     xsvf_jtagtap_state_goto(port, xsvf->wait_start_state);
-    xsvf_jtagtap_wait_time(port, xsvf->wait_time_usecs);
+    // happens only during XWAITSTATE
+    while (clock_cnt) {
+        jtag_port_pulse_clock(port);
+        clock_cnt--;
+    }
+    xsvf_jtagtap_wait_time(port, xsvf->wait_time_usecs, wait_clock);
     xsvf_jtagtap_state_goto(port, xsvf->wait_end_state);
 
   } else
-  
+ // ---[TRST - test line reset] --------------------------------------------
+  if (instruction == XTRST) {
+#if XSVF_DEBUG
+    Serial.println(F("XTRST"));
+#endif
+    //read test reset mode (0-on, 1-off, 2-Z, 3-Absent)
+    xsvf_player_get_next_byte();
+  } else
   // ---[UNKNOWN ] --------------------------------------------
   {
 #if XSVF_DEBUG
    Serial.print(F("XUNKNOWN:"));
    Serial.println(instruction, DEC);
-#endif  
+#endif
     //unimplemented instruction
     return ERR_INSTR_NOT_IMPLEMENTED;
   }
