@@ -40,9 +40,8 @@ Arduino usage:
 
 */
 
-
-//XSVF_BUF_SIZE must be power of 2 ( 4,8 16,32,64 etc)
-#define XSVF_BUF_SIZE 64
+//value bigger than 63 may cause reading errors on AVR MCUs.
+#define XSVF_BUF_SIZE 62
 
 #define XSVF_DEBUG 0
 #define XSVF_CALC_CSUM 1
@@ -307,13 +306,20 @@ static inline uint8_t jtag_port_get_veref(jtag_port_t* port) {
 
 static uint8_t  xsvf_player_next_byte(void) {
   uint8_t retry = 16;
-  uint8_t pos =  xsvf->rdpos & (XSVF_BUF_SIZE - 1);
+  uint8_t pos =  xsvf->rdpos % XSVF_BUF_SIZE;
 
   if (xsvf->wrpos == xsvf->rdpos) {
     size_t r = 0;
     while (r == 0) {
-      Serial.println(F("$064")); // request to receive BUF size bytes
+#if XSVF_DEBUG
+      Serial.println("D<<< req read"); // request to receive BUF size bytes
+#endif
+      Serial.println(F("$062")); // request to receive BUF size bytes
       r = Serial.readBytes(xsvf_buf + pos, XSVF_BUF_SIZE - pos);
+#if XSVF_DEBUG
+      Serial.print("D<<< read "); // request to receive BUF size bytes
+      Serial.println(r, DEC); // request to receive BUF size bytes
+#endif
       if (r == 0) {
         retry --;
         if (retry == 0) {
