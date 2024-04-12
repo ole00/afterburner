@@ -1294,6 +1294,7 @@ static int readJtagSerialLine(char* buf, int bufSize, int maxDelay, int* feedReq
 static int playJtagFile(char* label, int fSize, int vpp, int showProgress) {
     char buf[MAX_LINE] = {0};
     int sendPos = 0;
+    int lastSendPos = 0;
     char ready = 0;
     int result = 0;
     unsigned int csum = 0;
@@ -1344,7 +1345,8 @@ static int playJtagFile(char* label, int fSize, int vpp, int showProgress) {
                     int w = serialDeviceWrite(serialF, galbuffer + sendPos, chunkSize);
                     sendPos += w;
                     // print progress / file position
-                    if (showProgress && (sendPos % 1024 == 0 || sendPos == fSize)) {
+                    if (showProgress && (sendPos - lastSendPos >= 1024 || sendPos == fSize)) {
+                        lastSendPos = sendPos;
                         updateProgressBar(label, sendPos, fSize);
                     }
                }
