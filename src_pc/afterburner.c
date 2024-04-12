@@ -578,6 +578,9 @@ static char readFile(int* fileSize) {
     }
     if (fileSize != NULL) {
         *fileSize = size;
+        if (verbose) {
+            printf("file size: %d'\n", size);
+        }
     }
     return 0;
 }
