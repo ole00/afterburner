@@ -1334,7 +1334,7 @@ static int playJtagFile(char* label, int fSize, int vpp, int showProgress) {
                     chunkSize = feedRequest;
                     // make the initial chunk big so the data are buffered by the OS
                     if (sendPos == 0) {
-                        chunkSize *= 4;
+                        chunkSize *= 2;
                         if (chunkSize > fSize) {
                             chunkSize = fSize;
                         }
