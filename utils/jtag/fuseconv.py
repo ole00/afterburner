@@ -96,7 +96,7 @@ def write_svf(file, svf_bits, device, *, comment):
     def emit_check_idcode(idcode):
         file.write("// Check IDCODE\n")
         file.write("SIR 10 TDI ({:03x});\n".format(ATF15xxInstr.IDCODE))
-        file.write("SDR 32 TDI (ffffffff)\n\tTDO ({:08x})\n\tMASK (ffffffff);\n".format(idcode))
+        file.write("SDR 32 TDI (fffeefff)\n\tTDO ({:08x})\n\tMASK (fffeefff);\n".format(idcode))
     def emit_enable():
         file.write("// ISC enable\n")
         file.write("SIR 10 TDI ({:03x});\n".format(ATF15xxInstr.ISC_CONFIG))
