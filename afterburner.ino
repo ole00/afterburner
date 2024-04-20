@@ -81,6 +81,19 @@
 #define PIN_ZIF23         3
 #define PIN_ZIF_GND_CTRL  13
 
+#if CONFIG_IDF_TARGET_ESP32S2 == 1
+//A0: VPP sense
+//A3: DIGI_POT CS
+#define A0   14
+#define A1   15
+#define A2   16
+#define A3   17
+//clk and dat is shared SPI bus
+#define A4  18
+#define A5  21
+#endif
+
+// AVR, or UNO R4
 //A0: VPP sense
 //A3: DIGI_POT CS
 #define PIN_SHR_EN   A1
@@ -205,6 +218,11 @@ typedef enum {
 // PIN_A11 - present on MEGA (8kB) or Leonardo (2.5kB SRAM)
 //  _RENESAS_RA_ - Uno R4 (32kB)
 #if defined(PIN_A11) || defined(_RENESAS_RA_)
+#define RAM_BIG
+#endif
+
+//ESP32-S2
+#if CONFIG_IDF_TARGET_ESP32S2 == 1
 #define RAM_BIG
 #endif
 

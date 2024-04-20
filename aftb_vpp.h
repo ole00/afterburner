@@ -14,6 +14,20 @@
 #define POT_DAT  A5
 #define VPP      A0
 
+#if CONFIG_IDF_TARGET_ESP32S2 == 1
+// ESP32-S2
+#include "driver/adc.h"
+#define ADC_PIN ADC2_CHANNEL_3
+#define EEPROM_BEGIN() EEPROM.begin(128)
+#define EEPROM_UPDATE(A,V) if ((V) != EEPROM.read((A))) EEPROM.write((A),(V))
+#define EEPROM_END() EEPROM.end()
+#else
+// AVR
+#define EEPROM_BEGIN()
+#define EEPROM_UPDATE(A,V) EEPROM.update((A),(V))
+#define EEPROM_END()
+#endif
+
 #include "aftb_mcp4131.h"
 #ifndef FAIL
 #define FAIL 0
@@ -73,22 +87,25 @@ int8_t calOffset = 0; // VPP calibration offset: value 10 is 0.1V, value -10 is 
 
 static void varVppReadCalib(void) {
     uint8_t i;
+    EEPROM_BEGIN();
     //calibration not found
     if (EEPROM.read(0) != 0xAF || EEPROM.read(1) != 0xCA) {
         vppWiper[0] = 0;
         Serial.println(F("No calibration data in EEPROM"));
+        EEPROM_END();
         return;
     }
     calOffset = (int8_t) EEPROM.read(2);
     for (i = 0; i < MAX_WIPER; i++) {
         vppWiper[i] = EEPROM.read(i + 3);
-#if 0        
+#if 0
         Serial.print(F("Calib "));
         Serial.print(i);
         Serial.print(F(":"));
         Serial.println(vppWiper[i]);
 #endif
     }
+    EEPROM_END();
 }
 
 // internal use only - set the wiper value on the digital pot
@@ -153,6 +170,13 @@ static void varVppSet(uint8_t value) {
 #define SAMPLE_MULTIPLIER 25
 // SAMPLE_SHIFT moves the ADC gain error up/down
 #define SAMPLE_SHIFT -45;
+
+// ESP32-S2 (VREF 2.5V)
+#elif CONFIG_IDF_TARGET_ESP32S2 == 1
+#define SAMPLE_CNT 18
+#define SAMPLE_DIVIDER 10
+#define SAMPLE_MULTIPLIER 1
+#define SAMPLE_OFFSET 5
 
 //AVR based Arduinos (no ADC gain errors measured)
 #else
@@ -296,22 +320,37 @@ ret:
 
 }
 
+
 static void varVppStoreWiperCalib() {
     uint8_t i = 0;
     //sanity check
     if (vppWiper[0] == 0) {
+#ifdef VPP_VERBOSE
+      Serial.println(F("VPP wiper is 0"));
+#endif
         return;
     }
-
+#ifdef VPP_VERBOSE
+      Serial.println(F("VPP storing calibration"));
+#endif
+    EEPROM_BEGIN();
     //write Afterburner calibration header
-    EEPROM.update(0, 0xAF);
-    EEPROM.update(1, 0xCA);
-    EEPROM.update(2, (uint8_t) calOffset);
+    EEPROM_UPDATE(0, 0xAF);
+    EEPROM_UPDATE(1, 0xCA);
+    EEPROM_UPDATE(2, (uint8_t) calOffset);
     while (i < MAX_WIPER) {
-        EEPROM.update(3 + i, vppWiper[i]);
+        EEPROM_UPDATE(3 + i, vppWiper[i]);
         i++;
     }
+    EEPROM_END();
 }
+
+#if CONFIG_IDF_TARGET_ESP32S2 == 1
+static void analogReference(uint8_t ref) {
+  analogReadResolution(10);
+  adc2_config_channel_atten(ADC_PIN, ADC_ATTEN_DB_11); // AREF 2.5V
+}
+#endif
 
 
 //return 1 on success (variable VPP functionality present), 0 on failure (VPP not detected on board)
