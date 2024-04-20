@@ -1253,13 +1253,23 @@ static int readJtagSerialLine(char* buf, int bufSize, int maxDelay, int* feedReq
                 bufPos -= readSize;
                 buf[0] = 0;
                 //extra 5 bytes should be present: 3 bytes of size, 2 new line chars
-                readSize = serialDeviceRead(serialF, tmp, 5);
-                if (readSize == 5) {
+                readSize = serialDeviceRead(serialF, tmp, 3);
+                if (readSize == 3) {
+                    int retry = 1000;
                     tmp[3] = 0;
                     *feedRequest = atoi(tmp);
                     maxDelay = 0; //force exit
+
+                    //read the extra 2 characters (new line chars)
+                    while (retry && readSize != 2) {
+                        readSize = serialDeviceRead(serialF, tmp, 2);
+                        retry--;
+                    }
+                    if (readSize != 2 || tmp[0] != '\r' || tmp[1] != '\n') {
+                        printf("Warning: corrupted feed request ! %d \n", readSize);
+                    }
                 } else {
-                    printf("Warning: corrupted feed request!\n");
+                    printf("Warning: corrupted feed request! %d \n", readSize);
                 }
                 //printf("***\n");
             } else
