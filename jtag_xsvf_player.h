@@ -45,6 +45,7 @@ Arduino usage:
 
 #define XSVF_DEBUG 0
 #define XSVF_CALC_CSUM 1
+#define XSVF_IGNORE_NOMATCH 0
 
 #define		XCOMPLETE 0
 #define		XTDOMASK 1
@@ -583,17 +584,19 @@ static uint8_t xsvf_jtag_is_tdo_as_expected(uint8_t use_mask)
 			expected &= mask;
 			actual &= mask;
 		}
+#if XSVF_IGNORE_NOMATCH != 1
 		if (expected != actual) {
 #if XSVF_DEBUG
     Serial.println(F("D...NO MATCH!"));
-#endif      
+#endif
 			return 0;
 		}
+#endif
 	}
 
 #if XSVF_DEBUG
     Serial.println(F("D...match!"));
-#endif    
+#endif
 	return 1;
 }
 
