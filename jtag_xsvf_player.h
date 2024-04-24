@@ -979,6 +979,12 @@ static void jtag_play_xsvf(jtag_port_t* port)
   if (xsvf->xcomplete) {
       Serial.println(F("Q-0,OK"));
   }
+  //the 3 pins must be low or else the vref might be triggered next time
+  digitalWrite(port->tms, 0);
+  digitalWrite(port->tdi, 0);
+  digitalWrite(port->tck, 0);
+  delay(100);
+
   // put the jtag port pins into High-Z (vref already is input)
   pinMode(port->tms, INPUT);
   pinMode(port->tdi, INPUT);
