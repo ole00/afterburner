@@ -372,7 +372,7 @@ static uint32_t xsvf_player_get_next_long(void) {
   return i;
 }
 
-static uint32_t xsvf_player_get_next_bytes(uint8_t* data, uint32_t count) {
+static void xsvf_player_get_next_bytes(uint8_t* data, uint32_t count) {
   while(count--) {
     *data++ = xsvf_player_next_byte();
   }
