@@ -463,6 +463,7 @@ static void printFormatedNumberHex2(unsigned char num) ;
 
 #include "aftb_vpp.h"
 #include "aftb_sparse.h"
+#include "aftb_seram.h"
 
 // share fusemap buffer with jtag
 #define XSVF_HEAP fusemap
@@ -676,8 +677,6 @@ void setup() {
   // inserting the GAL IC into socket.
   setupGpios(INPUT);
 
-  printHelp(0);
-
   if (varVppExists) {
     // reads the calibration values
     if (varVppCheckCalibration()) {
@@ -686,7 +685,14 @@ void setup() {
     // set shift reg Chip select
     pinMode(PIN_SHR_CS, OUTPUT);
     digitalWrite(PIN_SHR_CS, 1); //unselect the POT's SPI bus
+
+    //setup serial RAM
+    if (seRamInit()) {
+      Serial.println(F("I: SeRAM OK"));
+    }
   }
+  printHelp(0);
+
   Serial.println(">");
 }
 
