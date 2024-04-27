@@ -16,12 +16,26 @@ from various manufcaturers. It is based on work of several other people:
 
  Michael Dreher:
      https://github.com/nospam2000/afterburner.git
+ 
+ Marcelo Roberto Jimenez: (JTAG player)
+     https://github.com/mrjimenez/JTAG
+
+ whitequark · it: (ATF150X jed to svf tool)
+     https://github.com/whitequark/prjbureau
+
+ OpenOCD: (svf to xsvf tool)
+     https://github.com/arduino/OpenOCD/blob/master/contrib/xsvf_tools/svf2xsvf.py
 
 who did the most of the hard work of deciphering and publishing the programming
 protocol of these chips. Some of their early programs were Windows based and relied on
 presence of parallel port (LPT). Afterburner was written for Linux OS 
 (also works on Win32/64, Mac OSX64), and requires serial connection to
 Arduino UNO, which does the programming of the GAL chip.
+
+**Update: ver.0.6.0 added experimental support for ATF1502AS and ATF1504AS. Only
+identify, erase and write commands are supported. Read function is unsupported.
+Verification is usually done automatically - it is a part of the .xsvf JTAG file
+which is used when writing the design. See Discussions for more information**
 
 **Update: ver.0.5.8 improved calibration alogrithm and resolution for mcp4151 digi pot.
 Please re-calibrate your Afterburner as the previsouly stored calibration data are invalid.**
@@ -42,9 +56,13 @@ Supported GAL chips:
 | 26CV12 | - | GAL26CV12B[2] | - | - |
 | 26V12 | - | GAL26V12C[2] | - | - |
 | 750 | ATF750C | - | - | - |
+| 150X | ATF1502AS, ATF1502ASL, ATF1504AS, ATF1504ASL[2][3] | - | - | - |
+
 
 [1]: requires PCB v.3.1 or modified PCB v.3.0 - see Troubleshooting  
 [2]: requires adapter - see gerbers, pcb and img directory  
+[3]: also supports 3.3V ATF1502ASV and ATF1504ASV when Arduino IOREF is 3.3V (ARM or ESP32 based Arduinos or Arduinos with IOREF 3.3V switch)
+
 [-]: - represents either this combination does not exist or hasn't been tested yet. Testers are welcome to report their findings.
 
 **This is a new Afterburner design with variable programming voltage control and with single ZIF socket for 20 and 24 pin GAL chips.**
@@ -78,6 +96,9 @@ Setup:
   ./compile.sh to do that. Alternatively use the precompiled binaries in the 'releases' directory.
 
 * Calibrate the variable voltage. This needs to be done only once, before you start using Afterburner for programming GAL chips.
+  Calibration procedure differs a little bit when using MT3608 module or when using on board voltage booster.
+
+  **When using MT3608 module**
 
   * **Calibration step 1)** Turn the small potentiometer (R9) on the Afterburner to the middle position. This pot acts as compensation resistor for the digital pot.
 
@@ -107,7 +128,18 @@ Setup:
 
   * Note that if you use your calibrated Afterburner board with a different Arduino (made by a different company or slightly different design), you may need to re-do the calibration.
 
-  
+**When using on-board voltage booster:**
+
+Calibration steps are the same as for MT3608 module with these differences
+
+* **Calibration Step 2)** We can't turn the extra pot on the MT3608 module, but we can
+adjust the voltage by turning the R9 pot on the Afterburner PCB. It's OK to have
+the voltage a bit higher like 16.6V or so in this calibration step.
+
+* **Calibration Step 3)** Because of the feedback resistance difference compared to MT3608
+module the calibration index for 9V will be around value 150.
+
+**GAL chip operations:**
 * With the GAL chip inserted and power button pressed (or in ON position) check the chip identification by running the following command:
   <pre>
   ./afterburner i -t [GAL_type]
@@ -178,7 +210,7 @@ PCB:
 The new design no longer has an etched PCB design available. The most convenient way to get the PCB is to order it online on jlcpcb.com, pcbway.com, allpcb.com or other online services. Use the zip archive stored in the gerbers directory and upload it to the manufacturer's site of your choice.
   Upload the afterburner_fab_3_0.zip and set the following parameters (if required). 
   
-  * Dimensions are 79x54 mm
+  * Dimensions are 85x54 mm
   * 2 layer board
   * PCB Thickness: 1.6, or 1.2
   * Copper Weight: 1
@@ -192,17 +224,33 @@ Soldering steps:
   * start with the smallest parts, solder the resistors and small capacitors.
   * solder the two ICS: U1 (digital pot) and U2 (shift register)
   * solder the LED, the switch and the big capacitors
+
+  **When using MT3608 module**
+  * do **not** solder any components in voltage booster area
   * **special step** solder a thin wire between the MT3608 module and the PCB hole marked as POT. See the image bellow.
   * **Important** after you solder the wire measure the resistance between the wire's connection on Afterburner PCB and ground (use TP GND hole) - see red dots
      on the picture beelow.  It must be around 12.5 kilo Ohm. If it is very low value then you made a short while soldering the wire. Fix/remove the short
      or else the MT3608 will be damaged when it is turned on on.
+       ![POT wire image.](https://github.com/ole00/afterburner/raw/master/img/mt3608_wire.jpg "POT wire")
   * solder the MT3608 module - the POT connection wire must be already soldered!
+
+  **When using on-board voltage booster**
+  * solder the parts in the voltage booster area. Start with the U3 IC - the SOT-23-6 package - so that you have plenty
+    of room for soldering the small IC. Use a flux to ensure the solder melts nicely on the pads.
+  * solder the inductor L1 and diode D2. Ensure D2 polarity is correct - the stripe is on the left side (see photos if unsure).
+  * solder the C10 cap and the resistors. There is no need to solder R10, R11, R12 if you are using the alternative booster IC
+    with SOT-23-5 package (without OVP)
+  * no extra wire is required (the wire is only required when using MT3608 module)
+
+  **After soldering the voltage booster** 
   * calibrate the board. See calibration steps in the Setup section.
   * solder the ZIF socket
-   ![POT wire image.](https://github.com/ole00/afterburner/raw/master/img/mt3608_wire.jpg "POT wire")
+
 
 MT3608 modules:
 ---------------
+  * On PCB version 3.2 (or higher) the MT3608 can be replaced by discrete parts soldered on the board. Therefore, if you want to avoid possible issues with
+    MT3608 modules, solder the discreate parts instead of the module. If you are not comfortable soldering SOT-23-6 SMT IC package, then use the MT3608 module.
   * There is a report some of the MT3608 modules / clones are not compatible with Afterburner. Thanks @meup for the information.
   * The incompatible MT3608 'clone' causes calibration issue and basically breaks the variable voltage functionality. This can be fixed by replacing the 2k2 resistor located on the module by a 15k resistor.
   * Bellow is the image of the old (compatible without a mod) and new (require the resistor mod) MT3608 modules. If you happen to have the incompatible module here are the steps to replace the resistor:
@@ -303,6 +351,14 @@ Troubleshooting:
 - I have the older Afterburner PCB design, can I use the new PC software and Arduino sketch?
   * Yes, both programs are compatible with the old Afterburner boards (1.X and 2.X).
 
+- how do I program ATF150X ICs? They do not fit into the ZIF Socket.
+  There are 2 options. Either use PLCC44 IC package along with the ZIF socket adapter (see the gerber and
+  pcb directory). Or you can program the ATF150X on your target board when using JTAG interface.
+  See this schematics for information about JTAPG pins on ATF150X ICs:
+  http://matthieu.benoit.free.fr/all03/adp/HiLo_ADP-ATF1504.PDF
+  The OGI pin in the schematic is VPP (or EDIT) pin on afterburner. See afterburner schematics
+  how to connect JTAG pins from the ZIF socket into the JTAG pins on your board.
+
 - what are the .jed files and how to produce them
   
   * Use WinCUPL software from Atmel. Works under Wine as well.
@@ -312,6 +368,17 @@ Troubleshooting:
   * WinCUPL User's manual: http://ww1.microchip.com/downloads/en/DeviceDoc/doc0737.pdf
   
   * Try GAL Asm to produce .jed files - see link bellow.
+
+- can I use .jed files with ATF150X IC?
+  * Not directly. You have to convert the .jed file into .xsvf format. Use the python tools located in the utils/jtag
+    subdirectory to do that. See readme.txt in that directory for more info. Once you convert the .jed to .xsvf
+    you can use it with afterburner like that:
+    <pre>
+    ./afterburner -t ATF1502AS -f mydesign.xsvf ew
+    </pre>
+    which will erase the chip and then write your design into the IC.
+    See discussion #64 (ATF1502AS(L) and ATF1504AS(L) support) for more inofrmation.
+
   
 Other GAL related links:
 ------------------------
