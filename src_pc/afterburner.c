@@ -635,7 +635,7 @@ static int openSerial(void) {
         }
         // check for Big Ram
         bigRam = checkForString(buf, labelPos, " RAM-BIG");
-        if (verbose & bigRam) {
+        if (verbose && bigRam) {
             printf("MCU Big RAM detected\n");
         }
         //all OK
