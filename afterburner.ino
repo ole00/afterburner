@@ -1532,7 +1532,7 @@ void printPes(char type) {
     case ATMEL750:
     case ATMEL16:
     case ATMEL22:    Serial.print(F("Atmel ")); break;
-    default:         Serial.print(F("Unknown GAL, "));
+    default:         Serial.print(F("Unknown GAL."));
   }
 
   // GAL type
@@ -1565,7 +1565,10 @@ void printPes(char type) {
     Serial.print(F(" erase="));
     Serial.print(erasetime / 4, DEC);
   } else {
-    Serial.print(F(" try VPP=10..14 in 1V steps"));
+    // manual VPP adjustment (via pot) is available only on the old board design
+    if (!varVppExists) {
+        Serial.print(F(" Try VPP=10..14 in 1V steps"));
+    }
   }
   
   Serial.println();
