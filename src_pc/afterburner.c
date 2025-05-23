@@ -48,7 +48,7 @@ To compile: gcc -g3 -O0 -o afterburner afterburner.c
 
 #include "serial_port.h"
 
-#define VERSION "v.0.6.0"
+#define VERSION "v.0.6.1"
 
 #ifdef GCOM
 #define VERSION_EXTENDED VERSION "-" GCOM
@@ -1551,11 +1551,11 @@ int main(int argc, char** argv) {
         result = operationSetGalType(gal);
     }
 
-    if (opErase && 0 == result) {
+    if (opErase && (0 == result || noGalCheck)) {
         result = operationEraseGal();
     }
 
-    if (0 == result) {
+    if (0 == result || noGalCheck) {
         if (opWrite) {
             // writing fuses and optionally verification
             result = operationWriteOrVerify(1);
