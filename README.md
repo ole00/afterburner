@@ -60,7 +60,8 @@ Supported GAL chips:
 
 
 [1]: requires PCB v.3.1 or modified PCB v.3.0 - see Troubleshooting  
-[2]: requires adapter - see gerbers, pcb and img directory  
+[2]: requires adapter - see gerbers, pcb and img directory. PLCC-28 package is supported by a specific adapter - do not use a common PLCC-28 to
+     DIP-24 adapter as it does not work for GAL26CV12B with Afterburner.  
 [3]: also supports 3.3V ATF1502ASV and ATF1504ASV when Arduino IOREF is 3.3V (ARM or ESP32 based Arduinos or Arduinos with IOREF 3.3V switch)
 
 [-]: - represents either this combination does not exist or hasn't been tested yet. Testers are welcome to report their findings.
