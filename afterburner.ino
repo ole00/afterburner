@@ -1384,13 +1384,15 @@ static void writePes(void) {
       setSDIN(0);
       break;
     case GAL22V10:
+    case GAL26V12:
+    case GAL26CV12:
       setRow(0);
       for (rbit = 0; rbit < 64; rbit++) {
         b = pes[rbit >> 3];
         p = b & (1 << (rbit & 0b111));
         sendBit(p);
       }
-      sendBits(68, 0);
+      sendBits(GAL22V10 == gal ? 68 : GAL26V12 == gal ? 86 : 58, 0);
       sendAddress(6, galinfo.pesrow);
       setSDIN(0);
       break;
