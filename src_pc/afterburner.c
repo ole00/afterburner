@@ -595,6 +595,7 @@ static int openSerial(void) {
     char devName[256] = {0};
     int total;
     int labelPos;
+    int retry = 4;
 
 
     //open device name
@@ -608,44 +609,51 @@ static int openSerial(void) {
         printf("opening serial: %s\n", devName);
     }
 
-    serialF = serialDeviceOpen(devName);
-    if (serialF == INVALID_HANDLE) {
-        printf("Error: failed to open serial device: %s\n", devName);
-        return -2;
-    }
-
-
-    // prod the programmer to output it's identification
-    sprintf(buf, "*\r");
-    serialDeviceWrite(serialF, buf, 2);
-
-    //read programmer's message
-    total = waitForSerialPrompt(buf, 512, 3000);
-    buf[total] = 0;
-
-    //check we are communicating with Afterburner programmer
-    labelPos = strstr(buf, "AFTerburner v.") -  buf;
-
-    bigRam = 0;
-    if (labelPos >= 0 && labelPos < 500 && buf[total - 3] == '>') {
-        // check for new board desgin: variable VPP
-        varVppExists = checkForString(buf, labelPos, " varVpp ");
-        if (verbose && varVppExists) {
-            printf("variable VPP board detected\n");
+    while (retry) {
+        retry--;
+        serialF = serialDeviceOpen(devName);
+        if (serialF == INVALID_HANDLE) {
+            printf("Error: failed to open serial device: %s\n", devName);
+            return -2;
         }
-        // check for Big Ram
-        bigRam = checkForString(buf, labelPos, " RAM-BIG");
-        if (verbose && bigRam) {
-            printf("MCU Big RAM detected\n");
+#ifndef _USE_WIN_API_
+        //read garbage
+        total = waitForSerialPrompt(buf, 512, 4);
+#endif
+
+        // prod the programmer to output it's identification
+        sprintf(buf, "*\r");
+        serialDeviceWrite(serialF, buf, 2);
+
+        //read programmer's message
+        total = waitForSerialPrompt(buf, 512, 1000);
+        buf[total] = 0;
+
+        //check we are communicating with Afterburner programmer
+        labelPos = strstr(buf, "AFTerburner v.") -  buf;
+
+        bigRam = 0;
+        if (labelPos >= 0 && labelPos < 500 && buf[total - 3] == '>') {
+            // check for new board desgin: variable VPP
+            varVppExists = checkForString(buf, labelPos, " varVpp ");
+            if (verbose && varVppExists) {
+                printf("variable VPP board detected\n");
+            }
+            // check for Big Ram
+            bigRam = checkForString(buf, labelPos, " RAM-BIG");
+            if (verbose && bigRam) {
+                printf("MCU Big RAM detected\n");
+            }
+            //all OK
+            return 0;
         }
-        //all OK
-        return 0;
+        if (verbose) {
+            printf("Output from programmer not recognised (%d): %s\n", labelPos, buf);
+            printf("--------------\n");
+        }
+        serialDeviceClose(serialF);
+        serialF = INVALID_HANDLE;
     }
-    if (verbose) {
-        printf("Output from programmer not recognised: %s\n", buf);
-    }
-    serialDeviceClose(serialF);
-    serialF = INVALID_HANDLE;
     return -4;
 }
 
