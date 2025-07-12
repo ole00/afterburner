@@ -1357,6 +1357,7 @@ static void readPes(void) {
 static void writePes(void) {
   uint8_t rbit;
   uint8_t b, p;
+  uint8_t extraBits;
 
   if (gal == ATF16V8B || gal == ATF20V8B || gal == ATF22V10B || gal == ATF22V10C) {
     Serial.println(F("ER write PES not supported"));
@@ -1367,9 +1368,8 @@ static void writePes(void) {
 
   setPV(1);
 
-  switch(gal) {
-    case GAL6001:
-    case GAL6002:
+  if (GAL6001 == gal || GAL6002 == gal) {
+      extraBits = 0xFF;
       setRow(0);
       sendBits(20, 0);
       for (rbit = 0; rbit < 64; rbit++) {
@@ -1382,28 +1382,34 @@ static void writePes(void) {
       sendAddress(7, galinfo.pesrow);
       sendBits(16, 0);
       setSDIN(0);
-      break;
-    case GAL22V10:
-    case GAL26V12:
-    case GAL26CV12:
-      setRow(0);
+  } else if (GAL20RA10 == gal) {
+        extraBits = 16;
+  } else if (GAL22V10 == gal) {
+        extraBits = 68;
+  } else if (GAL26V12 == gal) {
+        extraBits = 86;
+  } else if (GAL26CV12 == gal) {
+        extraBits = 58;
+  } else {
+        extraBits = 0;
+  }
+
+  if (0xFF != extraBits) {
+      if (0 == extraBits) {
+        setRow(galinfo.pesrow);
+      } else {
+        setRow(0);
+      }
       for (rbit = 0; rbit < 64; rbit++) {
         b = pes[rbit >> 3];
         p = b & (1 << (rbit & 0b111));
         sendBit(p);
       }
-      sendBits(GAL22V10 == gal ? 68 : GAL26V12 == gal ? 86 : 58, 0);
-      sendAddress(6, galinfo.pesrow);
-      setSDIN(0);
-      break;
-    default:
-      setRow(galinfo.pesrow);
-      for (rbit = 0; rbit < 64; rbit++) {
-        b = pes[rbit >> 3];
-        p = b & (1 << (rbit & 0b111));
-        sendBit(p);
+      if (0 != extraBits) {
+        sendBits(extraBits, 0);
+        sendAddress(6, galinfo.pesrow);
+        setSDIN(0);
       }
-      break;
   }
 
   strobe(progtime);
