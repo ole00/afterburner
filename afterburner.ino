@@ -1625,11 +1625,38 @@ static void setFuseBitVal(unsigned short bitPos, char val) {
   }
 }
 
+// For ATF750C only.
+// bit remapping for macrocels Q0 to Q4 - see commit 9ba72bb21d in Michael D. git repo
+static uint8_t remapAtf750cFuse(uint8_t bit) {
+    if (bit < 85 || bit >= 170) {
+        return bit;
+    }
+    if (bit >= 157) {
+        //157 .. 169
+        return 169 - (bit - 157);
+    }
+    if (bit >= 142) {
+        //142 .. 156
+        return 156 - (bit - 142);
+    }
+    if (bit >= 125) {
+        //125 .. 141
+        return 141 - (bit - 125);
+    }
+    if (bit >= 106) {
+        //106 .. 124
+        return 124 - (bit - 106);
+    }
+    //85 .. 105
+    return 105 - (bit - 85);
+}
+
 // generic fuse-map reading, fuse-map bits are stored in fusemap array
 static void readGalFuseMap(const unsigned char* cfgArray, char useDelay, char doDiscardBits) {
   unsigned short cfgAddr = galinfo.cfgbase;
-  unsigned short row, bit;
+  unsigned short row;
   unsigned short addr;
+  uint8_t bit;
 
   if (flagBits & FLAG_BIT_ATF16V8C) {
       setPV(0);
@@ -1645,7 +1672,11 @@ static void readGalFuseMap(const unsigned char* cfgArray, char useDelay, char do
       // check the received bit is 1 and if so then set the fuse map
       if (receiveBit()) {
         addr = galinfo.rows;
-        addr *= bit;
+        if (ATF750C == gal && bit > 84) {
+            addr *= remapAtf750cFuse(bit);
+        } else {
+            addr *= bit;
+        }
         addr += row;
         setFuseBit(addr);
       }
@@ -1816,7 +1847,11 @@ static unsigned short verifyGalFuseMap(const unsigned char* cfgArray, char useDe
     }
     for(bit = 0; bit < galinfo.bits; bit++) {
       addr = galinfo.rows;
-      addr *= bit;
+      if (ATF750C == gal && bit > 84) {
+          addr *= remapAtf750cFuse(bit);
+      } else {
+          addr *= bit;
+      }
       addr += row;
       mapBit = getFuseBit(addr); //bit from RAM
       fuseBit = receiveBit(); // read from GAL
@@ -2257,7 +2292,11 @@ static void writeGalFuseMapV750(const unsigned char* cfgArray) {
   for(row = 0; row < galinfo.rows; row++) {
     for (bit = 0; bit < galinfo.bits; bit++) {
       addr = galinfo.rows;
-      addr *= bit;
+      if (bit > 84) {
+        addr *= remapAtf750cFuse(bit);
+      } else {
+        addr *= bit;
+      }
       addr += row;
       sendBit(getFuseBit(addr));
     }
