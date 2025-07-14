@@ -120,7 +120,7 @@ static uint16_t getFusePositionAndType(uint16_t bitPos) {
   }
 }
 
-static void insertFuseGroup(uint16_t dataPos, uint16_t bitPos) {
+static void insertFuseGroup(int16_t dataPos, uint16_t bitPos) {
   int16_t i = bitPos >> 5; //group index
   uint16_t totalFuseBytes = sparseFusemapStat & 0x7FF; // max is 2048 bytes
   fuseType[i >> 2] |= (1 << ((i & 0b11) << 1)); // set type 1 at the fuse group record
