@@ -285,6 +285,15 @@ are not required as the VPP calibration can be done before the PCB is put into t
 
   ![mt3608_modules](https://github.com/ole00/afterburner/raw/master/img/3d_printed_cases.jpg "3D printed cases")
 
+If the top and bottom printed parts can't be easily joined and something seems to be blocking please check:
+- the LED is precisely positioned to fit
+- the through hole ceramic capacitors around the ZIF socket are not too close to the ZIF socket. Bend them a bit if they are too close.
+- the through hole Mosfet is not too close to the ZIF socket
+- check that other components, especailly through hole are not sticking high above the Afterburner's PCB. The case was designed
+  and tested with through hole components, but if the compoenent leads are too long the component might block the case.
+- ensure the button's cut/flat part is facing the ZIF socket, the round bit is facing away from the ZIF socket.
+
+
 Troubleshooting:
 ----------------
 - it does not work!
