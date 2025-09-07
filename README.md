@@ -262,6 +262,29 @@ MT3608 modules:
   
   ![mt3608_modules](https://github.com/ole00/afterburner/raw/master/img/mt3608_modules.jpg "mt3608_modules")
 
+
+3D printed case:
+----------------
+There is a model of a case/enclosure designed for 3D printers in the 'case' directory. The following three printed parts/pieces are required for a complete enclosure: top, bottom and switch button parts. 
+There are 2 sets of STL files provided: One for Arduino UNO R3 with USB-B connector, and the other for Arduino UNO R4 with USB-C connector. The STL file names of these sets are clearly distinguished.
+The enclosure design has more options available - like an option to have VPP measurement holes, option to disable Afterburner text and others. These can be enabled in design file (atf3x.scad) presets
+when it's opened in OpenScad editor. 
+
+To export STL files from OpenScad:
+
+* ensure you have the right part (and only the right part) enabled in the options (top, bottom or button switch).
+* press F6 and wait for the model to be calculated.
+* press F7 to export the STL file of the part.
+
+When slicing the models, ensure the model supports are enabled, especially for the top part requires that.
+
+The top and bottom parts are joined together with M3 screws and M3 threaded heat inserts.
+
+Bellow are 2 variants of the enclosure, the one on the left has VPP measurement holes. Ususally the VPP calibration/measurement holes
+are not required as the VPP calibration can be done before the PCB is put into the case.
+
+  ![mt3608_modules](https://github.com/ole00/afterburner/raw/master/img/3d_printed_cases.jpg "3D printed cases")
+
 Troubleshooting:
 ----------------
 - it does not work!
