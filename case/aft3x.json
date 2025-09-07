@@ -1,0 +1,65 @@
+{
+    "parameterSets": {
+        "Uno R3 (USB-B) with VPP holes": {
+            "caseDistance": "32",
+            "caseScale": "1000",
+            "enableAntislipperyRings": "true",
+            "enableArduino": "true",
+            "enableBottom": "true",
+            "enablePowerSwitch": "true",
+            "enableTexts": "true",
+            "enableTop": "true",
+            "powerType": "0",
+            "screwInsertsType": "0",
+            "vppMeasurementHole": "true",
+            "vppModule": "true",
+            "vppTrimmerHole": "true"
+        },
+        "Uno R3 (USB-B) no VPP holes": {
+            "caseDistance": "32",
+            "caseScale": "1000",
+            "enableAntislipperyRings": "true",
+            "enableArduino": "true",
+            "enableBottom": "true",
+            "enablePowerSwitch": "true",
+            "enableTexts": "true",
+            "enableTop": "true",
+            "powerType": "0",
+            "screwInsertsType": "0",
+            "vppMeasurementHole": "false",
+            "vppModule": "false",
+            "vppTrimmerHole": "false"
+        },
+        "Uno R4 (USB-C) with VPP holes": {
+            "caseDistance": "32",
+            "caseScale": "1000",
+            "enableAntislipperyRings": "true",
+            "enableArduino": "true",
+            "enableBottom": "true",
+            "enablePowerSwitch": "true",
+            "enableTexts": "true",
+            "enableTop": "true",
+            "powerType": "10",
+            "screwInsertsType": "0",
+            "vppMeasurementHole": "true",
+            "vppModule": "true",
+            "vppTrimmerHole": "true"
+        },
+        "Uno R4 (USB-C) no VPP holes": {
+            "caseDistance": "32",
+            "caseScale": "1000",
+            "enableAntislipperyRings": "true",
+            "enableArduino": "true",
+            "enableBottom": "true",
+            "enablePowerSwitch": "true",
+            "enableTexts": "true",
+            "enableTop": "true",
+            "powerType": "10",
+            "screwInsertsType": "0",
+            "vppMeasurementHole": "false",
+            "vppModule": "false",
+            "vppTrimmerHole": "false"
+        }
+    },
+    "fileFormatVersion": "1"
+}
