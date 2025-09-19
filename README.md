@@ -55,7 +55,7 @@ Supported GAL chips:
 | 6002 | - | GAL6002B | - | - |
 | 26CV12 | - | GAL26CV12B[2] | - | - |
 | 26V12 | - | GAL26V12C[2] | - | - |
-| 750 | ATF750C | - | - | - |
+| 750 | ATF750C, ATF750LVC | - | - | - |
 | 150X | ATF1502AS, ATF1502ASL, ATF1504AS, ATF1504ASL[2][3] | - | - | - |
 
 
