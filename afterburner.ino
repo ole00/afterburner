@@ -159,6 +159,7 @@
 #define ATMEL16 'V'
 #define ATMEL22 '1'
 #define ATMEL750 'C'
+#define ATMEL750L 'L'
 
 typedef enum {
   UNKNOWN,
@@ -1533,7 +1534,7 @@ void printPes(char type) {
   
   Serial.print(F("PES info: "));
   //voltage
-  if (pes[3] == ATMEL16 || pes[3] == ATMEL22 || pes[3] == ATMEL750) {
+  if (pes[3] == ATMEL16 || pes[3] == ATMEL22 || pes[3] == ATMEL750 || pes[3] == ATMEL750L) {
      //Serial.print("  ");
   } else {
     if (pes[1] & 0x10) {
@@ -1549,6 +1550,7 @@ void printPes(char type) {
     case NATIONAL:   Serial.print(F("National ")); break;
     case SGSTHOMSON: Serial.print(F("ST Microsystems ")); break;
     case ATMEL750:
+    case ATMEL750L:
     case ATMEL16:
     case ATMEL22:    Serial.print(F("Atmel ")); break;
     default:         Serial.print(F("Unknown GAL."));
@@ -1570,7 +1572,7 @@ void printPes(char type) {
     case ATF20V8B: Serial.print(F("ATF20V8B ")); break;
     case ATF22V10B: Serial.print(F("ATF22V10B ")); break;
     case ATF22V10C: Serial.print(F("ATF22V10C ")); break;
-    case ATF750C: Serial.print(F("ATF750C ")); break;
+    case ATF750C: Serial.print(pes[3] == ATMEL750L ? F("ATF750LVC "): F("ATF750C ")); break;
   }
 
   //programming info
@@ -2540,7 +2542,7 @@ static char checkGalTypeViaPes(void)
            setFlagBit(FLAG_BIT_ATF16V8C, 1);
        }
     }
-    else if (pes[8] == 'F' && pes[7] == 'V' && pes[6] == '7' && pes[5] == '5' && pes[4] == '0' && pes[3] =='C') {
+    else if (pes[8] == 'F' && pes[7] == 'V' && pes[6] == '7' && pes[5] == '5' && pes[4] == '0' && (pes[3] =='C' || (pes[3] == 'L' && pes[1] == 'C'))) {
       // complete string at beginning of row 127: "300C057VF100"
       type = ATF750C;
     }
