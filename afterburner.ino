@@ -178,6 +178,7 @@ typedef enum {
   ATF22V10B,
   ATF22V10C,
   ATF750C,
+  PEEL18CV8,
   LAST_GAL_TYPE //dummy
 } GALTYPE;
 
@@ -188,6 +189,7 @@ typedef enum {
   PINOUT_20V8,
   PINOUT_22V10,
   PINOUT_600,
+  PINOUT_18CV8, //PEEL18CV8
 } PINOUT;
 
 #define BIT_NONE 0
@@ -206,6 +208,7 @@ typedef enum {
 #define CFG_BASE_26V  7800
 #define CFG_BASE_600  8154
 #define CFG_BASE_750 14364
+#define CFG_BASE_18CV8 2664
 
 #define CFG_STROBE_ROW 0
 #define CFG_SET_ROW 1
@@ -419,6 +422,8 @@ const static galinfo_t galInfoList[] PROGMEM =
     {ATF22V10B, 0x00, 0x00,  5892, 24, 44, 132, 44, 5828, 8, 61, 62, 58, 10, 16, CFG_BASE_22  , cfgV10   , sizeof(cfgV10)   , CFG_SET_ROW   , PINOUT_22V10  },
     {ATF22V10C, 0x00, 0x00,  5892, 24, 44, 132, 44, 5828, 8, 61, 62, 58, 10, 16, CFG_BASE_22  , cfgV10   , sizeof(cfgV10)   , CFG_SET_ROW   , PINOUT_22V10  },
     {ATF750C,   0x00, 0x00, 14499, 24, 84, 171, 84,14435, 8, 61, 60,127, 10, 16, CFG_BASE_750 , cfgV750  , sizeof(cfgV750)  , CFG_STROBE_ROW2, PINOUT_22V10 }, // TODO: not all numbers are clear
+    {PEEL18CV8, 0x00, 0x00,  2696, 24, 36,  74, 0,     0, 0,  0,  0,  0,  0, 74, CFG_BASE_18CV8, NULL    , 32               , 0              , PINOUT_18CV8 },
+
 };
 galinfo_t galinfo __attribute__ ((section (".noinit"))); //preserve data between resets
 
@@ -456,15 +461,21 @@ unsigned char flagBits;
 char varVppExists;
 uint8_t lastShiftRegVal = 0;
 
+static char getFuseBit(unsigned short bitPos);
+static void setFuseBitVal(unsigned short bitPos, char val);
 static void setFuseBit(unsigned short bitPos);
 static unsigned short checkSum(unsigned short n);
 static char checkGalTypeViaPes(void);
 static void turnOff(void);
 static void printFormatedNumberHex2(unsigned char num) ;
+static void setupGpios(uint8_t pm);
+static void setShiftReg(uint8_t val);
+static void setVPP(char on, uint8_t settleTime = 50);
 
 #include "aftb_vpp.h"
 #include "aftb_sparse.h"
 #include "aftb_seram.h"
+#include "aftb_peel.h"
 
 // share fusemap buffer with jtag
 #define XSVF_HEAP fusemap
@@ -518,6 +529,28 @@ static void setPinMux(uint8_t pm) {
   uint8_t doutMode = pm == OUTPUT ? INPUT_PULLUP: INPUT;
 
   switch (gal) {
+  case PEEL18CV8:
+    // ensure ZIF10 GND pull is disabled
+    digitalWrite(PIN_ZIF_GND_CTRL, LOW);
+    // IAD pins
+    pinMode(PIN_ZIF8, INPUT);
+    pinMode(PIN_ZIF9, INPUT);
+    pinMode(PIN_ZIF10, INPUT);
+    pinMode(PIN_ZIF11, INPUT);
+    pinMode(PIN_ZIF16, INPUT);
+    pinMode(PIN_ZIF15, INPUT);
+    pinMode(PIN_ZIF14, INPUT);
+    pinMode(PIN_ZIF13, INPUT);
+
+    //ALE/ERA
+    pinMode(PIN_ZIF22, pm);
+    //SEC/OD
+    pinMode(PIN_ZIF3, pm);
+    // PVP control
+    pinMode(PIN_ZIF23, pm);
+
+
+    break;
   case GAL16V8:
   case ATF16V8B:
     pinMode(PIN_ZIF10, INPUT); //GND via MOSFET
@@ -940,7 +973,7 @@ static void setVCC(char on) {
     //it is assumed the voltage is always on
 }
 
-static void setVPP(char on) {
+static void setVPP(char on, uint8_t settleTime) {
     // new board desgin
     if (varVppExists) {
         uint8_t v = VPP_11V0;
@@ -973,7 +1006,9 @@ static void setVPP(char on) {
 #endif
         }
         varVppSet(on ? v : VPP_5V0);
-        delay(50); //settle the voltage
+        if (settleTime) {
+            delay(settleTime); //settle the voltage
+        }
     }
     // old board design
     else {
@@ -1430,6 +1465,11 @@ static unsigned char getDuration(unsigned char index) {
 }
 
 static void setGalDefaults(void) {
+    if (gal == PEEL18CV8) {
+        progtime = 20;
+        erasetime = 100;
+        vpp = 62; /* 15.5V */
+    } else
     if (gal == ATF16V8B || gal == ATF20V8B || gal == ATF22V10B || gal == ATF22V10C || gal == ATF750C) {
         progtime = 20;
         erasetime = 100;
@@ -1588,7 +1628,7 @@ void printPes(char type) {
   } else {
     // manual VPP adjustment (via pot) is available only on the old board design
     if (!varVppExists) {
-        Serial.print(F(" Try VPP=10..14 in 1V steps"));
+        Serial.print(F(" try VPP=10..14 in 1V steps"));
     }
   }
   
@@ -2098,10 +2138,15 @@ static void readOrVerifyGal(char verify)
     sparseSetup(1);
   }
 
-  turnOn(READGAL);
+  if (PEEL18CV8 != gal) {
+    turnOn(READGAL);
+  }
 
   switch(gal)
   {
+    case PEEL18CV8:
+        i = readVerifyFuseMapPEEL(verify);
+        break;
     case GAL16V8:
     case GAL20V8:
         if (pes[2] == 0x1A || pes[2] == 0x3A) {
@@ -2160,7 +2205,9 @@ static void readOrVerifyGal(char verify)
         readGalFuseMap(galinfo.cfg, 1, galinfo.bits - 8 * galinfo.uesbytes - 1);
       }
   }
-  turnOff();
+  if (PEEL18CV8 != gal) {
+    turnOff();
+  }
 
   if (verify && i > 0) {
     Serial.print(F("ER verify failed. Bit errors: "));
@@ -2440,11 +2487,15 @@ static void writeGal()
   unsigned short i;
   unsigned char* cfgArray = (unsigned char*) cfgV8;
 
-
-  turnOn(WRITEGAL);
+  if (PEEL18CV8 != gal) {
+    turnOn(WRITEGAL);
+  }
 
   switch(gal)
   {
+    case PEEL18CV8:
+        writeFuseMapPEEL();
+        break;
     case GAL16V8:
     case GAL20V8:
         if (pes[2] == 0x1A || pes[2] == 0x3A) {
@@ -2481,14 +2532,16 @@ static void writeGal()
     case ATF750C:
         writeGalFuseMapV750(cfgV750);
   }
-  turnOff();
+  if (PEEL18CV8 != gal) {
+    turnOff();
+  }
 }
 
 // erases fuse-map in the GAL
 static void eraseGAL(char eraseAll)
 {
     turnOn(ERASEGAL);
-    
+
     setPV(1);
     setRow(eraseAll ? galinfo.eraseallrow : galinfo.eraserow);
     if (gal == GAL16V8 || gal == ATF16V8B || gal==GAL20V8) {
@@ -2659,6 +2712,7 @@ static unsigned short checkSum(unsigned short n)
 
 static void printGalName() {
     switch (gal) {
+    case PEEL18CV8: Serial.println(F("PEEL18CV8")); break;
     case GAL16V8: Serial.println(F("GAL16V8")); break;
     case GAL18V10: Serial.println(F("GAL18V10")); break;
     case GAL20V8: Serial.println(F("GAL20V8")); break;
@@ -2757,37 +2811,40 @@ static void printJedec()
 
 
     // UES in byte form
-    Serial.print(F("N UES"));
-    for (j = 0;j < galinfo.uesbytes; j++) {
-        n = 0;
-        for (i = 0; i < 8; i++) {
-            if (getFuseBit(k + 8 * j + i)) {
-                if (gal == ATF22V10C || gal == ATF750C) {
-                    n |= 1 << (7 - i);  // big-endian
-                }
-                else {
-                    n |= 1 << i;     // little-endian
+    if (galinfo.uesbytes) {
+        Serial.print(F("N UES"));
+
+        for (j = 0;j < galinfo.uesbytes; j++) {
+            n = 0;
+            for (i = 0; i < 8; i++) {
+                if (getFuseBit(k + 8 * j + i)) {
+                    if (gal == ATF22V10C || gal == ATF750C) {
+                        n |= 1 << (7 - i);  // big-endian
+                    }
+                    else {
+                        n |= 1 << i;     // little-endian
+                    }
                 }
             }
+            Serial.print(' ');
+            printFormatedNumberHex2(n);
         }
-        Serial.print(' ');
-        printFormatedNumberHex2(n);  
-    }
-    Serial.println('*');
+        Serial.println('*');
 
-    // UES in bit form
-    Serial.print('L');
-    printFormatedNumberDec4(k);
-    Serial.print(' ');
-    
-    for(j = 0; j < 8 * galinfo.uesbytes; j++) {
-      if (getFuseBit(k++)) {
-         Serial.print('1');
-      } else {
-         Serial.print('0');
-      }
+        // UES in bit form
+        Serial.print('L');
+        printFormatedNumberDec4(k);
+        Serial.print(' ');
+
+        for(j = 0; j < 8 * galinfo.uesbytes; j++) {
+        if (getFuseBit(k++)) {
+            Serial.print('1');
+        } else {
+            Serial.print('0');
+        }
+        }
+        Serial.println('*');
     }
-    Serial.println('*');
 
     // CFG bits
     if (k < galinfo.fuses) {
@@ -2815,22 +2872,29 @@ static void printJedec()
       setFuseBit(k); // set for correct check-sum calculation
     }
 
-    Serial.print(F("N PES"));
-    for(i = 0; i < galinfo.pesbytes; i++) {
-        Serial.print(' ');
-        printFormatedNumberHex2(pes[i]);  
+    if (galinfo.pesbytes) {
+        Serial.print(F("N PES"));
+        for(i = 0; i < galinfo.pesbytes; i++) {
+            Serial.print(' ');
+            printFormatedNumberHex2(pes[i]);  
+        }
+        Serial.println('*');
     }
-    Serial.println('*');
     Serial.print('C');
     printFormatedNumberHex4(checkSum(galinfo.fuses + apdFuse));
     Serial.println();
     Serial.println('*');
+
 }
 
 // helper print function to save RAM space
 static void printNoFusesError() {
   Serial.println(F("ER fuse map not uploaded"));
 }
+static void printUnsupportedError() {
+  Serial.println(F("ER operation not supported"));
+}
+
 
 static void testVoltage(int seconds) {
   int i;
@@ -2875,7 +2939,7 @@ static void testVoltage(int seconds) {
 // returns 1 if type check if OK, 0 if gal type does not match the type read from PES
 static char doTypeCheck(void) {
   
-  if (0 == flagBits & FLAG_BIT_TYPE_CHECK) {
+  if (0 == (flagBits & FLAG_BIT_TYPE_CHECK) || PEEL18CV8 == gal) {
     setGalDefaults();
     return 1; // no need to do type check
   }
@@ -3014,17 +3078,25 @@ void loop() {
       // read and print the PES
       case COMMAND_READ_PES : {
         char type;
-        readPes();
-        type = checkGalTypeViaPes();
-        parsePes(type);
-        printPes(type);
+        if (gal == PEEL18CV8) {
+            printUnsupportedError();
+        } else {
+            readPes();
+            type = checkGalTypeViaPes();
+            parsePes(type);
+            printPes(type);
+        }
       } break;
 
       case COMMAND_WRITE_PES : {
         char type;
-        type = checkGalTypeViaPes();
-        parsePes(type);
-        writePes();
+        if (gal == PEEL18CV8) {
+            printUnsupportedError();
+        } else {
+            type = checkGalTypeViaPes();
+            parsePes(type);
+            writePes();
+        }
       } break;
 
       // read fuse-map from the GAL and print it in the JEDEC form
@@ -3048,15 +3120,14 @@ void loop() {
       } break;
 
       // erases the fuse-map on the GAL chip
-      case COMMAND_ERASE_GAL: {
-        if (doTypeCheck()) {
-          eraseGAL(0);
-        }
-      } break;
-      // erases PES and the fuse-map on the GAL chip
+      case COMMAND_ERASE_GAL:
       case COMMAND_ERASE_GAL_ALL: {
         if (doTypeCheck()) {
-          eraseGAL(1);
+          if (PEEL18CV8 == gal) {
+            erasePEEL();
+          } else {
+            eraseGAL(COMMAND_ERASE_GAL_ALL == command ? 1 : 0);
+          }
         }
       } break;
 

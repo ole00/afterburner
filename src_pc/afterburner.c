@@ -81,6 +81,7 @@ typedef enum {
     ATF22V10B,
     ATF22V10C,
     ATF750C,
+    PEEL18CV8,
     //jtag based PLDs at the end: they do not have a gal type in MCU software
     ATF1502AS,
     ATF1504AS,
@@ -123,6 +124,7 @@ galinfo[] = {
     {ATF22V10B, 0x00, 0x00, "ATF22V10B", 5892, 24, 44, 132, 44, 5828, 8, 61, 60, 58, 10, 16, 20},
     {ATF22V10C, 0x00, 0x00, "ATF22V10C", 5892, 24, 44, 132, 44, 5828, 8, 61, 60, 58, 10, 16, 20},
     {ATF750C,   0x00, 0x00, "ATF750C",  14499, 24, 84, 171, 84, 14435, 8, 61, 60, 127, 10, 16, 71},
+    {PEEL18CV8, 0x00, 0x00, "PEEL18CV8", 2696, 24, 36,  74, 0,    0,   0, 0, 0, 0, 0, 0, 0},
     {ATF1502AS, JTAG_ID, JTAG_ID, "ATF1502AS",   0, 0, 0,  0, 0,   0, 0, 0, 0, 0, 8, 0, 0},
     {ATF1504AS, JTAG_ID, JTAG_ID, "ATF1504AS",   0, 0, 0,  0, 0,   0, 0, 0, 0, 0, 8, 0, 0},
 };
@@ -981,7 +983,7 @@ static char operationWriteOrVerify(char doWrite) {
 
     // write command
     if (doWrite) {
-        result = sendGenericCommand("w\r", "write failed ?", 8000, 0);
+        result = sendGenericCommand("w\r", "write failed ?", 18000, 0);
         if (result) {
             goto finish;
         }
@@ -989,7 +991,7 @@ static char operationWriteOrVerify(char doWrite) {
 
     // verify command
     if (opVerify) {
-        result = sendGenericCommand("v\r", "verify failed ?", 8000, 0);
+        result = sendGenericCommand("v\r", "verify failed ?", 18000, 0);
     }
 finish:
     closeSerial();
@@ -1226,13 +1228,12 @@ static char operationReadFuses(void) {
 
     //READ_FUSE command
     sprintf(buf, "r\r");
-    readSize = sendLine(buf, GALBUFSIZE, 12000);
+    readSize = sendLine(buf, GALBUFSIZE, 22000);
     if (readSize < 0)  {
         return -1;
     }
     response = stripPrompt(buf);
     printf("%s\n", response);
-
     closeSerial();
 
     if (response[0] == 'E' && response[1] == 'R') {
@@ -1442,7 +1443,7 @@ static int processJtagInfo(void) {
     }
 
     if (!(gal == ATF1502AS || gal == ATF1504AS)) {
-        printf("error: infor command is unsupported");
+        printf("error: info command is unsupported\n");
         return 1;
     }
 
@@ -1545,6 +1546,7 @@ int main(int argc, char** argv) {
     }
     if (verbose) {
         printf("Afterburner " VERSION " \n");
+        printf("gal=%d \n", gal);
     }
 
     // process JTAG operations
