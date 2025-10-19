@@ -3158,6 +3158,11 @@ void loop() {
       case COMMAND_SET_GAL_TYPE : {
         char type = line[1] - '0';
         if (type >= 1 && type < LAST_GAL_TYPE) {
+          // ensure PEEL IC operations run on a new type of Aftburner PCB with a shift register IC
+          if ((PEEL18CV8 == (GALTYPE) type) && (!varVppExists)) {
+            printUnsupportedError();
+            break;
+          }
           gal = (GALTYPE) type;
           copyGalInfo();
           if (0 == flagBits & FLAG_BIT_TYPE_CHECK) { //no type check requested
