@@ -134,18 +134,8 @@ static void rampUpVppPEEL()
     digitalWrite(PIN_CTL_PVP, HIGH);
 }
 
-
-// erases fuse map in the PEEL device (all fuses to 1)
-// program-all fuse map in the PEEL device (all fuses to 0)
-static void eraseProgramAllPEEL(uint8_t pulseLen, uint8_t erase)
+static void operationSetupPEEL(uint8_t shreg)
 {
-    uint8_t shreg = MODE_A_L | MODE_B_L | PVE_OFF | ERA_OFF;
-
-    // write-all needs MODE_B High
-    if (!erase) {
-        shreg |= MODE_B_H;
-    }
-
     //step 0 - IAD(0-7): Set to high impedance
     setupGpios(INPUT); 
 
@@ -153,7 +143,7 @@ static void eraseProgramAllPEEL(uint8_t pulseLen, uint8_t erase)
     pinMode(PIN_ALE_ERA, OUTPUT);
     digitalWrite(PIN_ALE_ERA, LOW);
 
-    //SEC/OD Set to V_il
+    //SEC/OD Set to Vil
     pinMode(PIN_SEC_OD, OUTPUT);
     digitalWrite(PIN_SEC_OD, LOW);
 
@@ -168,6 +158,20 @@ static void eraseProgramAllPEEL(uint8_t pulseLen, uint8_t erase)
 
     delay(1);
     setVPP(ERASEALL, 4); // VPP to 16V
+}
+
+// erases fuse map in the PEEL device (all fuses to 1)
+// program-all fuse map in the PEEL device (all fuses to 0)
+static void eraseProgramAllPEEL(uint8_t pulseLen, uint8_t erase)
+{
+    uint8_t shreg = MODE_A_L | MODE_B_L | PVE_OFF | ERA_OFF;
+
+    // write-all needs MODE_B High
+    if (!erase) {
+        shreg |= MODE_B_H;
+    }
+
+    operationSetupPEEL(shreg);
 
     // step 1 : PVE to Vhh1
     shreg &= ~(PVE_OFF);
@@ -337,30 +341,8 @@ static uint16_t readVerifyFuseMapPEEL(uint8_t verify)
     uint8_t d;
     uint16_t i;
     uint8_t shreg = MODE_A_H | MODE_B_L | PVE_OFF | ERA_OFF;
-    //step 0 - IAD(0-7): Set to high impedance
-    setupGpios(INPUT); 
 
-
-    //ALE/ERA Set to V_il 
-    pinMode(PIN_ALE_ERA, OUTPUT);
-    digitalWrite(PIN_ALE_ERA, LOW);
-
-    //SEC/OD Set to Vil
-    pinMode(PIN_SEC_OD, OUTPUT);
-    digitalWrite(PIN_SEC_OD, LOW);
-
-    // Setup PVP Control
-    pinMode(PIN_CTL_PVP, OUTPUT);
-    // disable PVP, external pull-down resitor keeps PVP low
-    digitalWrite(PIN_CTL_PVP, LOW);
-
-    // PVE LOW
-    setShiftReg(shreg);
-    digitalWrite(PIN_SHR_EN, LOW); //enable output of the shift register
-
-    delay(1);
-    setVPP(ERASEALL, 4); // VPP to 16V
-
+    operationSetupPEEL(shreg);
 
     // step 1 : PVE to Vhh1
     shreg &= ~(PVE_OFF);
@@ -483,29 +465,8 @@ static void writeFuseMapPEEL(void)
     uint8_t shreg;
 
     shreg = MODE_A_H | MODE_B_H | PVE_OFF | ERA_OFF;
-    //step 0 - IAD(0-7): Set to high impedance
-    setupGpios(INPUT); 
 
-    //ALE/ERA Set to V_il 
-    pinMode(PIN_ALE_ERA, OUTPUT);
-    digitalWrite(PIN_ALE_ERA, LOW);
-
-    //SEC/OD Set to Vil
-    pinMode(PIN_SEC_OD, OUTPUT);
-    digitalWrite(PIN_SEC_OD, LOW);
-
-    // Setup PVP Control
-    pinMode(PIN_CTL_PVP, OUTPUT);
-    // disable PVP, external pull-down resitor keeps PVP low
-    digitalWrite(PIN_CTL_PVP, LOW);
-
-    // PVE LOW
-    setShiftReg(shreg);
-    digitalWrite(PIN_SHR_EN, LOW); //enable output of the shift register
-
-    delay(1);
-    setVPP(ERASEALL, 4); // VPP to 16V
-
+    operationSetupPEEL(shreg);
 
     // step 1 : PVE to Vhh1
     shreg &= ~(PVE_OFF);
@@ -576,4 +537,61 @@ static void erasePEEL(void)
     eraseProgramAllPEEL(100, OP_ERASE); // preconditioning fuse bits to 1
     eraseProgramAllPEEL(100, OP_WRITE_ALL); //sets all fuse bits to 0
     eraseProgramAllPEEL( 10, OP_ERASE); //sets all fuse bits to 1
+}
+
+static void  printMeasurePEEL(uint8_t t)
+{
+    Serial.print(F("TP2=15.5V TP3="));
+    Serial.print(t & 0b01 ? F(" 0.0V") : F("12.5V"));
+    Serial.print(F(" TP4="));
+    Serial.print(t & 0b10 ? F(" 0.0V") : F("15.5V"));
+    Serial.print(F(" TP5="));
+    Serial.println(t == 0 ? F("15.3V") : t == 1 ? F(" 0.0V") : F(" 4.7V"));
+
+}
+
+// test & measure programming voltages on PEEL adapter
+static void  measureVoltagesPEEL(void)
+{
+    uint8_t shreg = MODE_A_L | MODE_B_L | PVE_VH1 | ERA_VH2;
+
+    setGalDefaults();
+
+    Serial.println(F("Check PEEL test points, power switch ON, tolerance +/- 0.3V"));
+
+    // VPP 15.5V   PVE=12.5  PVP=15.5   ALE/ERA=15.5V
+    digitalWrite(PIN_ALE_ERA, HIGH);
+
+    operationSetupPEEL(shreg);
+    rampUpVppPEEL();
+    printMeasurePEEL(0);
+    delay(10000);
+
+    // VPP 15.5V   PVE=0V  PVP=15.5   ALE/ERA=0V
+    shreg |= PVE_OFF;
+    shreg &= ~(ERA_VH2);
+    setShiftReg(shreg);
+    printMeasurePEEL(1);
+    delay(10000);
+
+    // VPP 15.5V  PVE=12.5V  PVP=0V   ALE/ERA=4.5V
+    shreg &= ~(PVE_OFF);
+    setShiftReg(shreg);
+    digitalWrite(PIN_ALE_ERA, HIGH);
+    digitalWrite(PIN_CTL_PVP, LOW); // The bleed resistor pulls PVP to 0V
+    printMeasurePEEL(2);
+    delay(10000);
+
+
+    // turn all off
+    digitalWrite(PIN_ALE_ERA, LOW);
+    setVPP(0, 0); // VPP low to 5 V, no settle time
+    // step 14 : PVE to Low
+    shreg |= PVE_OFF;
+    setShiftReg(shreg);
+    delay(50); // VPP ramp down
+    setupGpios(INPUT);
+
+    Serial.println(F("OK Finished"));
+
 }

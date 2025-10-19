@@ -125,6 +125,7 @@
 #define COMMAND_ENABLE_APD 'z'
 #define COMMAND_DISABLE_APD 'Z'
 #define COMMAND_MEASURE_VPP 'm'
+#define COMMAND_MEASURE_CUSTOM 'M'
 #define COMMAND_CALIBRATE_VPP 'b'
 #define COMMAND_CALIBRATION_OFFSET 'B'
 #define COMMAND_JTAG_PLAYER 'j'
@@ -471,6 +472,7 @@ static void printFormatedNumberHex2(unsigned char num) ;
 static void setupGpios(uint8_t pm);
 static void setShiftReg(uint8_t val);
 static void setVPP(char on, uint8_t settleTime = 50);
+static void setGalDefaults(void);
 
 #include "aftb_vpp.h"
 #include "aftb_sparse.h"
@@ -2876,7 +2878,7 @@ static void printJedec()
         Serial.print(F("N PES"));
         for(i = 0; i < galinfo.pesbytes; i++) {
             Serial.print(' ');
-            printFormatedNumberHex2(pes[i]);  
+            printFormatedNumberHex2(pes[i]);
         }
         Serial.println('*');
     }
@@ -3186,6 +3188,14 @@ void loop() {
 
       case COMMAND_MEASURE_VPP: {
         measureVppValues();
+      } break;
+
+      case COMMAND_MEASURE_CUSTOM: {
+        if (PEEL18CV8 == gal) {
+            measureVoltagesPEEL();
+        } else {
+            printUnsupportedError();
+        }
       } break;
 
       // calibration offset helps to offset the resistor tolerances in voltage dividers and also
