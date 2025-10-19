@@ -1083,12 +1083,16 @@ static char operationMeasureVpp(void) {
     }
 
     if (verbose) {
-        printf("sending 'm' command...\n");
+        printf("sending '%c' command...\n", gal != UNKNOWN ? 'M' : 'm');
     }
     
     //print the measured voltages if the feature is available
     printSerialWhileWaiting = 1;
-    result = sendGenericCommand("m\r", "VPP measurement failed", 40000, 1);
+    if (gal != UNKNOWN) {
+        result = sendGenericCommand("M\r", "custom measurement failed", 40000, 1);
+    } else {
+        result = sendGenericCommand("m\r", "VPP measurement failed", 40000, 1);
+    }
     printSerialWhileWaiting = 0;
 
     closeSerial();
@@ -1102,6 +1106,9 @@ static char operationSetGalCheck(void) {
 
     if (openSerial() != 0) {
         return -1;
+    }
+    if (verbose) {
+        printf("sending '%c' command\n", noGalCheck ? 'F' : 'f');
     }
     result = sendGenericCommand(noGalCheck ? "F\r" : "f\r", "noGalCheck failed ?", 4000, 0);
     closeSerial();
