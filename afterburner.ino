@@ -2895,6 +2895,9 @@ static void printUnsupportedError() {
   Serial.println(F("ER operation not supported"));
 }
 
+static void printVariableVppNotSupportedError() {
+    Serial.println(F("ER variable VPP not supported"));
+}
 
 static void testVoltage(int seconds) {
   int i;
@@ -2956,8 +2959,9 @@ static void measureVpp(uint8_t index) {
 }
 
 static void measureVppValues(void) {
+  uint8_t i = 0;
   if (!varVppExists) {
-    Serial.println(F("ER variable VPP not supported"));
+    printVariableVppNotSupportedError();
     return;
   }
   Serial.print(F("VPP calib. offset: "));
@@ -2966,27 +2970,20 @@ static void measureVppValues(void) {
   Serial.print(F("VPP: 4.2 - 5.0V : "));
   measureVpp(VPP_5V0);
 
-  Serial.print(F("VPP: 9.0V : "));
-  measureVpp(VPP_9V0);
-
-  Serial.print(F("VPP: 10.0V : "));
-  measureVpp(VPP_10V0);
-
-  Serial.print(F("VPP: 12.0V : "));
-  measureVpp(VPP_12V0);
-
-  Serial.print(F("VPP: 14.0V : "));
-  measureVpp(VPP_14V0);
-
-  Serial.print(F("VPP: 16.0V : "));
-  measureVpp(VPP_16V0);
-
+  while (i < 5) {
+    uint8_t v = 10 + ( i == 0 ? -1 : ((i-1) << 1));
+    Serial.print(F("VPP: "));
+    Serial.print(v, DEC);
+    Serial.print(F(".0V : "));
+    measureVpp(VPP_9V0 + ((v - 9) * 2));
+    i++;
+  }
   varVppSet(VPP_5V0);
 }
 
 static void calibrateVpp(void) {
   if (!varVppExists) {
-    Serial.println(F("ER variable VPP not supported"));
+    printVariableVppNotSupportedError();
     return;
   }
   if (varVppCalibrate()) {
