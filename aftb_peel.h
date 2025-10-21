@@ -123,13 +123,12 @@ static uint8_t getDataPEEL()
 static void rampUpVppPEEL()
 {
     uint8_t i = 0;
-    while (i < 20) {
+    while (i < 22) {
         i++;
         digitalWrite(PIN_CTL_PVP, HIGH);
         delayMicroseconds(1);
         digitalWrite(PIN_CTL_PVP, LOW);
-        delayMicroseconds(90 - (i << 2));
-        //delayMicroseconds(100 - (i << 2));
+        delayMicroseconds(94 - (i << 2));
     }
     digitalWrite(PIN_CTL_PVP, HIGH);
 }
@@ -404,8 +403,8 @@ static uint16_t readVerifyFuseMapPEEL(uint8_t verify)
         // Step 13 : Set PVP Low
         digitalWrite(PIN_CTL_PVP, LOW); // The bleed resistor pulls PVP to 0V
 
-        // TODO - optimise for speed, delay only 4 ms on Adapter Rev. 2. Speed-up by 7.5 seconds
-        delay(30); // 20 ms to go to 3V (did not work well),  40 ms to fully go to 0V
+        // Wait for PVP to drop to 0 V
+        delay(4);
 
         if (verify) {
 #if PEEL_DEBUG_BIT_ERRORS
@@ -520,8 +519,8 @@ static void writeFuseMapPEEL(void)
         // Step 10 : Set PVP Low
         digitalWrite(PIN_CTL_PVP, LOW); // The bleed resistor pulls PVP to 0V
 
-        // TODO - optimise for speed, delay only 4 ms on Adapter Rev. 2. Speed-up by 7.5 seconds
-        delay(30); // 20 ms to go to 3V,  40 ms to fully go to 0V
+        // Wait for PVP to drop to 0 V
+        delay(4);
     }
     setVPP(0, 0); // VPP low to 5 V, no settle time
     // step 14 : PVE to Low
@@ -544,7 +543,7 @@ static void  printMeasurePEEL(uint8_t t)
     Serial.print(F("TP2=15.5V TP3="));
     Serial.print(t & 0b01 ? F(" 0.0V") : F("12.5V"));
     Serial.print(F(" TP4="));
-    Serial.print(t & 0b10 ? F(" 0.0V") : F("15.5V"));
+    Serial.print(t & 0b10 ? F(" 4.1V") : F("15.5V"));
     Serial.print(F(" TP5="));
     Serial.println(t == 0 ? F("15.3V") : t == 1 ? F(" 0.0V") : F(" 4.7V"));
 
@@ -565,22 +564,22 @@ static void  measureVoltagesPEEL(void)
     operationSetupPEEL(shreg);
     rampUpVppPEEL();
     printMeasurePEEL(0);
-    delay(10000);
+    delay(5000);
 
     // VPP 15.5V   PVE=0V  PVP=15.5   ALE/ERA=0V
     shreg |= PVE_OFF;
     shreg &= ~(ERA_VH2);
     setShiftReg(shreg);
     printMeasurePEEL(1);
-    delay(10000);
+    delay(5000);
 
-    // VPP 15.5V  PVE=12.5V  PVP=0V   ALE/ERA=4.5V
+    // VPP 15.5V  PVE=12.5V  PVP=4.1V   ALE/ERA=4.5V
     shreg &= ~(PVE_OFF);
     setShiftReg(shreg);
     digitalWrite(PIN_ALE_ERA, HIGH);
     digitalWrite(PIN_CTL_PVP, LOW); // The bleed resistor pulls PVP to 0V
     printMeasurePEEL(2);
-    delay(10000);
+    delay(5000);
 
 
     // turn all off
