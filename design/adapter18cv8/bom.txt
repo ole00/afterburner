@@ -1,0 +1,16 @@
+BOM for PEEL 18CV8 Afterburner adapter
+=======================================
+* (C1) Capacitor ceramic 1uF 20V  SMT 0805 or TH, 1x
+* (D1) Schottky diode 1N5817 or 1N5818  20V  SMT SOD-123 or TH, 1x
+* (Q1, Q2, Q4, Q6) N-MOSFET Enhancement 50V 500mA VGS +/-20V  SMT SOT-23-3 TH TO-92  for example PJA138K-AU or BS170 or VN10LP , 4x
+* (Q3,Q5) P-MOSFET Enhancement 50V 500mA  VGS +/-8V  SMT SOT-23-3 TH TO-92 for example NTR4101PT1G or  VP2106, 2x
+
+* (R1, R12) Resistor 470R (TH or SMT 0805) 0.12W  5% or better, 2x
+* (R2, R9, R11) Resistor 10k  (TH or SMT 0805) 0.12W  5% or better, 3x
+* (R3, R7, R10) Resistor 20k or 22k (TH or SMT 0805) 0.12W 5% or better, 3x
+* (R4, R5) Resistor 200R or 220R (TH or SMT 1206 or 0805) 0.5W 1% or better, 2x
+* (R8) Resistor 1k (TH or SMT 1206 or 0805) 0.25W 5% or better, 1x
+* (R6) Resistor 4k7 (TH or SMT 0805) 0.12W 1% or better, 1x
+
+* (J1) Pin heeader connector 2.54 mm (100mil) pin pitch, round pins
+* (J2) 20 pin ZIF Socket narrow
