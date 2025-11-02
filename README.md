@@ -40,30 +40,31 @@ which is used when writing the design. See Discussions for more information**
 **Update: ver.0.5.8 improved calibration alogrithm and resolution for mcp4151 digi pot.
 Please re-calibrate your Afterburner as the previsouly stored calibration data are invalid.**
 
-Supported GAL chips:
+Supported GAL and PEEL chips:
 ---------------------
 
-| | Atmel | Lattice | National | ST |
+| | Atmel | Lattice | Others ||
 | --- | --- | --- | --- | --- |
-| 16V8 | ATF16V8B, ATF16V8BQL, ATF16V8C | GAL16V8A, GAL16V8B, GAL16V8D | GAL16V8 | GAL16V8 |
-| 18V10 | - | GAL18V10, GAL18V10B[1] | - | - |
-| 20V8 | ATF20V8B | GAL20V8B | GAL20V8 | - |
-| 20RA10 | - | GAL20RA10, GAL20RA10B | - | - |
-| 20XV10 | - | GAL20XV10B | - | - |
-| 22V10 | ATF22V10B, ATF22V10C, ATF22V10CQZ | GAL22V10B, GAL22V10D | - | - |
-| 6001 | - | GAL6001B | - | - |
-| 6002 | - | GAL6002B | - | - |
-| 26CV12 | - | GAL26CV12B[2] | - | - |
-| 26V12 | - | GAL26V12C[2] | - | - |
-| 750 | ATF750C, ATF750LVC | - | - | - |
-| 150X | ATF1502AS, ATF1502ASL, ATF1504AS, ATF1504ASL[2][3] | - | - | - |
+| 16V8 | ATF16V8B, ATF16V8BQL, ATF16V8C | GAL16V8A, GAL16V8B, GAL16V8D | National GAL16V8, ST&nbsp;GAL16V8 |
+| 18CV8 | - | - | ICT PEEL 18CV8P[2][4] |
+| 18V10 | - | GAL18V10, GAL18V10B[1] | - |
+| 20V8 | ATF20V8B | GAL20V8B | National GAL20V8 |
+| 20RA10 | - | GAL20RA10, GAL20RA10B | - |
+| 20XV10 | - | GAL20XV10B | - |
+| 22V10 | ATF22V10B, ATF22V10C, ATF22V10CQZ | GAL22V10B, GAL22V10D | - |
+| 6001 | - | GAL6001B | - |
+| 6002 | - | GAL6002B | - |
+| 26CV12 | - | GAL26CV12B[2] | - |
+| 26V12 | - | GAL26V12C[2] | - |
+| 750 | ATF750C, ATF750LVC | - | - |
+| 150X | ATF1502AS, ATF1502ASL, ATF1504AS, ATF1504ASL[2][3] | - | - |
 
 
 [1]: requires PCB v.3.1 or modified PCB v.3.0 - see Troubleshooting  
 [2]: requires adapter - see gerbers, pcb and img directory. PLCC-28 package is supported by a specific adapter - do not use a common PLCC-28 to
      DIP-24 adapter as it does not work for GAL26CV12B with Afterburner.  
-[3]: also supports 3.3V ATF1502ASV and ATF1504ASV when Arduino IOREF is 3.3V (ARM or ESP32 based Arduinos or Arduinos with IOREF 3.3V switch)
-
+[3]: also supports 3.3V ATF1502ASV and ATF1504ASV when Arduino IOREF is 3.3V (ARM or ESP32 based Arduinos or Arduinos with IOREF 3.3V switch) <br/>
+[4]: requires PCB v.3.2 or modified PCB v.3.1 or modified PCB v.3.0 <br/>
 [-]: - represents either this combination does not exist or hasn't been tested yet. Testers are welcome to report their findings.
 
 **This is a new Afterburner design with variable programming voltage control and with single ZIF socket for 20 and 24 pin GAL chips.**
