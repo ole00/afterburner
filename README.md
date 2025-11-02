@@ -60,11 +60,13 @@ Supported GAL and PEEL chips:
 | 150X | ATF1502AS, ATF1502ASL, ATF1504AS, ATF1504ASL[2][3] | - | - |
 
 
-[1]: requires PCB v.3.1 or modified PCB v.3.0 - see Troubleshooting  
+[1]: requires PCB v.3.1 or modified PCB v.3.0 - see Troubleshooting and 'afterburner_pcb_upgrades.pdf' document located in 
+     design/afterburner directory <br/>
 [2]: requires adapter - see gerbers, pcb and img directory. PLCC-28 package is supported by a specific adapter - do not use a common PLCC-28 to
      DIP-24 adapter as it does not work for GAL26CV12B with Afterburner.  
 [3]: also supports 3.3V ATF1502ASV and ATF1504ASV when Arduino IOREF is 3.3V (ARM or ESP32 based Arduinos or Arduinos with IOREF 3.3V switch) <br/>
-[4]: requires PCB v.3.2 or modified PCB v.3.1 or modified PCB v.3.0 <br/>
+[4]: requires PCB v.3.2 or modified PCB v.3.1 or modified PCB v.3.0. See 'afterburner_pcb_upgrades.pdf' document located in 
+     design/afterburner directory <br/>
 [-]: - represents either this combination does not exist or hasn't been tested yet. Testers are welcome to report their findings.
 
 **This is a new Afterburner design with variable programming voltage control and with single ZIF socket for 20 and 24 pin GAL chips.**
@@ -332,9 +334,32 @@ Troubleshooting:
 
 - I can't program GAL18V10
   * You'll need PCB version 3.1. If you have PCB version 3.0 you can mod it.
-    See ![here](https://github.com/ole00/afterburner/pull/36) for more information about the mod.
+    See the 'afterburner_pcb_upgrades.pdf' document in design/afterburner directory that lists the modding steps.
+    Also, see ![here](https://github.com/ole00/afterburner/pull/36) for more information about the mod.
   * Some GAL18V10B from Aliexpress do not work with Afterburner (fakes? damaged?).
     My GAL18V10B-15LP from Aliexpress do not work. However, GAL18V10B-**20LP** do work OK (also from Aliexpress).
+
+- I can't program PEEL18CV8P
+  * You'll need an adapter and Afterburner PCB version 3.2. If you have  PCB version 3.0 or 3.1 you can mod your PCB to
+    support the new IC (with the adapter). See the 'afterburner_pcb_upgrades.pdf' document in design/afterburner
+    directory that lists the modding steps.
+
+ - I built PEEL18CV8 adapter, how do I check it works OK?
+   * First, ensure you have Afterburner PCB version 3.2 or more recent. If you have older versions, then you need to mod
+     your Afterburner's PCB. See above.
+   * Second, ensure you have the latest Afterburner's sketch uploaded and you are using the latest PC app.
+   * Run the following command to verify your build of PEEL18CV8 adapter:
+     <pre>
+     ./afterburner -t PEEL18CV8 m
+     </pre>
+     Ensure the commnd runs with no IC plugged in the ZIF socket and with the Power button turned on (LED is lit).
+     The commands sets the voltages on the test points TP2 to TP5 which you need to measure with multimeter.
+     Repeat the command to measure all test points and check that the voltages on those test points
+     match the values displayed on the console. If the voltages are within tolerance of +/- 0.3V then the adapter
+     should be OK. If not, ask in the discussion section. Common issues when building the adapter
+     are reversed pinouts of MOSFETs or MOSFET damage due to excess temperature during soldering. Also, check
+     the resistors on the adapter have the right values as per the schematic located in the adapter's design
+     directory.
 
 - I want to program ATF16V8C, but it is not listed as supported by the PC app.
   * use parameter '-t ATF16V8B'. Afterburner finds out it is a C version.
