@@ -129,6 +129,9 @@
 #define COMMAND_CALIBRATE_VPP 'b'
 #define COMMAND_CALIBRATION_OFFSET 'B'
 #define COMMAND_JTAG_PLAYER 'j'
+#define COMMAND_EXERCISE 'X'
+#define COMMAND_EXERCISE_SET_PINS 'x'
+
 
 #define READGAL 0
 #define VERIFYGAL 1
@@ -150,6 +153,9 @@
 
 // Keep the power-down feature enabled for ATF C GALs
 #define FLAG_BIT_APD (1 << 2)
+
+// In Exercising mode
+#define FLAG_BIT_EXERCISE (1 << 3)
 
 // contents of pes[3]
 // Atmel PES is text string eg. 1B8V61F1 or 3Z01V22F1
@@ -478,6 +484,7 @@ static void setGalDefaults(void);
 #include "aftb_sparse.h"
 #include "aftb_seram.h"
 #include "aftb_peel.h"
+#include "aftb_exercise.h"
 
 // share fusemap buffer with jtag
 #define XSVF_HEAP fusemap
@@ -760,7 +767,10 @@ void readGarbage() {
 
 char handleTerminalCommands() {
   char c;
+  char isExercising = (flagBits & FLAG_BIT_EXERCISE) ? 1 : 0;
+
   
+
   while (Serial.available() > 0) {
     c = Serial.read();
     line[lineIndex] = c;
@@ -792,7 +802,10 @@ char handleTerminalCommands() {
       c = line[0];  
       if (!isUploading || c != '#') {
         // prevent 2 character commands from being flagged as invalid
-        if (!(c == COMMAND_SET_GAL_TYPE || c == COMMAND_CALIBRATION_OFFSET || c == COMMAND_JTAG_PLAYER)) {
+        if (!(
+            c == COMMAND_SET_GAL_TYPE || c == COMMAND_CALIBRATION_OFFSET || c == COMMAND_JTAG_PLAYER ||
+            c == COMMAND_EXERCISE || c == COMMAND_EXERCISE_SET_PINS)
+        ) {
           c = COMMAND_UNKNOWN; 
         }
       }
@@ -802,6 +815,17 @@ char handleTerminalCommands() {
       line[lineIndex] = 0;
       lineIndex = 0;
     }
+    // cancel exercising if unexpected command is received
+    if (isExercising && (!(c == COMMAND_EXERCISE || c == COMMAND_EXERCISE_SET_PINS))) {
+        progtime = 100; // revert back to default prog time
+        setFlagBit(FLAG_BIT_EXERCISE, 0);
+        setupGpios(INPUT);
+    }
+    // ignore setting pins by exerciser if not in exercising mode
+    if (!isExercising && c == COMMAND_EXERCISE_SET_PINS) {
+        c = COMMAND_NONE;
+    }
+
     endOfLine = 0;
     return c;
   }
@@ -3220,6 +3244,26 @@ void loop() {
         startJtagPlayer(line[1] == '1');
         //flush the serial line in case the player ended abruptly
         readGarbage();
+      } break;
+
+      case COMMAND_EXERCISE: {
+        // set pulse duration
+        if (line[1] == 'p') {
+            // progtime serves as the pulse duration during exercise
+            progtime = parse45dec(2, 0);
+        } else {
+            progtime = 100; // revert back to default prog time
+            setFlagBit(FLAG_BIT_EXERCISE, line[1] == '1' ? 1 : 0);
+        }
+        lastShiftRegVal = 0;
+        setupGpios(INPUT);
+        pinMode(PIN_ZIF15, INPUT);
+        pinMode(PIN_ZIF13, INPUT);
+        Serial.println(F("OK"));
+      } break;
+
+      case COMMAND_EXERCISE_SET_PINS: {
+        exerciseSetPins(line + 1); // skip the command character
       } break;
 
       default: {

@@ -47,6 +47,7 @@ To compile: gcc -g3 -O0 -o afterburner afterburner.c
 #include <stdint.h>
 
 #include "serial_port.h"
+#include "exerciser.h"
 
 #define VERSION "v.0.6.1"
 
@@ -157,12 +158,13 @@ char opCalibrateVPP = 0;
 char opMeasureVPP = 0;
 char opSecureGal = 0;
 char opWritePes = 0;
+char opExercise = 0;
 char flagEnableApd = 0;
 char flagEraseAll = 0;
 
 
 static int waitForSerialPrompt(char* buf, int bufSize, int maxDelay);
-static char sendGenericCommand(const char* command, const char* errorText, int maxDelay, char printResult);
+char sendGenericCommand(const char* command, const char* errorText, int maxDelay, char printResult);
 
 static void printGalTypes() {
     int i;
@@ -190,13 +192,14 @@ static void printHelp() {
     printf("   p : write PES. -t and -pes options must be set. GAL must be erased with '-all' option.\n");
     printf("   s : set VPP ON to check the programming voltage. Ensure the GAL is NOT inserted.\n");
     printf("   b : calibrate variable VPP on new board designs. Ensure the GAL is NOT inserted.\n");
-    printf("   m : measure variable VPP on new board designs. Ensure the GAL is NOT inserted.\n");   
+    printf("   m : measure variable VPP on new board designs. Ensure the GAL is NOT inserted.\n");
+    printf("   x : exercise test script, -f must be set.\n");
         printf("options:\n");
     printf("  -v : verbose mode\n");
     printf("  -t <gal_type> : the GAL type. use ");
     printGalTypes();
     printf("\n");
-    printf("  -f <file> : JEDEC fuse map file\n");
+    printf("  -f <file> : JEDEC fuse map file or script to exercise\n");
     printf("  -d <serial_device> : name of the serial device. Without this option the device is guessed.\n");
     printf("                       serial params are: 57600, 8N1\n");
     printf("  -nc : do not check device GAL type before operation: force the GAL type set on command line\n");
@@ -221,7 +224,7 @@ static void printHelp() {
 }
 
 static int8_t verifyArgs(char* type) {
-    if (!opRead && !opWrite && !opErase && !opInfo && !opVerify && !opTestVPP && !opCalibrateVPP && !opMeasureVPP && !opWritePes) {
+    if (!opRead && !opWrite && !opErase && !opInfo && !opVerify && !opTestVPP && !opCalibrateVPP && !opMeasureVPP && !opWritePes && !opExercise) {
         printHelp();
         printf("Error: no command specified.\n");
         return -1;
@@ -260,7 +263,11 @@ static int8_t verifyArgs(char* type) {
         printf("Error: missing %s filename (param: -f fname)\n", galinfo[gal].id0 == JTAG_ID ? ".xsvf" : ".jed");
         return -1;
     }
-    return 0;
+     if (0 == filename && opExercise == 1) {
+        printf("Error: missing script filename (param: -f fname)\n");
+        return -1;
+    }
+   return 0;
 }
 
 static int8_t checkArgs(int argc, char** argv) {
@@ -338,6 +345,10 @@ static int8_t checkArgs(int argc, char** argv) {
             break;
         case 'p':
             opWritePes = 1;
+            break;
+        case 'x':
+            opExercise = 1;
+            noGalCheck = 1;
             break;
         default:
             printf("Error: unknown operation '%c' \n", modes[i]);
@@ -814,6 +825,9 @@ static int sendLine(char* buf, int bufSize, int maxDelay) {
     char* obuf = buf;
 
     if (serialF == INVALID_HANDLE) {
+        if (verbose) {
+            printf("Error: serial port is not opened\n");
+        }
         return -1;
     }
 
@@ -928,7 +942,7 @@ static char upload() {
 }
 
 //returns 0 on success
-static char sendGenericCommand(const char* command, const char* errorText, int maxDelay, char printResult) {
+char sendGenericCommand(const char* command, const char* errorText, int maxDelay, char printResult) {
     char buf[MAX_LINE];
     int readSize;
 
@@ -1543,6 +1557,63 @@ static int processJtag(void) {
     return 0;
 }
 
+static int processExerciser(void) {
+    int result;
+    int fSize = 0;
+    char tmp[32] = {0};
+    int pinCount;
+    int pulseDuration;
+
+    result = readFile(&fSize);
+    if (result) {
+        return result;
+    }
+
+    if (openSerial() != 0) {
+        return -1;
+    }
+
+    exerciseSetVerbose(verbose);
+     //do syntax check
+    result = exerciseCheckFile(galbuffer, fSize);
+    if (result) {
+        return result;
+    }
+
+    // turn on excersize mode
+    if (verbose) {
+        printf("sending 'X1' command...\n");
+    }
+    result = sendGenericCommand("X1\r", "excersize failed ?", 4000, 0);
+    if (result) {
+        return result;
+    }
+
+    // set pulse duration
+    pulseDuration = exerciseGetPulseDuration();
+
+    if (100 != pulseDuration) {
+        sprintf(tmp, "Xp%04d\r", pulseDuration);
+        if (verbose) {
+            printf("sending Xp command...\n");
+        }
+
+        result = sendGenericCommand(tmp, "excersize pulse duration failed ?", 4000, 0);
+        if (result) {
+            return result;
+        }
+    }
+
+    result = exerciseRunFile(galbuffer, fSize);
+
+    // turn off excersize mode
+    result = sendGenericCommand("X0\r", "excersize failed ?", 4000, 0);
+
+    closeSerial();
+
+    return result;
+}
+
 int main(int argc, char** argv) {
     char result = 0;
     int i;
@@ -1587,6 +1658,8 @@ int main(int argc, char** argv) {
             result = operationTestVpp();
         } else if (opWritePes) {
             result = operationWritePes();
+        } else if (opExercise) {
+            result = processExerciser();
         }
         if (0 == result && (opWrite || opVerify)) {
             if (opSecureGal) {
