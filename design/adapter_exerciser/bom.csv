@@ -1,0 +1,7 @@
+"Reference","Qty","Value","DNP","Footprint","Datasheet"
+"C1","1","100nF","","Capacitor_SMD:C_0805_2012Metric_Pad1.18x1.45mm_HandSolder","~"
+"D1,D2,D3,D4,D5,D6,D7,D8,D9,D10,D11,D12,D13,D14,D15,D16,D17,D18,D19,D20,D21,D22","22","LED","","LED_SMD:LED_0805_2012Metric_Pad1.15x1.40mm_HandSolder","~"
+"J3","1","ZIF Socket Excerciser","","User_lib_kk08:ZIF_PinSocket_2x12_P2.54mm","~"
+"R2,R4,R6,R8,R10,R12,R14,R16,R18,R20,R22,R34,R35,R36,R37,R38,R39,R40,R41,R42,R43,R44","22","2k2","","Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder","~"
+"R3,R5,R7,R9,R11,R13,R15,R17,R23,R25,R26","11","33k","","Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder","~"
+
