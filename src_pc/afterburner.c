@@ -49,7 +49,7 @@ To compile: gcc -g3 -O0 -o afterburner afterburner.c
 #include "serial_port.h"
 #include "exerciser.h"
 
-#define VERSION "v.0.6.1"
+#define VERSION "v.0.6.2"
 
 #ifdef GCOM
 #define VERSION_EXTENDED VERSION "-" GCOM
