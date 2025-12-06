@@ -6,6 +6,7 @@ static const uint8_t exeArduPins24[] PROGMEM = {
     // pins 1 to 8 are set via shift register
     9, 7,  // Pin 10 = D7
     10, 8,  // Pin 11 = D8
+            // Pin 12 = GND
     12, 6,  // Pin 13 = D6
     13, 5,  // Pin 14 = D5
     14, 9,  // Pin 15 = D9
@@ -123,7 +124,7 @@ void exerciseSetPins(char* line) {
                     pinMode(arduPin, OUTPUT);
                     digitalWrite(arduPin, d == '1' ? HIGH : LOW);
                 } else if (d == 'z') {
-                    pinMode(arduPin, INPUT);
+                    pinMode(arduPin, INPUT_PULLUP);
                 }
             }
             if (d == 'p' || d == 'P') { // 'p' falling pulse, 'P' rising pulse
