@@ -325,16 +325,17 @@ static int execTest(char* line, int lineSize, int check) {
     }
 
     // check that pins 2 to 9 are all either Z or none is Z - these are controlled by the shift register
+    // check array indices 1 to 8
     cnt = 0;
-    i = 2;
-    while (i <= 9) {
+    i = 1;
+    while (i < 9) {
         if (pins[i] == 'z' || pins[i] == 'x') {
             cnt++;
         }
         i++;
     }
     if (cnt != 0 && cnt != 8) {
-        printf("Error: invalid Z state of pins 2-9 '%s '\n", pins);
+        printf("Error: invalid Z state of pins 2-9 '%s ' cnt=%d\n", pins, cnt);
         return 1;
     }
     // cnt is either 0 or 8
