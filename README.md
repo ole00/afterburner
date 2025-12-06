@@ -32,6 +32,16 @@ presence of parallel port (LPT). Afterburner was written for Linux OS
 (also works on Win32/64, Mac OSX64), and requires serial connection to
 Arduino UNO, which does the programming of the GAL chip.
 
+**Update: ver.0.6.2 added experimental support for PEEL18CV8. An dapter is required to
+program PEEL devices because of their non-trivial programming voltages. The adapter
+is located in the gerbers and design directories. Do not attempt to program the
+PEEL device on Afterburner without the adapter! PEEL devices do not seem to have
+a way to identify them, therefore the 'i' command is not supported.**
+
+**Excerciser adapter was added to the collection of Afterburner adapters. The adapter
+helps to develop and debug the PLD desgins on GAL/PEEL ICs. See Discussions for
+more information.**
+
 **Update: ver.0.6.0 added experimental support for ATF1502AS and ATF1504AS. Only
 identify, erase and write commands are supported. Read function is unsupported.
 Verification is usually done automatically - it is a part of the .xsvf JTAG file
@@ -296,6 +306,28 @@ If the top and bottom printed parts can't be easily joined and something seems t
   and tested with through hole components, but if the compoenent leads are too long the component might block the case.
 - ensure the button's cut/flat part is facing the ZIF socket, the round bit is facing away from the ZIF socket.
 
+Exerciser adapter:
+------------------
+
+ ![mt3608_modules](https://github.com/ole00/afterburner/raw/master/img/adapter_exerciser.jpg "exerciser adapter")
+
+The adapter helps to develop and debug PLD designs on 20 and 24 pin GAL and PEEL devices.
+It helps to visualise inputs and outputs from the PLD IC via LEDs. The developer
+plgugs the PLD IC into the adapter and runs a text script that describes a series
+of test steps. Each test step defines the High/Low state of input pins and defines
+the output pins as high impedance (Z  state). During the test, each test step is 
+applied on the IC and the IC produces its outputs on the output pins - their state
+is displayed on the LEDs, so that the output values can be validated.
+The afterburner PC app supports running the exercising scripts by using 'x' command
+as follows:
+<pre>
+./afterburner -f test_script.xor x
+</pre>
+
+An example of the test script is in the Discussions.
+If you do not have the exerciser adapter, you can use a breadboard with LEDs and use
+jumper wires to connect to Afterburner's ZIF socket. Using the adapter is more robust
+solution that should last longer than a wired breadboard.
 
 Troubleshooting:
 ----------------
