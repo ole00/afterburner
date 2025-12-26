@@ -460,6 +460,8 @@ Troubleshooting:
   
   * Try GAL Asm to produce .jed files - see link bellow.
 
+  * Try Yosys4gal to produce .jed files from Verilog HDL files: https://github.com/annoyatron255/yosys4gal
+
 - can I use .jed files with ATF150X IC?
   * Not directly. You have to convert the .jed file into .xsvf format. Use the python tools located in the utils/jtag
     subdirectory to do that. See readme.txt in that directory for more info. Once you convert the .jed to .xsvf
@@ -484,6 +486,8 @@ Other GAL related links:
 - GAL Asm : https://github.com/dwery/galasm
 
 - GAL Asm online compiler: https://rhgndf.github.io/galasm-web/
+
+- GAL Verilog compiler: https://github.com/annoyatron255/yosys4gal
 
 - PLD and GAL info: https://github.com/peterzieba/5Vpld
 
