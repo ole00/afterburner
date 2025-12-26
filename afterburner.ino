@@ -480,15 +480,20 @@ static void setShiftReg(uint8_t val);
 static void setVPP(char on, uint8_t settleTime = 50);
 static void setGalDefaults(void);
 
+#include "aftb_config.h"
 #include "aftb_vpp.h"
 #include "aftb_sparse.h"
 #include "aftb_seram.h"
 #include "aftb_peel.h"
 #include "aftb_exercise.h"
 
+#if CFG_USE_AFT150X
+#define USE_JTAG_PLAYER 1
 // share fusemap buffer with jtag
 #define XSVF_HEAP fusemap
 #include "jtag_xsvf_player.h"
+#endif
+
 
 // print some help on the serial console
 void printHelp(char full) {
@@ -538,6 +543,7 @@ static void setPinMux(uint8_t pm) {
   uint8_t doutMode = pm == OUTPUT ? INPUT_PULLUP: INPUT;
 
   switch (gal) {
+#if CFG_USE_PEEL
   case PEEL18CV8:
     // ensure ZIF10 GND pull is disabled
     digitalWrite(PIN_ZIF_GND_CTRL, LOW);
@@ -557,9 +563,9 @@ static void setPinMux(uint8_t pm) {
     pinMode(PIN_ZIF3, pm);
     // PVP control
     pinMode(PIN_ZIF23, pm);
-
-
     break;
+#endif /* CFG_USE_PEEL */
+
   case GAL16V8:
   case ATF16V8B:
     pinMode(PIN_ZIF10, INPUT); //GND via MOSFET
@@ -626,7 +632,8 @@ static void setPinMux(uint8_t pm) {
     setPinMuxUnused(PIN_ZIF22, pm);
     setPinMuxUnused(PIN_ZIF23, pm);
     break;
-  
+
+#if CFG_USE_GAL600X
   case GAL6001:
   case GAL6002:
     pinMode(PIN_ZIF10, pm);
@@ -644,6 +651,7 @@ static void setPinMux(uint8_t pm) {
     setPinMuxUnused(PIN_ZIF16, pm);
     setPinMuxUnused(PIN_ZIF22, pm);
     break;
+#endif /* CFG_USE_GAL600X */
 
   }
 }
@@ -1354,6 +1362,7 @@ static void strobeRow(char row, char setBit = BIT_NONE)
       setSTB(1);           // pulse /STB
       setSDIN(0);          // SDIN low
       break;
+#if CFG_USE_GAL600X
     case GAL6001:
     case GAL6002:
       setRow(0);
@@ -1363,6 +1372,7 @@ static void strobeRow(char row, char setBit = BIT_NONE)
       sendBits(16, 0);
       strobe(2);           // pulse /STB for 2ms
       break;
+#endif
    }
 }
 
@@ -1429,7 +1439,7 @@ static void writePes(void) {
   turnOn(WRITEPES);
 
   setPV(1);
-
+#if CFG_USE_GAL600X
   if (GAL6001 == gal || GAL6002 == gal) {
       extraBits = 0xFF;
       setRow(0);
@@ -1444,7 +1454,9 @@ static void writePes(void) {
       sendAddress(7, galinfo.pesrow);
       sendBits(16, 0);
       setSDIN(0);
-  } else if (GAL20RA10 == gal) {
+  } else
+#endif
+  if (GAL20RA10 == gal) {
         extraBits = 16;
   } else if (GAL22V10 == gal) {
         extraBits = 68;
@@ -1927,6 +1939,7 @@ static unsigned short readOrVerifyGalFuseMap600(const unsigned char* cfgArray, c
   
   return errors;
 }
+#endif /* CFG_USE_GAL600X */
 
 // main fuse-map reading and verification function
 // READING: reads fuse rows, UES, CFG from GAL and stores into fusemap bit array RAM.
@@ -1950,9 +1963,12 @@ static void readOrVerifyGal(char verify)
 
   switch(gal)
   {
+#if CFG_USE_PEEL
     case PEEL18CV8:
         i = readVerifyFuseMapPEEL(verify);
         break;
+#endif /* CFG_USE_PEEL */
+
     case GAL16V8:
     case GAL20V8:
         if (pes[2] == 0x1A || pes[2] == 0x3A) {
@@ -2202,6 +2218,7 @@ static void writeGalFuseMapV750(const unsigned char* cfgArray) {
   }
 }
 
+#if CFG_USE_GAL600X
 // fuse-map writing function for 600x GAL chips
 static void writeGalFuseMap600(const unsigned char* cfgArray) {
     unsigned short cfgAddr = galinfo.cfgbase;
@@ -2264,6 +2281,7 @@ static void writeGalFuseMap600(const unsigned char* cfgArray) {
     strobe(progtime);
     setPV(0);
 }
+#endif /* CFG_USE_GAL600X */
 
 // main fuse-map writing function
 static void writeGal()
@@ -2277,9 +2295,12 @@ static void writeGal()
 
   switch(gal)
   {
+#if CFG_USE_PEEL
     case PEEL18CV8:
         writeFuseMapPEEL();
         break;
+#endif /* CFG_USE_PEEL */
+
     case GAL16V8:
     case GAL20V8:
         if (pes[2] == 0x1A || pes[2] == 0x3A) {
@@ -2293,11 +2314,13 @@ static void writeGal()
         writeGalFuseMapV8(cfgV8AB); 
         break;
 
+#if CFG_USE_GAL600X
     case GAL6001:
     case GAL6002:
         cfgArray = (unsigned char*) galinfo.cfg;
         writeGalFuseMap600(cfgArray);
         break;
+#endif
 
     case GAL18V10:
     case GAL20RA10:
@@ -2775,6 +2798,7 @@ static void calibrateVpp(void) {
   }
 }
 
+#if USE_JTAG_PLAYER
 static void startJtagPlayer(uint8_t vpp) {
   jtag_port_t jport;
   //assign jtag pins
@@ -2801,6 +2825,7 @@ static void startJtagPlayer(uint8_t vpp) {
     varVppSet(VPP_5V0);
   }
 }
+#endif
 
 // Arduino main loop
 void loop() {
@@ -2904,9 +2929,12 @@ void loop() {
       case COMMAND_ERASE_GAL:
       case COMMAND_ERASE_GAL_ALL: {
         if (doTypeCheck()) {
+#if CFG_USE_PEEL
           if (PEEL18CV8 == gal) {
             erasePEEL();
-          } else {
+          } else
+#endif /* CFG_USE_PEEL */
+          {
             eraseGAL(COMMAND_ERASE_GAL_ALL == command ? 1 : 0);
           }
         }
@@ -2973,9 +3001,12 @@ void loop() {
       } break;
 
       case COMMAND_MEASURE_CUSTOM: {
+#if CFG_USE_PEEL
         if (PEEL18CV8 == gal) {
             measureVoltagesPEEL();
-        } else {
+        } else
+#endif /* CFG_USE_PEEL */
+        {
             printUnsupportedError();
         }
       } break;
@@ -2997,12 +3028,13 @@ void loop() {
       case COMMAND_CALIBRATE_VPP: {
         calibrateVpp();
       } break;
-
+#if USE_JTAG_PLAYER
       case COMMAND_JTAG_PLAYER: {
         startJtagPlayer(line[1] == '1');
         //flush the serial line in case the player ended abruptly
         readGarbage();
       } break;
+#endif /* USE_JTAG_PLAYER */
 
       case COMMAND_EXERCISE: {
         // set pulse duration
@@ -3020,10 +3052,11 @@ void loop() {
         Serial.println(F("OK"));
       } break;
 
+#if CFG_USE_EXERCISER
       case COMMAND_EXERCISE_SET_PINS: {
         exerciseSetPins(line + 1); // skip the command character
       } break;
-
+#endif /* CFG_USE_EXERCISER */
       default: {
         if (command != COMMAND_NONE) {
           Serial.print(F("ER Unknown command: "));

@@ -1,4 +1,7 @@
 #pragma once
+
+#if CFG_USE_EXERCISER
+
 #include "Arduino.h"
 
 static const uint8_t exeArduPins24[] PROGMEM = {
@@ -153,3 +156,5 @@ void exerciseSetPins(char* line) {
     }
 
 }
+
+#endif /* CFG_USE_EXERCISER */

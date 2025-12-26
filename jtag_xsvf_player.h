@@ -1,6 +1,7 @@
 #ifndef _JTAG_XSVF_PLAYER_H_
 #define _JTAG_XSVF_PLAYER_H_
 
+#if USE_JTAG_PLAYER
 
 /*
 Arduino JTAG Player for Afterburner GAL project
@@ -991,6 +992,6 @@ static void jtag_play_xsvf(jtag_port_t* port)
   pinMode(port->tck, INPUT);
   pinMode(port->tdo, INPUT);
 }
-
+#endif /* USE_JTAG_PLAYER */
 
 #endif /*_JTAG_XSVF_PLAYER_H_*/
