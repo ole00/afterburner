@@ -1719,188 +1719,33 @@ static uint8_t remapAtf750cFuse(uint8_t bit) {
     return 105 - (bit - 85);
 }
 
-// generic fuse-map reading, fuse-map bits are stored in fusemap array
-static void readGalFuseMap(const unsigned char* cfgArray, char useDelay, char doDiscardBits) {
-  unsigned short cfgAddr = galinfo.cfgbase;
-  unsigned short row;
-  unsigned short addr;
-  uint8_t bit;
-
-  if (flagBits & FLAG_BIT_ATF16V8C) {
-      setPV(0);
-  }
-
-  for(row = 0; row < galinfo.rows; row++) {
-    strobeRow(row); //set address of the row
-    if (flagBits & FLAG_BIT_ATF16V8C) {
-        setSDIN(0);
-        setPV(1);
-    }
-    for(bit = 0; bit < galinfo.bits; bit++) {
-      // check the received bit is 1 and if so then set the fuse map
-      if (receiveBit()) {
-        addr = galinfo.rows;
-        if (ATF750C == gal && bit > 84) {
-            addr *= remapAtf750cFuse(bit);
-        } else {
-            addr *= bit;
-        }
-        addr += row;
-        setFuseBit(addr);
-      }
-    }
-    if (useDelay) {
-      delay(useDelay);
-    }
-    if (flagBits & FLAG_BIT_ATF16V8C) {
-        setPV(0);
-    }
-  }
-
-  // read UES
-  strobeRow(galinfo.uesrow);
-  if (flagBits & FLAG_BIT_ATF16V8C) {
-      setSDIN(0);
-      setPV(1);
-  }
-
-  if (doDiscardBits) {
-    discardBits(doDiscardBits);
-  }
-  for(bit = 0; bit < galinfo.uesbytes * 8; bit++) {
-    if (receiveBit()) {
-      addr = galinfo.uesfuse;
-      addr += bit;
-      setFuseBit(addr);
-    }
-  }
-  if (useDelay) {
-    delay(useDelay);
-  }
-  if (flagBits & FLAG_BIT_ATF16V8C) {
-      setPV(0);
-  }
-
-  // read CFG
-if (galinfo.cfgmethod == CFG_STROBE_ROW2) { //ATF750C
-    const uint8_t cfgstroberow = 96;
-    const uint8_t cfgrowlen = 10;
-    const uint8_t cfgrowcount = (galinfo.cfgbits + (cfgrowlen - 1)) /cfgrowlen;
-    uint8_t i;
-    for(i = 0; i < cfgrowcount; i++) {
-      strobeConfigRow(cfgstroberow + i);
-      for(bit = 0; bit < cfgrowlen; bit++) {
-        uint8_t absBit = (cfgrowlen * i) + bit;
-        if (absBit >= galinfo.cfgbits)
-          break;
-        if (receiveBit()) {
-          unsigned char cfgOffset = pgm_read_byte(&cfgArray[absBit]);
-          setFuseBit(cfgAddr + cfgOffset);
-        }
-      }
-      if (useDelay) {
-        delay(useDelay);
-      }
+static uint16_t readOrVerifyAddress(uint16_t addr, uint16_t errors, char verify) {
+  char fuseBit;   // fuse bit received from GAL
+  char mapBit;    // fuse bit stored in RAM
+  fuseBit = receiveBit();
+  if (verify) {
+    mapBit = getFuseBit(addr);
+    if (mapBit != fuseBit) {
+#ifdef DEBUG_VERIFY
+      Serial.print(F("f a="));
+      Serial.println(addr, DEC);
+#endif
+      errors++;
     }
   } else {
-    if (galinfo.cfgmethod == CFG_STROBE_ROW) {
-      strobeRow(galinfo.cfgrow);
-      if (flagBits & FLAG_BIT_ATF16V8C) {
-        setSDIN(0);
-        setPV(1);
-      }
-    }
-    else {
-      setRow(galinfo.cfgrow);
-      strobe(1);
-    }
-    for(bit = 0; bit < galinfo.cfgbits; bit++) {
-      if (receiveBit()) {
-        unsigned char cfgOffset = pgm_read_byte(&cfgArray[bit]); //read array byte flom flash
-        setFuseBit(cfgAddr + cfgOffset);
-      }
-    }
+    setFuseBitVal(addr, fuseBit);
   }
-
-  //check APD fuse bit - only for ATF16V8C or ATF22V10C
-  if ((flagBits & FLAG_BIT_ATF16V8C) || gal == ATF22V10C) {
-    setPV(0);
-    if (gal == ATF22V10C) {
-      setRow(0);
-      sendAddress(6, CFG_ROW_APD);
-      strobe(1);
-    } else { //ATF16V8C
-      setRow(CFG_ROW_APD);
-      strobe(1);
-      setPV(1);
-    }
-    setFlagBit(FLAG_BIT_APD, receiveBit());
-  }
-
-#if 0
-  if (sparseFusemapStat) {
-    sparsePrintStat();
-  }
-#endif
+  return errors;
 }
 
-static void readGalFuseMap600(const unsigned char* cfgArray) {
-  unsigned short row, bit;
-  unsigned short addr;
-
-  for (row = 0; row < 78; row++)
-  {
-      strobeRow(row);
-      discardBits(20);
-      for (bit = 0; bit < 11; bit++)
-          setFuseBitVal(7296 + 78 * bit + row, receiveBit());
-      for (bit = 0; bit < 64; bit++)
-          setFuseBitVal(114 * bit + row, receiveBit());
-      discardBits(24);
-  }
-  for (row = 0; row < 64; row++)
-  {
-      sendBits(31, 0);
-      for (bit = 0; bit < 64; bit++)
-          sendBit(bit != row);
-      sendBits(24, 0);
-      setSDIN(0);
-      strobe(2);
-      for (bit = 0; bit < 20; bit++)
-          setFuseBitVal(78 + 114 * row + bit, receiveBit());
-      discardBits(83);
-      for (bit = 0; bit < 16; bit++)
-          setFuseBitVal(98 + 114 * row + bit, receiveBit());
-  }
-  // UES
-  strobeRow(galinfo.uesrow);
-  discardBits(20);
-  addr = galinfo.uesfuse;
-  for (bit = 0; bit < 72; bit++)
-      setFuseBitVal(addr + bit, receiveBit());
-  // CFG
-  setRow(galinfo.cfgrow);
-  strobe(2);
-  addr = galinfo.cfgbase;
-  for (bit = 0; bit < galinfo.cfgbits; bit++) {
-      unsigned char cfgOffset = pgm_read_byte(&cfgArray[bit]); //read array byte flom flash
-      setFuseBitVal(addr + cfgOffset, receiveBit());
-  }
-}
-
-// generic fuse-map verification, fuse map bits are compared against read bits
-static unsigned short verifyGalFuseMap(const unsigned char* cfgArray, char useDelay, char doDiscardBits) {
+// generic fuse-map read or verification (fuse map bits are compared against read bits)
+static unsigned short readOrverifyGalFuseMap(const unsigned char* cfgArray, char useDelay, char doDiscardBits, char verify) {
   unsigned short cfgAddr = galinfo.cfgbase;
   unsigned short row, bit;
   unsigned short addr;
   char fuseBit;   // fuse bit received from GAL
   char mapBit;    // fuse bit stored in RAM
   unsigned short errors = 0;
-
-#ifdef DEBUG_VERIFY
-  Serial.print(F("rot f:"));
-  Serial.println(rotatedFuseMap, DEC);
-#endif
 
   if (flagBits & FLAG_BIT_ATF16V8C) {
       setPV(0);
@@ -1921,15 +1766,7 @@ static unsigned short verifyGalFuseMap(const unsigned char* cfgArray, char useDe
           addr *= bit;
       }
       addr += row;
-      mapBit = getFuseBit(addr); //bit from RAM
-      fuseBit = receiveBit(); // read from GAL
-      if (mapBit != fuseBit) {
-#ifdef DEBUG_VERIFY
-        Serial.print(F("f a="));
-        Serial.print(addr, DEC);
-#endif
-        errors++;
-      }
+      errors = readOrVerifyAddress(addr, errors, verify);
     }
     if (useDelay) {
       delay(useDelay);
@@ -1939,27 +1776,19 @@ static unsigned short verifyGalFuseMap(const unsigned char* cfgArray, char useDe
     }
   }
 
-   // read UES
+  // read UES
   strobeRow(galinfo.uesrow);
   if (flagBits & FLAG_BIT_ATF16V8C) {
-      setSDIN(0);
-      setPV(1);
-  } 
+    setSDIN(0);
+    setPV(1);
+  }
   if (doDiscardBits) {
     discardBits(doDiscardBits);
   }
   for(bit = 0; bit < galinfo.uesbytes * 8; bit++) {
     addr = galinfo.uesfuse;
     addr += bit;
-    mapBit = getFuseBit(addr);
-    fuseBit = receiveBit();
-    if (mapBit != fuseBit) {
-#ifdef DEBUG_VERIFY
-      Serial.print(F("U a="));
-      Serial.println(bit, DEC);
-#endif
-      errors++;
-    }
+    errors = readOrVerifyAddress(addr, errors, verify);
   }
   if (useDelay) {
     delay(useDelay);
@@ -1968,6 +1797,7 @@ static unsigned short verifyGalFuseMap(const unsigned char* cfgArray, char useDe
       setPV(0);
   }
 
+  // read CFG
   if (galinfo.cfgmethod == CFG_STROBE_ROW2) { //ATF750C
     const uint8_t cfgstroberow = 96;
     const uint8_t cfgrowlen = 10;
@@ -1980,15 +1810,8 @@ static unsigned short verifyGalFuseMap(const unsigned char* cfgArray, char useDe
         if (absBit >= galinfo.cfgbits) {
           break;
         }
-        mapBit = getFuseBit(cfgAddr + pgm_read_byte(&cfgArray[absBit])); // cfgAddr + cfgOffset
-        fuseBit = receiveBit();
-        if (mapBit != fuseBit) {
-  #ifdef DEBUG_VERIFY
-        Serial.print(F("C a="));
-        Serial.println(absBit, DEC);
-  #endif
-          errors++;
-        }
+        addr = cfgAddr + pgm_read_byte(&cfgArray[absBit]);
+        errors = readOrVerifyAddress(addr, errors, verify);
       }
       if (useDelay) {
         delay(useDelay);
@@ -2007,19 +1830,12 @@ static unsigned short verifyGalFuseMap(const unsigned char* cfgArray, char useDe
     }
     for(bit = 0; bit < galinfo.cfgbits; bit++) {
       unsigned char cfgOffset = pgm_read_byte(&cfgArray[bit]); //read array byte flom flash
-      mapBit = getFuseBit(cfgAddr + cfgOffset);
-      fuseBit = receiveBit();
-      if (mapBit != fuseBit) {
-  #ifdef DEBUG_VERIFY
-        Serial.print(F("C a="));
-        Serial.println(bit, DEC);
-  #endif
-        errors++;
-      }
+      addr = cfgAddr + cfgOffset;
+      errors = readOrVerifyAddress(addr, errors, verify);
     }
   }
 
-  //verify PD fuse on Atmel's C GALs
+  //read or verify PD fuse on Atmel's C GALs
   if ((flagBits & FLAG_BIT_ATF16V8C) || gal == ATF22V10C) {
     setPV(0);
     if (gal == ATF22V10C) {
@@ -2034,23 +1850,31 @@ static unsigned short verifyGalFuseMap(const unsigned char* cfgArray, char useDe
 
     mapBit = (flagBits & FLAG_BIT_APD)? 1 : 0;
     fuseBit = receiveBit();
-    if (mapBit != fuseBit) {
+    if (verify) {
+        if (mapBit != fuseBit) {
 #ifdef DEBUG_VERIFY
-      Serial.println(F("C pd"));
+          Serial.println(F("C pd"));
 #endif
-      errors++;
+          errors++;
+        }
+    } else {
+        setFlagBit(FLAG_BIT_APD, fuseBit);
     }
   }
+
+#if 0
+  if ((0 == verify) && sparseFusemapStat) {
+    sparsePrintStat();
+  }
+#endif
 
   return errors;
 }
 
-
-static unsigned short verifyGalFuseMap600(const unsigned char* cfgArray) {
+#if CFG_USE_GAL600X
+static unsigned short readOrVerifyGalFuseMap600(const unsigned char* cfgArray, char verify) {
   unsigned short row, bit;
   unsigned short addr;
-  char fuseBit;   // fuse bit received from GAL
-  char mapBit;    // fuse bit stored in RAM
   unsigned short errors = 0;
 
   for (row = 0; row < 78; row++)
@@ -2058,26 +1882,12 @@ static unsigned short verifyGalFuseMap600(const unsigned char* cfgArray) {
       strobeRow(row);
       discardBits(20);
       for (bit = 0; bit < 11; bit++) {
-          mapBit = getFuseBit(7296 + 78 * bit + row);
-          fuseBit = receiveBit();
-          if (mapBit != fuseBit) {
-#ifdef DEBUG_VERIFY
-            Serial.print(F("f a="));
-            Serial.println(7296 + 78 * bit + row, DEC);
-#endif
-            errors++;
-          }
+        addr = 7296 + 78 * bit + row;
+        errors = readOrVerifyAddress(addr, errors, verify);
       }
       for (bit = 0; bit < 64; bit++) {
-          mapBit = getFuseBit(114 * bit + row);
-          fuseBit = receiveBit();
-          if (mapBit != fuseBit) {
-#ifdef DEBUG_VERIFY
-            Serial.print(F("f a="));
-            Serial.println(114 * bit + row, DEC);
-#endif
-            errors++;
-          }
+        addr = 114 * bit + row;
+        errors = readOrVerifyAddress(addr, errors, verify);
       }
       discardBits(24);
   }
@@ -2090,27 +1900,13 @@ static unsigned short verifyGalFuseMap600(const unsigned char* cfgArray) {
       setSDIN(0);
       strobe(2);
       for (bit = 0; bit < 20; bit++) {
-          mapBit = getFuseBit(78 + 114 * row + bit);
-          fuseBit = receiveBit();
-          if (mapBit != fuseBit) {
-#ifdef DEBUG_VERIFY
-            Serial.print(F("f a="));
-            Serial.println(78 + 114 * row + bit, DEC);
-#endif
-            errors++;
-          }
+        addr = 78 + 114 * row + bit;
+        errors = readOrVerifyAddress(addr, errors, verify);
       }
       discardBits(83);
       for (bit = 0; bit < 16; bit++) {
-          mapBit = getFuseBit(98 + 114 * row + bit);
-          fuseBit = receiveBit();
-          if (mapBit != fuseBit) {
-#ifdef DEBUG_VERIFY
-            Serial.print(F("f a="));
-            Serial.println(98 + 114 * row + bit, DEC);
-#endif
-            errors++;
-          }
+        addr = 98 + 114 * row + bit;
+        errors = readOrVerifyAddress(addr, errors, verify);
       }
   }
   // UES
@@ -2118,31 +1914,15 @@ static unsigned short verifyGalFuseMap600(const unsigned char* cfgArray) {
   discardBits(20);
   addr = galinfo.uesfuse;
   for (bit = 0; bit < 72; bit++) {
-      mapBit = getFuseBit(addr + bit);
-      fuseBit = receiveBit();
-      if (mapBit != fuseBit) {
-#ifdef DEBUG_VERIFY
-        Serial.print(F("f a="));
-        Serial.println(addr + bit, DEC);
-#endif
-        errors++;
-      }
+    errors = readOrVerifyAddress(addr + bit, errors, verify);
   }
   // CFG
   setRow(galinfo.cfgrow);
   strobe(2);
   addr = galinfo.cfgbase;
   for (bit = 0; bit < galinfo.cfgbits; bit++) {
-      unsigned char cfgOffset = pgm_read_byte(&cfgArray[bit]); //read array byte flom flash
-      mapBit = getFuseBit(addr + cfgOffset);
-      fuseBit = receiveBit();
-      if (mapBit != fuseBit) {
-#ifdef DEBUG_VERIFY
-        Serial.print(F("f a="));
-        Serial.println(addr + cfgOffset, DEC);
-#endif
-        errors++;
-      }
+    unsigned char cfgOffset = pgm_read_byte(&cfgArray[bit]); //read array byte flom flash
+    errors = readOrVerifyAddress(addr + cfgOffset, errors, verify);
   }
   
   return errors;
@@ -2179,11 +1959,7 @@ static void readOrVerifyGal(char verify)
           cfgArray = (unsigned char*) cfgV8AB;
         }
         //read without delay, no discard
-        if (verify) {
-          i = verifyGalFuseMap(cfgArray, 0, 0);
-        } else {
-          readGalFuseMap(cfgArray, 0, 0);
-        }
+        i = readOrverifyGalFuseMap(cfgArray, 0, 0, verify);
         break;
       
     case ATF16V8B:
@@ -2194,42 +1970,24 @@ static void readOrVerifyGal(char verify)
     case GAL26V12:
     case GAL26CV12:
         cfgArray = (unsigned char*) galinfo.cfg;
-        //read without delay, no discard
-        if (verify) {
-          i = verifyGalFuseMap(cfgArray, 0, 0);
-        } else {
-          readGalFuseMap(cfgArray, 0, 0);
-        }
+        i = readOrverifyGalFuseMap(cfgArray, 0, 0, verify);
         break;
 
     case GAL6001:
     case GAL6002:
         cfgArray = (gal == GAL6001) ? (unsigned char*) cfg6001 : (unsigned char*) cfg6002;
-        //read without delay, no discard
-        if (verify) {
-          i = verifyGalFuseMap600(cfgArray);
-        } else {
-          readGalFuseMap600(cfgArray);
-        }
+        i = readOrVerifyGalFuseMap600(cfgArray, verify);
         break;
         
     case GAL22V10:
     case ATF22V10B:
     case ATF22V10C:
       //read with delay 1 ms, discard 68 cfg bits on ATFxx
-      if (verify) {
-        i = verifyGalFuseMap(cfgV10, 1, (gal == GAL22V10) ? 0 : 68);
-      } else {
-        readGalFuseMap(cfgV10, 1, (gal == GAL22V10) ? 0 : 68);
-      } 
+      i = readOrverifyGalFuseMap(cfgV10, 1, (gal == GAL22V10) ? 0 : 68, verify);
       break;
     case ATF750C:
       //read with delay 1 ms, discard 107 bits on ATF750C
-      if (verify) {
-        i = verifyGalFuseMap(galinfo.cfg, 1, galinfo.bits - 8 * galinfo.uesbytes - 1);
-      } else {
-        readGalFuseMap(galinfo.cfg, 1, galinfo.bits - 8 * galinfo.uesbytes - 1);
-      }
+      i = readOrverifyGalFuseMap(galinfo.cfg, 1, galinfo.bits - 8 * galinfo.uesbytes - 1, verify);
   }
   if (PEEL18CV8 != gal) {
     turnOff();
