@@ -441,6 +441,13 @@ Troubleshooting:
 
 - I have the older Afterburner PCB design, can I use the new PC software and Arduino sketch?
   * Yes, both programs are compatible with the old Afterburner boards (1.X and 2.X).
+ 
+- Which Arduino is compatible with Afterburner?
+  * Arduino UNO and many Arduino UNO clones that operate on 5V are compatible. If you already have have
+    a 3.3V based UNO, you can try it but it may not work with certain GAL chips. See discussion for more info.
+  * Original Arduino Leonardo is supposed to work without modifications. Tested on DFRobot Leonardo board which works fine.
+  * Arduino MEGA2560 and clones should work without modifications.
+  * Arduino NANO works, but requires a UNO break-out board adapter. See bruno-nano adapter (https://github.com/ole00/bruno-nano).
 
 - how do I program ATF150X ICs? They do not fit into the ZIF Socket.
   There are 2 options. Either use PLCC44 IC package along with the ZIF socket adapter (see the gerber and
